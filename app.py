@@ -16,8 +16,9 @@ DOSYA_ADI = "https://raw.githubusercontent.com/gozlekakif-alt/hizli-on-analiz-mo
 def veriyi_yukle():
     try:
         # 4.000+ çekilişi hızlıca yükle
-        df = pd.read_csv(DOSYA_ADI, header=None)
-        df = df.apply(pd.to_numeric, errors='coerce').dropna(how='all')
+    df = pd.read_csv(DOSYA_ADI, header=None)
+df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
+    
         return df
     except Exception as e:
         return None
