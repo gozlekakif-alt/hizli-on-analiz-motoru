@@ -4,13 +4,13 @@ import numpy as np
 from collections import Counter
 from itertools import combinations
 import io
-
+from pathlib import Path
 st.set_page_config(page_title="Hızlı On Analiz Motoru", layout="wide")
 
 st.title("🎯 Hızlı On Gelişmiş Analiz ve İstatistik Motoru")
 st.caption("4.000+ Çekilişlik Dev Veri Havuzu İle Detaylı Strateji Motoru")
 
-DOSYA_ADI = "Hizli_On_Ana_Verihavuzu_Tek_Dosya-1.txt"
+DODOSYA_ADI = Path(__file__).parent / "Hizli_On_Ana_Verihavuzu_Tek_Dosya-1.txt"
 
 # --- 1. VERİ YÜKLEME VE HAZIRLAMA ---
 @st.cache_data
