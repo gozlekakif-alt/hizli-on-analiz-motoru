@@ -10,7 +10,7 @@ st.set_page_config(page_title="Hızlı On Analiz Motoru", layout="wide")
 st.title("🎯 Hızlı On Gelişmiş Analiz ve İstatistik Motoru")
 st.caption("4.000+ Çekilişlik Dev Veri Havuzu İle Detaylı Strateji Motoru")
 
-DOSYA_ADI = Path(__file__).parent / "veri.txt"
+DOSYA_ADI = "https://raw.githubusercontent.com/gozlekakif-alt/hizli-on-analiz-motoru/main/veri.txt"
 # --- 1. VERİ YÜKLEME VE HAZIRLAMA ---
 @st.cache_data
 def veriyi_yukle():
