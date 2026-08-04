@@ -17,11 +17,11 @@ def veriyi_yukle():
     try:
         # 4.000+ çekilişi hızlıca yükle
     df = pd.read_csv(DOSYA_ADI, header=None)
-df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
+    df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
     
-        return df
+    return df
     except Exception as e:
-        return None
+    return None
 
 df_raw = veriyi_yukle()
 
