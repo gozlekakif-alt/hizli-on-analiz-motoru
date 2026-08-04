@@ -13,15 +13,16 @@ st.caption("4.000+ Çekilişlik Dev Veri Havuzu İle Detaylı Strateji Motoru")
 DOSYA_ADI = "https://raw.githubusercontent.com/gozlekakif-alt/hizli-on-analiz-motoru/main/veri.txt"
 # --- 1. VERİ YÜKLEME VE HAZIRLAMA ---
 @st.cache_data
+@st.cache_data
 def veriyi_yukle():
     try:
-        # 4.000+ çekilişi hızlıca yükle
-    df = pd.read_csv(DOSYA_ADI, header=None)
-    df = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
-    
-    return df
+        # 4.000+ çekilişi hızla yükle
+        df = pd.read_csv(DOSYA_ADI, header=None)
+        df = df.apply(pd.to_numeric, errors="coerce")
+        return df
     except Exception as e:
-    return None
+        st.error(f"Veri yüklenemedi: {e}")
+        return None
 
 df_raw = veriyi_yukle()
 
