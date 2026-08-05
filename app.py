@@ -9,10 +9,12 @@ from pathlib import Path
 import numpy as np
 import requests
 import pandas as pd
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 import streamlit as st
 
 st.set_page_config(
-    page_title="Hızlı On Ultimate Analiz Motoru V9",
+    page_title="Hızlı On Ultimate Analiz Motoru V10",
     page_icon="🎯",
     layout="wide",
 )
@@ -871,6 +873,61 @@ def delete_coupon_from_archive(settings, coupon_id):
     save_coupon_archive(settings, new_archive)
     return new_archive
 
+
+def create_pdf_report(df, score_df=None):
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    y = height - 45
+
+    def line(text, size=10, gap=15):
+        nonlocal y
+        if y < 55:
+            pdf.showPage()
+            y = height - 45
+        pdf.setFont("Helvetica", size)
+        pdf.drawString(40, y, str(text)[:110])
+        y -= gap
+
+    pdf.setTitle("Hizli On V10 Analiz Raporu")
+    line("HIZLI ON ULTIMATE V10 ANALIZ RAPORU", 15, 24)
+    line(f"Toplam cekilis: {len(df)}", 11)
+    latest = df.iloc[-1]
+    line(
+        f"Son cekilis: {int(latest.Cekilis_No)} | "
+        f"{latest.Tarih} {latest.Saat}",
+        11,
+    )
+    line("")
+
+    freq_df = frequency(df).sort_values(
+        ["Frekans", "Sayı"], ascending=[False, True]
+    ).head(20)
+    line("En sik 20 sayi", 12, 20)
+    for _, row in freq_df.iterrows():
+        line(f"Sayi {int(row['Sayı'])}: {int(row['Frekans'])} kez")
+
+    line("")
+    gap_df = gaps(df).sort_values(
+        ["Dinlenme", "Sayı"], ascending=[False, True]
+    ).head(20)
+    line("En uzun dinlenen 20 sayi", 12, 20)
+    for _, row in gap_df.iterrows():
+        line(f"Sayi {int(row['Sayı'])}: {int(row['Dinlenme'])} cekilis")
+
+    if score_df is not None and not score_df.empty:
+        line("")
+        line("En yuksek guc puanli 20 sayi", 12, 20)
+        for _, row in score_df.head(20).iterrows():
+            line(
+                f"Sayi {int(row['Sayı'])}: "
+                f"{float(row['Toplam Puan']):.2f} puan"
+            )
+
+    pdf.save()
+    buffer.seek(0)
+    return buffer.getvalue()
+
 def normalized_series(values):
     series = pd.Series(values, dtype=float)
     lo, hi = float(series.min()), float(series.max())
@@ -1154,7 +1211,7 @@ base_df, base_invalid = load_base()
 if "extra_df" not in st.session_state:
     st.session_state.extra_df = pd.DataFrame(columns=COLS)
 
-st.title("🎯 Hızlı On Ultimate Analiz Motoru V9")
+st.title("🎯 Hızlı On Ultimate Analiz Motoru V10")
 st.caption("Ana veri havuzu + sonradan dosya yükleme + tek çekiliş ekleme + analiz + dışa aktarma")
 
 with st.sidebar:
@@ -1230,6 +1287,7 @@ tabs = st.tabs([
 
 
 with tabs[0]:
+    st.success("Çalışan sürüm: V10 — Ana dosya: app.py")
     st.write(f"Ana havuz: **{len(base_df)}** çekiliş")
     gh_settings, gh_error = github_settings()
     if gh_error:
@@ -1652,7 +1710,8 @@ with tabs[14]:
 
 
 with tabs[15]:
-    st.subheader("Yeni çekilişi yapıştır ve kalıcı kaydet")
+    st.header("➕ Yeni Çekiliş Ekle")
+    st.info("Aşağıdaki kutuya çekiliş numarası, tarih-saat ve 20 sayıyı yapıştır. ""GitHub kalıcı kayıt kapalı olsa bile çekilişi doğrulayabilir ve yedeğini indirebilirsin.")
     raw = st.text_area(
         "Yeni çekilişi yapıştır",
         height=280,
@@ -1748,121 +1807,19 @@ with tabs[15]:
         persistent_save_panel(df, "bulk_draws")
 
 with tabs[16]:
+    try:
+        pdf_score_df = intelligent_score_table(df, str(df.iloc[-1].Saat))
+    except Exception:
+        pdf_score_df = pd.DataFrame()
+
     st.download_button(
-        "Güncel veri.txt indir",
-        data=to_text(df).encode("utf-8"),
-        file_name="veri.txt",
-        mime="text/plain",
+        "PDF analiz raporu indir",
+        data=create_pdf_report(df, pdf_score_df),
+        file_name="hizli_on_v10_analiz_raporu.pdf",
+        mime="application/pdf",
         type="primary",
     )
-    st.download_button(
-        "Güncel CSV indir",
-        data=df.to_csv(index=False).encode("utf-8-sig"),
-        file_name="hizli_on_guncel.csv",
-        mime="text/csv",
-    )
-    st.download_button(
-        "Güncel Excel indir",
-        data=to_excel_bytes(df),
-        file_name="hizli_on_guncel.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
 
-st.caption("Bu bölüm dış API kullanmadan kural tabanlı istatistik yorumu üretir.")
-
-with tabs[9]:
-    st.subheader("Kısa ve uzun dönem karşılaştırması")
-    st.dataframe(recent_window_comparison(df), use_container_width=True, hide_index=True)
-    drift, drift_msg = drift_detector(df)
-    st.info(drift_msg)
-    if not drift.empty:
-        st.dataframe(drift.head(30), use_container_width=True, hide_index=True)
-    st.subheader("2–5’li ardışık blok özeti")
-    st.dataframe(block_length_summary(adf), use_container_width=True, hide_index=True)
-
-with tabs[10]:
-    close_freq, close_combos = closing_summary(df)
-    if close_freq.empty:
-        st.info("Kapanış döneminde kayıt bulunamadı.")
-    else:
-        st.subheader("Kapanış sıcak sayıları")
-        st.dataframe(close_freq.head(30), use_container_width=True, hide_index=True)
-        st.subheader("Kapanışta en sık birlikte çıkan ikililer")
-        st.dataframe(close_combos, use_container_width=True, hide_index=True)
-
-with tabs[11]:
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        size = st.selectbox("Kolon büyüklüğü", [3, 4, 5, 6, 7, 8, 10], index=4)
-    with c2:
-        count = st.slider("Kolon sayısı", 1, 10, 4)
-    with c3:
-        strategy = st.selectbox("Strateji", ["Dengeli", "Sıcak", "Dinlenmiş", "Bağ gücü"])
-
-    if st.button("Kolon üret", type="primary"):
-        made = set()
-        tries = 0
-        while len(made) < count and tries < 1000:
-            made.add(tuple(generate_coupon(df, size, strategy, window)))
-            tries += 1
-        for i, coupon in enumerate(sorted(made), 1):
-            st.success(f"Kolon {i}: " + " - ".join(map(str, coupon)))
-
-    test_count = st.slider("Backtest çekiliş sayısı", 10, min(300, max(10, len(df) - 50)), min(100, max(10, len(df) - 50)))
-    if st.button("Backtest çalıştır"):
-        result = backtest(df, size, strategy, window, test_count)
-        if not result.empty:
-            x, y = st.columns(2)
-            x.metric("Ortalama isabet", f"{result['İsabet'].mean():.2f}")
-            y.metric("En yüksek isabet", int(result["İsabet"].max()))
-            st.dataframe(result.sort_values("Çekiliş", ascending=False), use_container_width=True, hide_index=True)
-
-with tabs[12]:
-    st.subheader("Kupon ile sonuç karşılaştır")
-    coupon_text = st.text_area("Kupon sayıları", placeholder="7 11 18 24 39 52 71", key="coupon_check_coupon")
-    result_text = st.text_area("Çekiliş sonucu (20 sayı)", placeholder="1 7 11 14 18 ...", key="coupon_check_result")
-    if coupon_text.strip() and result_text.strip():
-        coupon_vals, result_vals, hits = coupon_check(coupon_text, result_text)
-        st.write("Kupon:", " - ".join(map(str, coupon_vals)))
-        st.write("Tutan sayılar:", " - ".join(map(str, hits)) or "Yok")
-        st.metric("İsabet", f"{len(hits)} / {len(coupon_vals)}")
-
-with tabs[14]:
-    raw = st.text_area("Yeni çekilişi yapıştır", height=280, placeholder="""Çekiliş no: 47042
-05.08.2026 - 20:02
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20""")
-    if raw.strip():
-        row = parse_draw_block(raw)
-        if not row:
-            st.error("Çekiliş okunamadı. 20 farklı sayı, çekiliş no, tarih ve saat gerekli.")
-        elif row[0] in set(df.Cekilis_No.astype(int)):
-            st.warning("Bu çekiliş zaten mevcut.")
-        else:
-            new_row_df = pd.DataFrame([row], columns=COLS)
-            st.session_state.extra_df = merge_data(st.session_state.extra_df, new_row_df)
-            st.success("Çekiliş bu oturuma eklendi. Kalıcılaştırmak için Dışa Aktar sekmesinden veri.txt indir.")
-            st.rerun()
-
-with tabs[15]:
     st.download_button(
         "Güncel veri.txt indir",
         data=to_text(df).encode("utf-8"),
@@ -1884,8 +1841,8 @@ with tabs[15]:
     )
 
 st.caption(
-    "V9 analizleri geçmiş veriden türetilen istatistiksel puanlardır; "
-    "kesin sonuç veya kazanç garantisi vermez. Kuponlar GitHub'daki "
-    "kuponlar.csv dosyasına kalıcı kaydedilebilir ve sonraki çekilişlerde "
-    "isabet oranları otomatik hesaplanır."
+    "V10 tek ana dosya olarak app.py üzerinden çalışır. "
+    "Yeni çekiliş, kupon arşivi, isabet raporu, gelişmiş analizler ve "
+    "TXT/CSV/Excel/PDF dışa aktarma tek uygulamadadır. "
+    "İstatistikler kesin sonuç veya kazanç garantisi vermez."
 )
