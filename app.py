@@ -1,3 +1,4 @@
+import base64
 import io
 import re
 from collections import Counter, defaultdict
@@ -5,11 +6,12 @@ from itertools import combinations
 from pathlib import Path
 
 import numpy as np
+import requests
 import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Hızlı On Ultimate Analiz Motoru V6 V6",
+    page_title="Hızlı On Ultimate Analiz Motoru V8 V7 V6",
     page_icon="🎯",
     layout="wide",
 )
@@ -508,6 +510,397 @@ def coupon_check(coupon_text, result_text):
     hits = sorted(set(coupon) & set(result))
     return coupon, result, hits
 
+
+
+def github_settings():
+    try:
+        token = st.secrets["github"]["token"]
+        owner = st.secrets["github"].get("owner", "gozlekakif-alt")
+        repo = st.secrets["github"].get("repo", "hizli-on-analiz-motoru")
+        branch = st.secrets["github"].get("branch", "main")
+        path = st.secrets["github"].get("data_path", "veri.txt")
+        admin_pin = str(st.secrets["github"].get("admin_pin", ""))
+        return {
+            "token": token,
+            "owner": owner,
+            "repo": repo,
+            "branch": branch,
+            "path": path,
+            "admin_pin": admin_pin,
+        }, None
+    except Exception:
+        return None, (
+            "GitHub kalıcı kayıt ayarları yapılmamış. "
+            "Streamlit Secrets bölümüne github bilgileri eklenmeli."
+        )
+
+
+def github_headers(token):
+    return {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+
+def get_github_file(settings):
+    url = (
+        f"https://api.github.com/repos/{settings['owner']}/"
+        f"{settings['repo']}/contents/{settings['path']}"
+    )
+    response = requests.get(
+        url,
+        headers=github_headers(settings["token"]),
+        params={"ref": settings["branch"]},
+        timeout=30,
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"GitHub veri dosyası okunamadı: "
+            f"{response.status_code} {response.text[:300]}"
+        )
+    payload = response.json()
+    content = base64.b64decode(payload["content"]).decode(
+        "utf-8", errors="ignore"
+    )
+    return content, payload["sha"]
+
+
+def update_github_file(settings, new_text, commit_message):
+    _, sha = get_github_file(settings)
+    url = (
+        f"https://api.github.com/repos/{settings['owner']}/"
+        f"{settings['repo']}/contents/{settings['path']}"
+    )
+    payload = {
+        "message": commit_message,
+        "content": base64.b64encode(
+            new_text.encode("utf-8")
+        ).decode("ascii"),
+        "sha": sha,
+        "branch": settings["branch"],
+    }
+    response = requests.put(
+        url,
+        headers=github_headers(settings["token"]),
+        json=payload,
+        timeout=30,
+    )
+    if response.status_code not in (200, 201):
+        raise RuntimeError(
+            f"GitHub kaydı başarısız: "
+            f"{response.status_code} {response.text[:500]}"
+        )
+    return response.json()
+
+
+def persistent_save_panel(df_to_save, key_prefix):
+    settings, settings_error = github_settings()
+
+    if settings_error:
+        st.warning(settings_error)
+        return
+
+    st.success(
+        "GitHub kalıcı kayıt bağlantısı hazır. "
+        "Kaydet düğmesi ana veri.txt dosyasını günceller."
+    )
+    entered_pin = st.text_input(
+        "Kalıcı kayıt PIN'i",
+        type="password",
+        key=f"{key_prefix}_pin",
+    )
+
+    if st.button(
+        "💾 GitHub veri havuzuna kalıcı kaydet",
+        type="primary",
+        key=f"{key_prefix}_save",
+    ):
+        if not settings["admin_pin"]:
+            st.error(
+                "Secrets içinde admin_pin tanımlı değil. "
+                "Güvenlik için kayıt durduruldu."
+            )
+        elif entered_pin != settings["admin_pin"]:
+            st.error("PIN yanlış.")
+        else:
+            try:
+                with st.spinner("GitHub veri.txt güncelleniyor..."):
+                    update_github_file(
+                        settings,
+                        to_text(df_to_save),
+                        (
+                            f"Veri havuzu güncellendi: "
+                            f"{int(df_to_save.iloc[-1].Cekilis_No)}"
+                        ),
+                    )
+                st.success(
+                    "Kalıcı kayıt tamamlandı. GitHub veri.txt güncellendi. "
+                    "Uygulama kısa süre içinde yeniden başlayabilir."
+                )
+                st.cache_data.clear()
+            except Exception as exc:
+                st.error(str(exc))
+
+def normalized_series(values):
+    series = pd.Series(values, dtype=float)
+    lo, hi = float(series.min()), float(series.max())
+    if hi <= lo:
+        return pd.Series(np.full(len(series), 0.5), index=series.index)
+    return (series - lo) / (hi - lo)
+
+
+def repeat_probability(df):
+    sets = row_sets(df)
+    cases = Counter()
+    hits = Counter()
+
+    for i in range(len(sets) - 1):
+        for n in sets[i]:
+            cases[n] += 1
+            if n in sets[i + 1]:
+                hits[n] += 1
+
+    return {
+        n: hits[n] / cases[n] if cases[n] else 0.0
+        for n in range(1, 81)
+    }
+
+
+def return_cycle_table(df):
+    positions = defaultdict(list)
+    for i, draw_set in enumerate(row_sets(df)):
+        for n in draw_set:
+            positions[n].append(i)
+
+    rows = []
+    for n in range(1, 81):
+        pos = positions[n]
+        intervals = [pos[i] - pos[i - 1] for i in range(1, len(pos))]
+        rests = [max(0, x - 1) for x in intervals]
+        current_gap = len(df) - 1 - pos[-1] if pos else len(df)
+        rows.append({
+            "Sayı": n,
+            "Görülme": len(pos),
+            "Mevcut dinlenme": current_gap,
+            "Ort. dönüş aralığı": round(float(np.mean(intervals)), 2) if intervals else 0,
+            "Medyan dönüş": round(float(np.median(intervals)), 2) if intervals else 0,
+            "En uzun dinlenme": max(rests) if rests else 0,
+            "Son 10 dönüş": " - ".join(map(str, intervals[-10:])),
+        })
+    return pd.DataFrame(rows)
+
+
+def hour_number_rates(df, target_time):
+    if df.empty:
+        return {n: 0.0 for n in range(1, 81)}
+
+    target_minutes = int(target_time.split(":")[0]) * 60 + int(target_time.split(":")[1])
+    minutes = df["Saat"].map(
+        lambda x: int(str(x).split(":")[0]) * 60 + int(str(x).split(":")[1])
+    )
+    # Aynı saat çevresindeki ±30 dakikalık çekilişler.
+    mask = (minutes - target_minutes).abs() <= 30
+    subset = df[mask]
+    if len(subset) < 5:
+        subset = df[df["Saat"].map(period_name) == period_name(target_time)]
+
+    freq = frequency(subset).set_index("Sayı")["Frekans"] if not subset.empty else pd.Series(dtype=float)
+    denominator = max(len(subset), 1)
+    return {n: float(freq.get(n, 0)) / denominator for n in range(1, 81)}
+
+
+def neighbor_block_strength(df, window):
+    subset = df.tail(window)
+    neighbor = Counter()
+    block_member = Counter()
+
+    for draw_set in row_sets(subset):
+        for n in draw_set:
+            if n - 1 in draw_set:
+                neighbor[n] += 1
+            if n + 1 in draw_set:
+                neighbor[n] += 1
+        for block in consecutive_blocks(draw_set):
+            for n in block:
+                block_member[n] += len(block) - 1
+
+    return {
+        n: neighbor[n] + block_member[n]
+        for n in range(1, 81)
+    }
+
+
+def intelligent_score_table(df, target_time=None):
+    windows = [10, 25, 50, 100]
+    rows = pd.DataFrame({"Sayı": range(1, 81)})
+
+    for w in windows:
+        subset = df.tail(min(w, len(df)))
+        freq = frequency(subset).set_index("Sayı")["Frekans"] / max(len(subset), 1)
+        rows[f"Son {w}"] = [float(freq.get(n, 0)) for n in range(1, 81)]
+
+    gap_df = gaps(df).set_index("Sayı")
+    cycle_df = return_cycle_table(df).set_index("Sayı")
+    repeat = repeat_probability(df)
+    pair = score_numbers(df, min(100, len(df))).set_index("Sayı")["Bağ gücü"]
+    block_strength = neighbor_block_strength(df, min(100, len(df)))
+
+    if target_time is None:
+        target_time = str(df.iloc[-1].Saat)
+    hour_rates = hour_number_rates(df, target_time)
+
+    rows["Dinlenme"] = [int(gap_df.loc[n, "Dinlenme"]) for n in range(1, 81)]
+    rows["Ort. dönüş"] = [float(cycle_df.loc[n, "Ort. dönüş aralığı"]) for n in range(1, 81)]
+    rows["Tekrar oranı"] = [float(repeat[n]) for n in range(1, 81)]
+    rows["Birlikte gelme"] = [float(pair.get(n, 0)) for n in range(1, 81)]
+    rows["Saat oranı"] = [float(hour_rates[n]) for n in range(1, 81)]
+    rows["Blok puanı"] = [float(block_strength[n]) for n in range(1, 81)]
+
+    # Dinlenme/dönüş uyumu: mevcut dinlenme, o sayının tipik dönüş aralığına yaklaştıkça artar.
+    expected_rest = (rows["Ort. dönüş"] - 1).clip(lower=0)
+    rows["Dönüş uyumu"] = np.exp(
+        -np.abs(rows["Dinlenme"] - expected_rest) / (expected_rest + 2)
+    )
+
+    component_weights = {
+        "Son 10": 0.13,
+        "Son 25": 0.12,
+        "Son 50": 0.10,
+        "Son 100": 0.08,
+        "Dönüş uyumu": 0.14,
+        "Tekrar oranı": 0.10,
+        "Birlikte gelme": 0.13,
+        "Saat oranı": 0.10,
+        "Blok puanı": 0.10,
+    }
+
+    normalized = {}
+    for col in component_weights:
+        normalized[col] = normalized_series(rows[col])
+
+    rows["Toplam Puan"] = 0.0
+    for col, weight in component_weights.items():
+        rows["Toplam Puan"] += normalized[col] * weight
+
+    rows["Toplam Puan"] = (rows["Toplam Puan"] * 100).round(2)
+    rows["Durum"] = pd.cut(
+        rows["Toplam Puan"],
+        bins=[-1, 45, 60, 75, 101],
+        labels=["Zayıf", "Orta", "Güçlü", "Çok güçlü"],
+    ).astype(str)
+
+    display_cols = [
+        "Sayı", "Toplam Puan", "Durum", "Son 10", "Son 25", "Son 50",
+        "Son 100", "Dinlenme", "Ort. dönüş", "Dönüş uyumu",
+        "Tekrar oranı", "Saat oranı", "Birlikte gelme", "Blok puanı"
+    ]
+    return rows[display_cols].sort_values(
+        ["Toplam Puan", "Sayı"], ascending=[False, True]
+    )
+
+
+def balanced_smart_coupon(score_df, size, seed_shift=0):
+    work = score_df.copy()
+    # Küçük çeşitlilik için deterministik, kontrollü bir kaydırma.
+    work["Seçim Puanı"] = work["Toplam Puan"] + (
+        ((work["Sayı"] * 17 + seed_shift * 13) % 19) / 100
+    )
+    work = work.sort_values("Seçim Puanı", ascending=False)
+
+    selected = []
+    band_counts = [0, 0, 0, 0]
+    max_per_band = max(2, int(np.ceil(size / 3)))
+
+    for n in work["Sayı"].astype(int):
+        band_idx = next(i for i, (lo, hi) in enumerate(BANDS) if lo <= n <= hi)
+        # Aynı banttan aşırı yığılmayı ve uzun ardışık zinciri sınırla.
+        creates_long_run = any(
+            {n - 2, n - 1}.issubset(selected)
+            or {n - 1, n + 1}.issubset(selected)
+            or {n + 1, n + 2}.issubset(selected)
+            for _ in [0]
+        )
+        if band_counts[band_idx] >= max_per_band or creates_long_run:
+            continue
+        selected.append(n)
+        band_counts[band_idx] += 1
+        if len(selected) == size:
+            break
+
+    # Kısıtlar yüzünden eksik kalırsa puan sırasından tamamla.
+    if len(selected) < size:
+        for n in work["Sayı"].astype(int):
+            if n not in selected:
+                selected.append(n)
+            if len(selected) == size:
+                break
+
+    return sorted(selected)
+
+
+def explain_coupon(coupon, score_df):
+    indexed = score_df.set_index("Sayı")
+    rows = []
+    for n in coupon:
+        row = indexed.loc[n]
+        reasons = []
+        if row["Son 10"] >= score_df["Son 10"].quantile(0.70):
+            reasons.append("son 10 güçlü")
+        if row["Dönüş uyumu"] >= score_df["Dönüş uyumu"].quantile(0.70):
+            reasons.append("dönüş zamanı yakın")
+        if row["Tekrar oranı"] >= score_df["Tekrar oranı"].quantile(0.70):
+            reasons.append("tekrar oranı güçlü")
+        if row["Saat oranı"] >= score_df["Saat oranı"].quantile(0.70):
+            reasons.append("saat uyumu")
+        if row["Birlikte gelme"] >= score_df["Birlikte gelme"].quantile(0.70):
+            reasons.append("bağ gücü")
+        if row["Blok puanı"] >= score_df["Blok puanı"].quantile(0.70):
+            reasons.append("blok desteği")
+        rows.append({
+            "Sayı": n,
+            "Puan": row["Toplam Puan"],
+            "Seçilme nedeni": ", ".join(reasons) or "dengeli toplam puan",
+        })
+    return pd.DataFrame(rows)
+
+
+def historical_coupon_test(df, coupon):
+    coupon_set = set(coupon)
+    rows = []
+    for _, row in df.iterrows():
+        actual = set(int(row[c]) for c in NUM_COLS)
+        hits = sorted(coupon_set & actual)
+        rows.append({
+            "Çekiliş": int(row.Cekilis_No),
+            "Tarih": row.Tarih,
+            "Saat": row.Saat,
+            "İsabet": len(hits),
+            "Tutan sayılar": " - ".join(map(str, hits)),
+        })
+    return pd.DataFrame(rows)
+
+
+def hit_distribution(test_df, coupon_size):
+    counts = test_df["İsabet"].value_counts().reindex(
+        range(coupon_size + 1), fill_value=0
+    ).sort_index()
+    return pd.DataFrame({
+        "İsabet": counts.index,
+        "Adet": counts.values,
+        "Oran %": (counts.values / max(len(test_df), 1) * 100).round(2),
+    })
+
+
+def weakest_coupon_replacement(coupon, score_df):
+    indexed = score_df.set_index("Sayı")
+    weakest = min(coupon, key=lambda n: indexed.loc[n, "Toplam Puan"])
+    alternatives = [
+        int(n) for n in score_df["Sayı"]
+        if int(n) not in coupon
+    ][:5]
+    return weakest, alternatives
+
 def rule_based_interpretation(df, window):
     sub = df.tail(window)
     f = frequency(sub).sort_values("Frekans", ascending=False)
@@ -532,7 +925,7 @@ base_df, base_invalid = load_base()
 if "extra_df" not in st.session_state:
     st.session_state.extra_df = pd.DataFrame(columns=COLS)
 
-st.title("🎯 Hızlı On Ultimate Analiz Motoru V6 V6")
+st.title("🎯 Hızlı On Ultimate Analiz Motoru V8 V7 V6")
 st.caption("Ana veri havuzu + sonradan dosya yükleme + tek çekiliş ekleme + analiz + dışa aktarma")
 
 with st.sidebar:
@@ -588,6 +981,7 @@ adf = df.tail(window)
 
 tabs = st.tabs([
     "✅ Kontrol",
+    "🧠 Güç Puanı",
     "📈 Frekans",
     "🔗 Birlikte Çıkma",
     "🔥 Sıcak/Soğuk",
@@ -595,17 +989,27 @@ tabs = st.tabs([
     "🔄 Tekrar/Blok",
     "📊 Bant/Saat",
     "🧭 Benzerlik",
-    "🧠 Gün Yorumu",
-    "🧬 Değişim Dedektörü",
+    "🧬 Değişim",
     "🌙 Kapanış",
-    "🎯 Kupon/Backtest",
-    "✅ Kupon Kontrol",
+    "🎯 Süper Kupon",
+    "🧪 Kupon Laboratuvarı",
+    "✅ Sonuç Kontrol",
     "➕ Yeni Çekiliş",
     "⬇️ Dışa Aktar",
 ])
 
+
 with tabs[0]:
     st.write(f"Ana havuz: **{len(base_df)}** çekiliş")
+    gh_settings, gh_error = github_settings()
+    if gh_error:
+        st.warning("Kalıcı GitHub kayıt: Kapalı")
+    else:
+        st.success(
+            f"Kalıcı GitHub kayıt: Hazır — "
+            f"{gh_settings['owner']}/{gh_settings['repo']}/"
+            f"{gh_settings['path']}"
+        )
     st.write(f"Bu oturumda yüklenen ek veri: **{len(st.session_state.extra_df)}** çekiliş")
     if missing:
         st.warning("Eksik çekiliş numaraları: " + ", ".join(map(str, missing[:500])))
@@ -616,63 +1020,390 @@ with tabs[0]:
             st.code("\n".join(base_invalid[:300]))
 
 with tabs[1]:
+    st.subheader("0–100 Akıllı Güç Puanı")
+    target_time = st.text_input("Hedef saat", value=str(latest.Saat), key="score_target_time")
+    try:
+        score_df = intelligent_score_table(df, target_time)
+        st.dataframe(score_df, use_container_width=True, hide_index=True)
+        st.bar_chart(score_df.head(25).set_index("Sayı")["Toplam Puan"])
+    except Exception as exc:
+        st.error(f"Puan hesaplanamadı: {exc}")
+
+with tabs[2]:
     f = frequency(adf).sort_values(["Frekans", "Sayı"], ascending=[False, True])
     st.dataframe(f, use_container_width=True, hide_index=True)
     st.bar_chart(f.sort_values("Sayı").set_index("Sayı")["Frekans"])
 
-with tabs[2]:
-    subtabs = st.tabs(["2’li", "3’lü", "4’lü", "5’li"])
-    for tab, size in zip(subtabs, [2, 3, 4, 5]):
-        with tab:
-            top_n = st.slider(f"İlk kaç {size}’li?", 10, 100, 30, key=f"combo_{size}")
-            st.dataframe(combo_dates(adf, size, top_n), use_container_width=True, hide_index=True)
-
 with tabs[3]:
-    merged = frequency(adf).merge(gaps(df), on="Sayı")
-    l, r = st.columns(2)
-    with l:
-        st.subheader("Sıcak")
-        st.dataframe(merged.sort_values(["Frekans", "Dinlenme"], ascending=[False, True]).head(20),
-                     use_container_width=True, hide_index=True)
-    with r:
-        st.subheader("Soğuk / dinlenmiş")
-        st.dataframe(merged.sort_values(["Dinlenme", "Frekans"], ascending=[False, True]).head(20),
-                     use_container_width=True, hide_index=True)
+    subtabs = st.tabs(["2’li", "3’lü", "4’lü", "5’li"])
+    for tab, combo_size in zip(subtabs, [2, 3, 4, 5]):
+        with tab:
+            top_n = st.slider(
+                f"İlk kaç {combo_size}’li?",
+                10, 100, 30, key=f"combo_v7_{combo_size}"
+            )
+            st.dataframe(
+                combo_dates(adf, combo_size, top_n),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 with tabs[4]:
-    st.subheader("Dinlenme")
-    st.dataframe(gaps(df).sort_values(["Dinlenme", "Sayı"], ascending=[False, True]),
-                 use_container_width=True, hide_index=True)
-    st.subheader("Seri ve kırılma")
-    st.dataframe(streak_table(df).sort_values(["Mevcut seri", "En uzun seri"], ascending=False),
-                 use_container_width=True, hide_index=True)
+    merged = frequency(adf).merge(gaps(df), on="Sayı")
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Sıcak")
+        st.dataframe(
+            merged.sort_values(
+                ["Frekans", "Dinlenme"], ascending=[False, True]
+            ).head(20),
+            use_container_width=True,
+            hide_index=True,
+        )
+    with right:
+        st.subheader("Soğuk / dinlenmiş")
+        st.dataframe(
+            merged.sort_values(
+                ["Dinlenme", "Frekans"], ascending=[False, True]
+            ).head(20),
+            use_container_width=True,
+            hide_index=True,
+        )
 
 with tabs[5]:
-    st.subheader("Çekilişler arası tekrar")
-    st.dataframe(repeat_table(adf).head(200), use_container_width=True, hide_index=True)
-    st.subheader("Ardışık blok ve kayma")
-    st.dataframe(block_table(df, min(window, 300)), use_container_width=True, hide_index=True)
+    st.subheader("Dönüş döngüleri")
+    cycle_df = return_cycle_table(df)
+    st.dataframe(
+        cycle_df.sort_values(
+            ["Mevcut dinlenme", "Ort. dönüş aralığı"], ascending=False
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.subheader("Tekrar serileri ve kırılmalar")
+    st.dataframe(
+        streak_table(df).sort_values(
+            ["Mevcut seri", "En uzun seri"], ascending=False
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 with tabs[6]:
-    bands = band_table(adf)
-    st.subheader("Bant yoğunluğu")
-    st.dataframe(bands.sort_values("Çekiliş", ascending=False), use_container_width=True, hide_index=True)
-    st.bar_chart(bands[BAND_NAMES].mean())
-    st.subheader("Saat dilimi davranışı")
-    st.dataframe(period_summary(adf), use_container_width=True, hide_index=True)
+    st.subheader("Çekilişler arası tekrar")
+    st.dataframe(
+        repeat_table(adf).head(200),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.subheader("Ardışık blok ve sağa/sola kayma")
+    st.dataframe(
+        block_table(df, min(window, 300)),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.subheader("2–5’li blok laboratuvarı")
+    st.dataframe(
+        block_length_summary(adf),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 with tabs[7]:
+    bands = band_table(adf)
+    st.subheader("Bant yoğunluğu")
+    st.dataframe(
+        bands.sort_values("Çekiliş", ascending=False),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.bar_chart(bands[BAND_NAMES].mean())
+    st.subheader("Saat dilimi davranışı")
+    st.dataframe(
+        period_summary(adf),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.subheader("Son 5/10/20/50/100 karşılaştırması")
+    st.dataframe(
+        recent_window_comparison(df),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with tabs[8]:
     default_target = " ".join(str(int(latest[c])) for c in NUM_COLS)
-    target_text = st.text_area("20 hedef sayı", value=default_target, height=100)
-    target = sorted(set(int(x) for x in re.findall(r"\d+", target_text) if 1 <= int(x) <= 80))
+    target_text = st.text_area(
+        "20 hedef sayı", value=default_target, height=100, key="v7_similarity"
+    )
+    target = sorted(
+        set(
+            int(x)
+            for x in re.findall(r"\d+", target_text)
+            if 1 <= int(x) <= 80
+        )
+    )
     if len(target) == 20:
-        st.dataframe(similar_draws(df.iloc[:-1], target), use_container_width=True, hide_index=True)
+        st.dataframe(
+            similar_draws(df.iloc[:-1], target),
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
         st.info(f"20 farklı sayı gerekli. Şu an {len(target)} sayı var.")
 
-with tabs[8]:
+with tabs[9]:
+    drift, drift_msg = drift_detector(df)
+    st.info(drift_msg)
+    if not drift.empty:
+        st.dataframe(
+            drift.head(40),
+            use_container_width=True,
+            hide_index=True,
+        )
     st.info(rule_based_interpretation(df, window))
-    st.caption("Bu bölüm dış API kullanmadan kural tabanlı istatistik yorumu üretir.")
+
+with tabs[10]:
+    close_freq, close_combos = closing_summary(df)
+    if close_freq.empty:
+        st.info("Kapanış döneminde kayıt bulunamadı.")
+    else:
+        st.subheader("Kapanış sıcak sayıları")
+        st.dataframe(
+            close_freq.head(30),
+            use_container_width=True,
+            hide_index=True,
+        )
+        st.subheader("Kapanışta en sık birlikte çıkan ikililer")
+        st.dataframe(
+            close_combos,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+with tabs[11]:
+    st.subheader("Bütün analizleri birleştiren Süper Akıllı Kupon")
+    q1, q2, q3 = st.columns(3)
+    with q1:
+        smart_size = st.selectbox(
+            "Kolon büyüklüğü",
+            [3, 4, 5, 6, 7, 8, 10],
+            index=4,
+            key="v7_smart_size",
+        )
+    with q2:
+        smart_count = st.slider(
+            "Kolon sayısı", 1, 10, 4, key="v7_smart_count"
+        )
+    with q3:
+        smart_time = st.text_input(
+            "Hedef çekiliş saati",
+            value=str(latest.Saat),
+            key="v7_smart_time",
+        )
+
+    if st.button("Süper kolonları üret", type="primary", key="v7_super_generate"):
+        score_df = intelligent_score_table(df, smart_time)
+        generated = []
+        for shift in range(smart_count):
+            coupon = balanced_smart_coupon(score_df, smart_size, shift)
+            generated.append(coupon)
+            st.success(
+                f"Kolon {shift + 1}: " + " - ".join(map(str, coupon))
+            )
+            st.dataframe(
+                explain_coupon(coupon, score_df),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+with tabs[12]:
+    st.subheader("Kupon Laboratuvarı")
+    lab_coupon_text = st.text_area(
+        "Test edilecek kupon",
+        placeholder="7 11 18 24 39 52 71",
+        key="v7_lab_coupon",
+    )
+    if lab_coupon_text.strip():
+        lab_coupon = sorted(
+            set(
+                int(x)
+                for x in re.findall(r"\d+", lab_coupon_text)
+                if 1 <= int(x) <= 80
+            )
+        )
+        if not lab_coupon:
+            st.error("Geçerli sayı bulunamadı.")
+        else:
+            test_df = historical_coupon_test(df, lab_coupon)
+            distribution = hit_distribution(test_df, len(lab_coupon))
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Ortalama isabet", f"{test_df['İsabet'].mean():.2f}")
+            m2.metric("En yüksek isabet", int(test_df["İsabet"].max()))
+            m3.metric(
+                "En iyi sonuç sayısı",
+                int((test_df["İsabet"] == test_df["İsabet"].max()).sum()),
+            )
+            st.dataframe(
+                distribution,
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.dataframe(
+                test_df.sort_values(
+                    ["İsabet", "Çekiliş"], ascending=[False, False]
+                ).head(100),
+                use_container_width=True,
+                hide_index=True,
+            )
+            score_df = intelligent_score_table(df, str(latest.Saat))
+            weakest, alternatives = weakest_coupon_replacement(
+                lab_coupon, score_df
+            )
+            st.warning(
+                f"En zayıf puanlı kupon sayısı: {weakest}. "
+                f"Alternatif güçlü sayılar: {' - '.join(map(str, alternatives))}"
+            )
+
+with tabs[13]:
+    st.subheader("Kupon ile yeni çekiliş sonucunu karşılaştır")
+    coupon_text = st.text_area(
+        "Kupon sayıları",
+        placeholder="7 11 18 24 39 52 71",
+        key="v7_result_coupon",
+    )
+    result_text = st.text_area(
+        "Çekiliş sonucu (20 sayı)",
+        placeholder="1 7 11 14 18 ...",
+        key="v7_result_draw",
+    )
+    if coupon_text.strip() and result_text.strip():
+        coupon_vals, result_vals, hits = coupon_check(
+            coupon_text, result_text
+        )
+        st.write("Kupon:", " - ".join(map(str, coupon_vals)))
+        st.write("Tutan sayılar:", " - ".join(map(str, hits)) or "Yok")
+        st.metric("İsabet", f"{len(hits)} / {len(coupon_vals)}")
+
+
+with tabs[14]:
+    st.subheader("Yeni çekilişi yapıştır ve kalıcı kaydet")
+    raw = st.text_area(
+        "Yeni çekilişi yapıştır",
+        height=280,
+        placeholder="""Çekiliş no: 47042
+05.08.2026 - 20:02
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20""",
+        key="v8_new_draw",
+    )
+
+    if raw.strip():
+        row = parse_draw_block(raw)
+        if not row:
+            st.error(
+                "Çekiliş okunamadı. 20 farklı sayı, çekiliş no, "
+                "tarih ve saat gerekli."
+            )
+        elif row[0] in set(df.Cekilis_No.astype(int)):
+            st.warning("Bu çekiliş zaten mevcut.")
+        else:
+            new_row_df = pd.DataFrame([row], columns=COLS)
+            candidate_df = merge_data(df, new_row_df)
+            st.success(
+                f"Çekiliş #{row[0]} doğrulandı. "
+                f"Havuz {len(df)} → {len(candidate_df)} çekiliş olacak."
+            )
+
+            previous = set(int(df.iloc[-1][c]) for c in NUM_COLS)
+            current = set(row[3:])
+            common = sorted(previous & current)
+            blocks = consecutive_blocks(row[3:])
+            st.write(
+                f"Önceki çekilişten tekrar: **{len(common)} sayı**"
+            )
+            st.write(
+                "Tekrar edenler:",
+                " - ".join(map(str, common)) or "Yok",
+            )
+            st.write(
+                "Ardışık bloklar:",
+                ", ".join(
+                    "-".join(map(str, block)) for block in blocks
+                ) or "Yok",
+            )
+
+            st.download_button(
+                "Yedek veri.txt indir",
+                data=to_text(candidate_df).encode("utf-8"),
+                file_name="veri.txt",
+                mime="text/plain",
+                key="v8_new_draw_backup",
+            )
+
+            persistent_save_panel(candidate_df, "single_draw")
+
+    st.divider()
+    st.subheader("Bu oturumda yüklenen toplu veriyi kalıcılaştır")
+    if st.session_state.extra_df.empty:
+        st.info(
+            "Sol menüden TXT, CSV veya Excel yüklediğinde toplu veriler "
+            "burada GitHub'a kalıcı kaydedilebilir."
+        )
+    else:
+        st.write(
+            f"Bu oturumda {len(st.session_state.extra_df)} benzersiz ek "
+            f"çekiliş bulunuyor. Birleşik havuz: {len(df)} çekiliş."
+        )
+        st.download_button(
+            "Toplu güncellemenin yedeğini indir",
+            data=to_text(df).encode("utf-8"),
+            file_name="veri.txt",
+            mime="text/plain",
+            key="v8_bulk_backup",
+        )
+        persistent_save_panel(df, "bulk_draws")
+
+with tabs[15]:
+    st.download_button(
+        "Güncel veri.txt indir",
+        data=to_text(df).encode("utf-8"),
+        file_name="veri.txt",
+        mime="text/plain",
+        type="primary",
+    )
+    st.download_button(
+        "Güncel CSV indir",
+        data=df.to_csv(index=False).encode("utf-8-sig"),
+        file_name="hizli_on_guncel.csv",
+        mime="text/csv",
+    )
+    st.download_button(
+        "Güncel Excel indir",
+        data=to_excel_bytes(df),
+        file_name="hizli_on_guncel.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+st.caption("Bu bölüm dış API kullanmadan kural tabanlı istatistik yorumu üretir.")
 
 with tabs[9]:
     st.subheader("Kısa ve uzun dönem karşılaştırması")
@@ -788,8 +1519,7 @@ with tabs[14]:
     )
 
 st.caption(
-    "Analizler istatistikseldir; kesin sonuç veya kazanç garantisi vermez. "
-    "Yeni dosyalar uygulamaya yüklenebilir ve mevcut havuzla birleştirilir. "
-    "Streamlit Community Cloud dosya sistemine kalıcı yazma yapmadığı için, "
-    "güncellenmiş veri.txt dosyasını indirip GitHub'daki veri.txt üzerine yüklemek gerekir."
+    "V8 analizleri geçmiş veriden türetilen istatistiksel puanlardır; "
+    "kesin sonuç veya kazanç garantisi vermez. GitHub Secrets doğru "
+    "ayarlandığında yeni çekilişler dosya indirip yüklemeden kalıcı kaydedilir."
 )
