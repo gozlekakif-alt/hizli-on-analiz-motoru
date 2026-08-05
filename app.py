@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 import io
 import re
 from collections import Counter, defaultdict
@@ -11,7 +12,7 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Hızlı On Ultimate Analiz Motoru V8 V7 V6",
+    page_title="Hızlı On Ultimate Analiz Motoru V9",
     page_icon="🎯",
     layout="wide",
 )
@@ -642,6 +643,234 @@ def persistent_save_panel(df_to_save, key_prefix):
             except Exception as exc:
                 st.error(str(exc))
 
+
+def github_text_file(settings, path):
+    url = (
+        f"https://api.github.com/repos/{settings['owner']}/"
+        f"{settings['repo']}/contents/{path}"
+    )
+    response = requests.get(
+        url,
+        headers=github_headers(settings["token"]),
+        params={"ref": settings["branch"]},
+        timeout=30,
+    )
+    if response.status_code == 404:
+        return "", None
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"GitHub dosyası okunamadı ({path}): "
+            f"{response.status_code} {response.text[:300]}"
+        )
+    payload = response.json()
+    content = base64.b64decode(payload["content"]).decode(
+        "utf-8", errors="ignore"
+    )
+    return content, payload["sha"]
+
+
+def save_github_text_file(settings, path, text, message):
+    current_text, sha = github_text_file(settings, path)
+    url = (
+        f"https://api.github.com/repos/{settings['owner']}/"
+        f"{settings['repo']}/contents/{path}"
+    )
+    payload = {
+        "message": message,
+        "content": base64.b64encode(text.encode("utf-8")).decode("ascii"),
+        "branch": settings["branch"],
+    }
+    if sha:
+        payload["sha"] = sha
+
+    response = requests.put(
+        url,
+        headers=github_headers(settings["token"]),
+        json=payload,
+        timeout=30,
+    )
+    if response.status_code not in (200, 201):
+        raise RuntimeError(
+            f"GitHub kaydı başarısız ({path}): "
+            f"{response.status_code} {response.text[:500]}"
+        )
+    return response.json()
+
+
+def parse_coupon_lines(text):
+    coupons = []
+    for line in str(text).splitlines():
+        nums = sorted(
+            set(
+                int(x)
+                for x in re.findall(r"\d+", line)
+                if 1 <= int(x) <= 80
+            )
+        )
+        if len(nums) >= 2:
+            coupons.append(nums)
+    if not coupons:
+        nums = sorted(
+            set(
+                int(x)
+                for x in re.findall(r"\d+", str(text))
+                if 1 <= int(x) <= 80
+            )
+        )
+        if len(nums) >= 2:
+            coupons = [nums]
+    return coupons
+
+
+def empty_coupon_archive():
+    return pd.DataFrame(
+        columns=[
+            "Kupon_ID",
+            "Etiket",
+            "Kayit_Tarihi",
+            "Kayit_Saati",
+            "Baslangic_Cekilis",
+            "Kolon",
+            "Boyut",
+        ]
+    )
+
+
+def load_coupon_archive(settings):
+    text, _ = github_text_file(settings, "kuponlar.csv")
+    if not text.strip():
+        return empty_coupon_archive()
+    try:
+        archive = pd.read_csv(io.StringIO(text), dtype=str)
+    except Exception:
+        return empty_coupon_archive()
+
+    for col in empty_coupon_archive().columns:
+        if col not in archive.columns:
+            archive[col] = ""
+    archive["Baslangic_Cekilis"] = pd.to_numeric(
+        archive["Baslangic_Cekilis"], errors="coerce"
+    ).fillna(0).astype(int)
+    archive["Boyut"] = pd.to_numeric(
+        archive["Boyut"], errors="coerce"
+    ).fillna(0).astype(int)
+    return archive[list(empty_coupon_archive().columns)]
+
+
+def save_coupon_archive(settings, archive):
+    csv_text = archive.to_csv(index=False)
+    save_github_text_file(
+        settings,
+        "kuponlar.csv",
+        csv_text,
+        "Kupon arşivi güncellendi",
+    )
+
+
+def append_coupons_to_archive(
+    settings,
+    coupons,
+    label,
+    start_draw,
+):
+    archive = load_coupon_archive(settings)
+    now = datetime.now()
+    new_rows = []
+    base_id = int(now.strftime("%Y%m%d%H%M%S"))
+    for i, coupon in enumerate(coupons, start=1):
+        new_rows.append(
+            {
+                "Kupon_ID": str(base_id + i),
+                "Etiket": label or f"Kupon {i}",
+                "Kayit_Tarihi": now.strftime("%d.%m.%Y"),
+                "Kayit_Saati": now.strftime("%H:%M:%S"),
+                "Baslangic_Cekilis": int(start_draw),
+                "Kolon": "-".join(map(str, coupon)),
+                "Boyut": len(coupon),
+            }
+        )
+    archive = pd.concat(
+        [archive, pd.DataFrame(new_rows)],
+        ignore_index=True,
+    )
+    save_coupon_archive(settings, archive)
+    return archive, pd.DataFrame(new_rows)
+
+
+def coupon_numbers_from_archive_row(row):
+    return sorted(
+        set(
+            int(x)
+            for x in re.findall(r"\d+", str(row["Kolon"]))
+            if 1 <= int(x) <= 80
+        )
+    )
+
+
+def coupon_performance_summary(df, archive):
+    rows = []
+    details = {}
+    for _, row in archive.iterrows():
+        coupon = coupon_numbers_from_archive_row(row)
+        start_draw = int(row["Baslangic_Cekilis"])
+        tested = df[df["Cekilis_No"].astype(int) >= start_draw].copy()
+
+        detail_rows = []
+        for _, draw in tested.iterrows():
+            actual = set(int(draw[c]) for c in NUM_COLS)
+            hits = sorted(set(coupon) & actual)
+            detail_rows.append(
+                {
+                    "Çekiliş": int(draw.Cekilis_No),
+                    "Tarih": draw.Tarih,
+                    "Saat": draw.Saat,
+                    "İsabet": len(hits),
+                    "Tutan Sayılar": " - ".join(map(str, hits)),
+                }
+            )
+        detail_df = pd.DataFrame(detail_rows)
+        details[str(row["Kupon_ID"])] = detail_df
+
+        if detail_df.empty:
+            avg_hit = 0.0
+            max_hit = 0
+            best_count = 0
+            hit_rate = 0.0
+        else:
+            avg_hit = float(detail_df["İsabet"].mean())
+            max_hit = int(detail_df["İsabet"].max())
+            best_count = int(
+                (detail_df["İsabet"] == max_hit).sum()
+            )
+            hit_rate = (
+                avg_hit / max(len(coupon), 1) * 100
+            )
+
+        rows.append(
+            {
+                "Kupon_ID": row["Kupon_ID"],
+                "Etiket": row["Etiket"],
+                "Kolon": row["Kolon"],
+                "Boyut": len(coupon),
+                "Başlangıç Çekilişi": start_draw,
+                "Test Edilen Çekiliş": len(detail_df),
+                "Ortalama İsabet": round(avg_hit, 2),
+                "Ortalama İsabet %": round(hit_rate, 2),
+                "En Yüksek İsabet": max_hit,
+                "En İyi Sonuç Adedi": best_count,
+            }
+        )
+    return pd.DataFrame(rows), details
+
+
+def delete_coupon_from_archive(settings, coupon_id):
+    archive = load_coupon_archive(settings)
+    new_archive = archive[
+        archive["Kupon_ID"].astype(str) != str(coupon_id)
+    ].copy()
+    save_coupon_archive(settings, new_archive)
+    return new_archive
+
 def normalized_series(values):
     series = pd.Series(values, dtype=float)
     lo, hi = float(series.min()), float(series.max())
@@ -925,7 +1154,7 @@ base_df, base_invalid = load_base()
 if "extra_df" not in st.session_state:
     st.session_state.extra_df = pd.DataFrame(columns=COLS)
 
-st.title("🎯 Hızlı On Ultimate Analiz Motoru V8 V7 V6")
+st.title("🎯 Hızlı On Ultimate Analiz Motoru V9")
 st.caption("Ana veri havuzu + sonradan dosya yükleme + tek çekiliş ekleme + analiz + dışa aktarma")
 
 with st.sidebar:
@@ -993,6 +1222,7 @@ tabs = st.tabs([
     "🌙 Kapanış",
     "🎯 Süper Kupon",
     "🧪 Kupon Laboratuvarı",
+    "💾 Kupon Arşivi",
     "✅ Sonuç Kontrol",
     "➕ Yeni Çekiliş",
     "⬇️ Dışa Aktar",
@@ -1266,6 +1496,141 @@ with tabs[12]:
             )
 
 with tabs[13]:
+    st.subheader("Kupon yapıştır, kalıcı kaydet ve isabetlerini izle")
+    settings, settings_error = github_settings()
+
+    if settings_error:
+        st.warning(settings_error)
+        st.info(
+            "Kuponları kalıcı kaydetmek için önce Streamlit Secrets "
+            "ayarlarını tamamlamak gerekir."
+        )
+    else:
+        coupon_text = st.text_area(
+            "Kuponları yapıştır",
+            height=180,
+            placeholder="""7 11 18 24 39 52 71
+3 9 22 31 44 58 69""",
+            key="v9_coupon_archive_text",
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            label = st.text_input(
+                "Etiket",
+                value="Güncel kupon",
+                key="v9_coupon_label",
+            )
+        with c2:
+            start_draw = st.number_input(
+                "Hangi çekilişten itibaren kontrol edilsin?",
+                min_value=1,
+                value=int(df["Cekilis_No"].max()) + 1,
+                step=1,
+                key="v9_coupon_start_draw",
+            )
+        pin = st.text_input(
+            "Kalıcı kayıt PIN'i",
+            type="password",
+            key="v9_coupon_pin",
+        )
+
+        if st.button(
+            "💾 Kuponları kalıcı kaydet",
+            type="primary",
+            key="v9_save_coupons",
+        ):
+            coupons = parse_coupon_lines(coupon_text)
+            if not coupons:
+                st.error("Geçerli kupon bulunamadı.")
+            elif not settings["admin_pin"]:
+                st.error("Secrets içinde admin_pin tanımlı değil.")
+            elif pin != settings["admin_pin"]:
+                st.error("PIN yanlış.")
+            else:
+                try:
+                    archive, added = append_coupons_to_archive(
+                        settings,
+                        coupons,
+                        label,
+                        int(start_draw),
+                    )
+                    st.success(
+                        f"{len(added)} kupon GitHub'daki kuponlar.csv "
+                        "dosyasına kalıcı kaydedildi."
+                    )
+                    st.dataframe(
+                        added,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                except Exception as exc:
+                    st.error(str(exc))
+
+        st.divider()
+        st.subheader("Kayıtlı kuponların isabet raporu")
+        try:
+            archive = load_coupon_archive(settings)
+            if archive.empty:
+                st.info("Henüz kayıtlı kupon yok.")
+            else:
+                summary_df, detail_map = coupon_performance_summary(
+                    df, archive
+                )
+                st.dataframe(
+                    summary_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                selected_id = st.selectbox(
+                    "Detayını görmek istediğin kupon",
+                    options=summary_df["Kupon_ID"].astype(str).tolist(),
+                    format_func=lambda x: (
+                        f"{x} — "
+                        f"{summary_df.loc[summary_df['Kupon_ID'].astype(str) == x, 'Etiket'].iloc[0]}"
+                    ),
+                    key="v9_coupon_detail_id",
+                )
+                detail_df = detail_map.get(str(selected_id), pd.DataFrame())
+                if detail_df.empty:
+                    st.info(
+                        "Bu kupondan sonra henüz test edilecek çekiliş yok."
+                    )
+                else:
+                    st.dataframe(
+                        detail_df.sort_values(
+                            ["İsabet", "Çekiliş"],
+                            ascending=[False, False],
+                        ),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.bar_chart(
+                        detail_df["İsabet"].value_counts().sort_index()
+                    )
+
+                with st.expander("Kupon sil"):
+                    delete_pin = st.text_input(
+                        "Silme PIN'i",
+                        type="password",
+                        key="v9_delete_coupon_pin",
+                    )
+                    if st.button(
+                        "Seçili kuponu sil",
+                        key="v9_delete_coupon",
+                    ):
+                        if delete_pin != settings["admin_pin"]:
+                            st.error("PIN yanlış.")
+                        else:
+                            delete_coupon_from_archive(
+                                settings, selected_id
+                            )
+                            st.success("Kupon silindi.")
+                            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+with tabs[14]:
     st.subheader("Kupon ile yeni çekiliş sonucunu karşılaştır")
     coupon_text = st.text_area(
         "Kupon sayıları",
@@ -1286,7 +1651,7 @@ with tabs[13]:
         st.metric("İsabet", f"{len(hits)} / {len(coupon_vals)}")
 
 
-with tabs[14]:
+with tabs[15]:
     st.subheader("Yeni çekilişi yapıştır ve kalıcı kaydet")
     raw = st.text_area(
         "Yeni çekilişi yapıştır",
@@ -1382,7 +1747,7 @@ with tabs[14]:
         )
         persistent_save_panel(df, "bulk_draws")
 
-with tabs[15]:
+with tabs[16]:
     st.download_button(
         "Güncel veri.txt indir",
         data=to_text(df).encode("utf-8"),
@@ -1462,7 +1827,7 @@ with tabs[12]:
         st.write("Tutan sayılar:", " - ".join(map(str, hits)) or "Yok")
         st.metric("İsabet", f"{len(hits)} / {len(coupon_vals)}")
 
-with tabs[13]:
+with tabs[14]:
     raw = st.text_area("Yeni çekilişi yapıştır", height=280, placeholder="""Çekiliş no: 47042
 05.08.2026 - 20:02
 1
@@ -1497,7 +1862,7 @@ with tabs[13]:
             st.success("Çekiliş bu oturuma eklendi. Kalıcılaştırmak için Dışa Aktar sekmesinden veri.txt indir.")
             st.rerun()
 
-with tabs[14]:
+with tabs[15]:
     st.download_button(
         "Güncel veri.txt indir",
         data=to_text(df).encode("utf-8"),
@@ -1519,7 +1884,8 @@ with tabs[14]:
     )
 
 st.caption(
-    "V8 analizleri geçmiş veriden türetilen istatistiksel puanlardır; "
-    "kesin sonuç veya kazanç garantisi vermez. GitHub Secrets doğru "
-    "ayarlandığında yeni çekilişler dosya indirip yüklemeden kalıcı kaydedilir."
+    "V9 analizleri geçmiş veriden türetilen istatistiksel puanlardır; "
+    "kesin sonuç veya kazanç garantisi vermez. Kuponlar GitHub'daki "
+    "kuponlar.csv dosyasına kalıcı kaydedilebilir ve sonraki çekilişlerde "
+    "isabet oranları otomatik hesaplanır."
 )
