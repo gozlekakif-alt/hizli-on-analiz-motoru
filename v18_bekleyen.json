@@ -1,1 +1,43 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "11:17",
+  "target_draw": 47371,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        34,
+        35,
+        36,
+        38,
+        43,
+        52,
+        53
+      ]
+    },
+    {
+      "Senaryo": "Taşıma/Küme",
+      "Kupon": [
+        32,
+        35,
+        36,
+        38,
+        39,
+        43,
+        52
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        2,
+        34,
+        38,
+        40,
+        43,
+        52,
+        53
+      ]
+    }
+  ]
+}
