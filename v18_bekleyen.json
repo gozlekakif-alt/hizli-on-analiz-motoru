@@ -1,1 +1,67 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "12:57",
+  "target_draw": 47391,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        35,
+        41,
+        43,
+        53,
+        68,
+        69,
+        74
+      ]
+    },
+    {
+      "Senaryo": "Blok Doğum 3lü",
+      "Kupon": [
+        34,
+        35,
+        36,
+        39,
+        43,
+        53,
+        69
+      ]
+    },
+    {
+      "Senaryo": "Taşıma/Küme",
+      "Kupon": [
+        39,
+        41,
+        43,
+        51,
+        53,
+        68,
+        69
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        31,
+        43,
+        52,
+        53,
+        67,
+        69,
+        74
+      ]
+    },
+    {
+      "Senaryo": "Benzer/Sürpriz",
+      "Kupon": [
+        35,
+        36,
+        38,
+        39,
+        51,
+        65,
+        75
+      ]
+    }
+  ]
+}
