@@ -1,1 +1,43 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "13:32",
+  "target_draw": 47398,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        31,
+        35,
+        36,
+        37,
+        38,
+        40,
+        42
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        42,
+        69
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        24,
+        35,
+        36,
+        38,
+        39,
+        42,
+        69
+      ]
+    }
+  ]
+}
