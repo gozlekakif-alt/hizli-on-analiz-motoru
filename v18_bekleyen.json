@@ -1,1 +1,103 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "20:32",
+  "target_draw": 47482,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        2,
+        3,
+        33,
+        35,
+        40,
+        53,
+        65
+      ]
+    },
+    {
+      "Senaryo": "Blok Rejim 2lü/Çoklu Küçük",
+      "Kupon": [
+        3,
+        4,
+        52,
+        53,
+        62,
+        65,
+        66
+      ]
+    },
+    {
+      "Senaryo": "Taşıma/Küme",
+      "Kupon": [
+        19,
+        33,
+        35,
+        40,
+        53,
+        61,
+        69
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        33,
+        34,
+        35,
+        52,
+        62,
+        63,
+        65
+      ]
+    },
+    {
+      "Senaryo": "Benzer/Sürpriz",
+      "Kupon": [
+        31,
+        34,
+        40,
+        52,
+        62,
+        63,
+        66
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        19,
+        33,
+        35,
+        40,
+        53,
+        62,
+        65
+      ]
+    },
+    {
+      "Senaryo": "🏆 OYNA — MASTER 7",
+      "Kupon": [
+        33,
+        35,
+        40,
+        42,
+        62,
+        63,
+        65
+      ]
+    },
+    {
+      "Senaryo": "👑 ÜST MASTER 7 — Living + 4 Geçiş",
+      "Kupon": [
+        3,
+        33,
+        35,
+        40,
+        53,
+        62,
+        65
+      ]
+    }
+  ]
+}
