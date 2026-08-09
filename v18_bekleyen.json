@@ -1,1 +1,91 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "16:02",
+  "target_draw": 47428,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        26,
+        27,
+        34,
+        35,
+        43,
+        52,
+        53
+      ]
+    },
+    {
+      "Senaryo": "Taşıma/Küme",
+      "Kupon": [
+        26,
+        27,
+        35,
+        37,
+        53,
+        61,
+        67
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        25,
+        26,
+        27,
+        35,
+        43,
+        47,
+        53
+      ]
+    },
+    {
+      "Senaryo": "Benzer/Sürpriz",
+      "Kupon": [
+        25,
+        26,
+        28,
+        36,
+        38,
+        46,
+        51
+      ]
+    },
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        24,
+        25,
+        28,
+        33,
+        38,
+        46,
+        53
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        25,
+        26,
+        28,
+        35,
+        37,
+        43,
+        53
+      ]
+    },
+    {
+      "Senaryo": "🏆 ANA ORTAK / MASTER",
+      "Kupon": [
+        25,
+        26,
+        35,
+        36,
+        37,
+        43,
+        53
+      ]
+    }
+  ]
+}
