@@ -1,1 +1,43 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "16:47",
+  "target_draw": 47437,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        37,
+        43,
+        52,
+        53,
+        65,
+        66,
+        67
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        35,
+        43,
+        45,
+        52,
+        53,
+        65,
+        67
+      ]
+    },
+    {
+      "Senaryo": "🏆 OYNA — MASTER 7",
+      "Kupon": [
+        42,
+        43,
+        52,
+        53,
+        65,
+        67,
+        76
+      ]
+    }
+  ]
+}
