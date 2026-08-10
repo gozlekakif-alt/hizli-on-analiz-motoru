@@ -1,5 +1,5 @@
 {
-  "last_draw": 47521,
+  "last_draw": 47522,
   "config": {
     "Ad": "Kısa Dengeli",
     "rolling": 240,
@@ -65,6 +65,21 @@
         "top7": 2
       },
       "timestamp": "2026-08-10T21:05:09"
+    },
+    {
+      "learned_on_draw": 47522,
+      "config": {
+        "Ad": "Kısa Dengeli",
+        "rolling": 240,
+        "C": 0.1
+      },
+      "last_eval": {
+        "draw": 47522,
+        "top20": 17,
+        "top10": 10,
+        "top7": 7
+      },
+      "timestamp": "2026-08-10T21:07:02"
     }
   ]
 }
