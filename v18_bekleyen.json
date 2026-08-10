@@ -1,1 +1,94 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "22:17",
+  "target_draw": 47503,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        5,
+        36,
+        37,
+        38,
+        40,
+        53,
+        75
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        5,
+        12,
+        36,
+        37,
+        40,
+        53,
+        64
+      ]
+    },
+    {
+      "Senaryo": "🏆 OYNA — MASTER 7",
+      "Kupon": [
+        3,
+        5,
+        36,
+        40,
+        53,
+        61,
+        62
+      ]
+    },
+    {
+      "Senaryo": "👑 ÜST MASTER 7 — V18.5.11 Akıllı Sıkıştırma",
+      "Kupon": [
+        3,
+        5,
+        12,
+        34,
+        37,
+        40,
+        53
+      ]
+    },
+    {
+      "Senaryo": "🧠 V18.5.12 — 7 Koltuk Seçici",
+      "Kupon": [
+        3,
+        5,
+        12,
+        36,
+        37,
+        40,
+        53
+      ]
+    },
+    {
+      "Senaryo": "🧬 V18.5.13 — Bağımsız Aile 7",
+      "Kupon": [
+        3,
+        5,
+        12,
+        36,
+        40,
+        53,
+        64
+      ]
+    },
+    {
+      "Senaryo": "🧠 META-20 V1 — Hedef 10",
+      "Kupon": [
+        3,
+        5,
+        12,
+        17,
+        34,
+        37,
+        40,
+        53,
+        64,
+        77
+      ]
+    }
+  ]
+}
