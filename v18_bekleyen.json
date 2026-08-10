@@ -1,1 +1,127 @@
-{}
+{
+  "target_date": "07.08.2026",
+  "target_time": "22:02",
+  "target_draw": 47500,
+  "items": [
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        25,
+        36,
+        37,
+        39,
+        48,
+        52,
+        53
+      ]
+    },
+    {
+      "Senaryo": "Blok Rejim 2lü/Çoklu Küçük",
+      "Kupon": [
+        3,
+        4,
+        34,
+        39,
+        40,
+        54,
+        63
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        24,
+        25,
+        34,
+        36,
+        37,
+        40,
+        54
+      ]
+    },
+    {
+      "Senaryo": "İskelet",
+      "Kupon": [
+        25,
+        33,
+        34,
+        36,
+        39,
+        43,
+        54
+      ]
+    },
+    {
+      "Senaryo": "Yenilenme",
+      "Kupon": [
+        3,
+        4,
+        24,
+        35,
+        37,
+        40,
+        55
+      ]
+    },
+    {
+      "Senaryo": "Birleşik Güç/Konsensüs",
+      "Kupon": [
+        24,
+        27,
+        34,
+        36,
+        39,
+        54,
+        63
+      ]
+    },
+    {
+      "Senaryo": "🏆 OYNA — MASTER 7",
+      "Kupon": [
+        31,
+        34,
+        36,
+        42,
+        54,
+        55,
+        75
+      ]
+    },
+    {
+      "Senaryo": "👑 ÜST MASTER 7 — V18.5.11 Akıllı Sıkıştırma",
+      "Kupon": [
+        3,
+        12,
+        34,
+        36,
+        54,
+        63,
+        77
+      ]
+    },
+    {
+      "Senaryo": "🧠 V18.5.12 — 7 Koltuk Seçici",
+      "Kupon": [
+        3,
+        34,
+        36,
+        39,
+        54,
+        55,
+        63
+      ]
+    },
+    {
+      "Senaryo": "🧬 V18.5.13 — Bağımsız Aile 7",
+      "Kupon": [
+        3,
+        4,
+        34,
+        36,
+        54,
+        55,
+        63
+      ]
+    }
+  ]
+}
