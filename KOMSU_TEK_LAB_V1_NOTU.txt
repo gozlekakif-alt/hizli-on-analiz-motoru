@@ -1,0 +1,17 @@
+KOMŞU TEK LAB V1
+
+Amaç:
+- KOMŞU uzmanını birleşimden ayırmak.
+- ±1 / ±2 yakınlık tek başına sinyal kabul edilmez.
+- Her sayı için geçmişte benzer komşuluk koşulunda gerçekten sonraki çekilişte gelmiş mi ölçülür.
+- Kanıt yoksa 0 sayı / PAS.
+
+Ölçülenler:
+- son çekilişte ±1 komşu sayısı
+- son çekilişte ±2 komşu sayısı
+- son 5 ve son 20 komşuluk yoğunluğu
+- geçmiş komşu koşullarında dönüş oranı
+- son 140 çekilişte aynı davranışın güncel oranı
+
+İki CSV geldikten sonra dönemler arasında kararlı bir yapısal sinyal varsa V2 dondurulur.
+Yoksa KOMŞU final birleşime alınmaz.
