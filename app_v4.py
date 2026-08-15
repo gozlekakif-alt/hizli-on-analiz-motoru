@@ -1,0 +1,1318 @@
+import base64
+import json
+import math
+import re
+import urllib.parse
+import urllib.request
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from itertools import combinations
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(
+    page_title="Sayı Laboratuvarı V4 — Veri-Önce Rejim Motoru",
+    page_icon="🧬",
+    layout="wide",
+)
+
+SLOTS = [
+    "23:02","23:07","23:12","23:17","23:22","23:27",
+    "23:32","23:37","23:42","23:47","23:52","23:57"
+]
+BASE = 20/80
+DATA_FILE = Path("veri.txt")
+DEFAULT_REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
+DEFAULT_BRANCH = "main"
+DEFAULT_PATH = "veri.txt"
+
+
+# ============================================================
+# TEMEL YARDIMCILAR
+# ============================================================
+
+def to_date(s):
+    return datetime.strptime(str(s), "%d.%m.%Y").date()
+
+def fmt(d):
+    return d.strftime("%d.%m.%Y")
+
+def next_target(date_s, time_s):
+    i = SLOTS.index(time_s)
+    if i < len(SLOTS)-1:
+        return date_s, SLOTS[i+1]
+    return fmt(to_date(date_s)+timedelta(days=1)), "23:02"
+
+def shrink(h, n, prior=BASE, strength=18.0):
+    if n <= 0:
+        return prior
+    return (h + prior*strength)/(n+strength)
+
+def wilson_lower(h, n, z=1.0):
+    if n <= 0:
+        return BASE
+    p = h/n
+    den = 1 + z*z/n
+    return max(
+        0.0,
+        (p + z*z/(2*n) - z*math.sqrt(p*(1-p)/n + z*z/(4*n*n))) / den
+    )
+
+def pct_rank(s):
+    s = pd.Series(s, dtype=float)
+    if s.nunique(dropna=False) <= 1:
+        return pd.Series([0.5]*len(s), index=s.index)
+    return s.rank(pct=True, method="average")
+
+def path6(prev6, n):
+    return "".join("1" if n in x else "0" for x in prev6)
+
+def recent_count(prev6, n):
+    return sum(n in x for x in prev6)
+
+def streak(prev6, n):
+    c = 0
+    for x in reversed(prev6):
+        if n in x:
+            c += 1
+        else:
+            break
+    return c
+
+def gap(prev6, n):
+    if n in prev6[-1]:
+        return 0
+    c = 0
+    for x in reversed(prev6):
+        if n in x:
+            break
+        c += 1
+    return min(c, 6)
+
+
+# ============================================================
+# VERİ / GITHUB
+# ============================================================
+
+def github_config():
+    token = ""
+    repo = DEFAULT_REPO
+    branch = DEFAULT_BRANCH
+    path = DEFAULT_PATH
+    try:
+        token = str(st.secrets.get("GITHUB_TOKEN","")).strip()
+        repo = str(st.secrets.get("GITHUB_REPO",repo)).strip() or repo
+        branch = str(st.secrets.get("GITHUB_BRANCH",branch)).strip() or branch
+        path = str(st.secrets.get("GITHUB_DATA_PATH",path)).strip() or path
+    except Exception:
+        pass
+    return token, repo, branch, path
+
+def github_read(token, repo, branch, path):
+    url = f"https://api.github.com/repos/{repo}/contents/{urllib.parse.quote(path)}?ref={urllib.parse.quote(branch)}"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization":f"Bearer {token}",
+            "Accept":"application/vnd.github+json",
+            "X-GitHub-Api-Version":"2022-11-28",
+            "User-Agent":"sayi-lab-v34",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=20) as r:
+        obj = json.loads(r.read().decode("utf-8"))
+    return base64.b64decode(obj["content"]).decode("utf-8"), obj["sha"]
+
+def github_write(token, repo, branch, path, text, msg):
+    _, sha = github_read(token, repo, branch, path)
+    url = f"https://api.github.com/repos/{repo}/contents/{urllib.parse.quote(path)}"
+    body = json.dumps({
+        "message":msg,
+        "content":base64.b64encode(text.encode("utf-8")).decode("ascii"),
+        "sha":sha,
+        "branch":branch,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=body, method="PUT",
+        headers={
+            "Authorization":f"Bearer {token}",
+            "Accept":"application/vnd.github+json",
+            "X-GitHub-Api-Version":"2022-11-28",
+            "Content-Type":"application/json",
+            "User-Agent":"sayi-lab-v34",
+        }
+    )
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+def repo_text():
+    token, repo, branch, path = github_config()
+    if token:
+        try:
+            text, _ = github_read(token, repo, branch, path)
+            return text
+        except Exception:
+            pass
+    if DATA_FILE.exists():
+        return DATA_FILE.read_text(encoding="utf-8")
+    return ""
+
+def parse_pipe(text):
+    rows = []
+    for raw in str(text).splitlines():
+        p = [x.strip() for x in raw.split("|")]
+        if len(p) < 3:
+            continue
+        try:
+            no = int(p[0])
+            d,t = p[1].split()
+            nums = sorted(set(map(int,p[2].split())))
+        except Exception:
+            continue
+        if t not in SLOTS or len(nums)!=20 or any(n<1 or n>80 for n in nums):
+            continue
+        rows.append({"draw_no":no,"date":d,"time":t,"numbers":nums})
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    df["_dt"] = pd.to_datetime(df["date"]+" "+df["time"], format="%d.%m.%Y %H:%M")
+    df = (
+        df.sort_values(["_dt","draw_no"])
+        .drop_duplicates(["date","time"], keep="last")
+        .drop(columns="_dt")
+        .reset_index(drop=True)
+    )
+    return df
+
+def parse_block(text):
+    # Telefon / web sayfasından kopyalanan metinlerde NBSP, farklı tireler,
+    # Markdown başlıkları ve Türkçe karakter varyasyonları gelebilir.
+    raw = str(text or "").strip()
+    raw = raw.replace("\u00a0", " ").replace("\u202f", " ")
+    raw = raw.replace("–", "-").replace("—", "-").replace("−", "-")
+
+    m_dt = re.search(r"(\d{1,2}\.\d{1,2}\.\d{4})\s*-\s*(\d{1,2}:\d{2})", raw)
+
+    # Çekiliş no / Cekilis no / Çekiliş No : / ##### Çekiliş no vb.
+    m_no = re.search(r"(?:çekiliş|cekilis)\s*(?:no|numarası|numarasi)?\s*[:#-]?\s*(\d{4,})", raw, re.IGNORECASE)
+
+    # Son çare: tarih satırından ÖNCE bulunan son 4+ basamaklı sayı çekiliş no'dur.
+    if not m_no and m_dt:
+        before = raw[:m_dt.start()]
+        candidates = re.findall(r"(?<!\d)(\d{4,})(?!\d)", before)
+        if candidates:
+            class _DrawMatch:
+                def group(self, _): return candidates[-1]
+            m_no = _DrawMatch()
+
+    if not m_no:
+        raise ValueError("Çekiliş no bulunamadı. İlk satırı örn. 'Çekiliş no: 48606' olarak yapıştırın.")
+    if not m_dt:
+        raise ValueError("Tarih/saat bulunamadı. Örn. '12.08.2026 - 23:47'.")
+    no = int(m_no.group(1))
+    d = datetime.strptime(m_dt.group(1),"%d.%m.%Y").strftime("%d.%m.%Y")
+    t = m_dt.group(2)
+    if t not in SLOTS:
+        raise ValueError("Geçersiz çekiliş saati.")
+    tail = raw[m_dt.end():]
+    nums = [int(x) for x in re.findall(r"(?<!\d)(?:[1-9]|[1-7]\d|80)(?!\d)", tail)]
+    if len(nums)!=20 or len(set(nums))!=20:
+        raise ValueError(f"20 farklı sayı bekleniyor; {len(nums)} bulundu.")
+    return {"draw_no":no,"date":d,"time":t,"numbers":sorted(nums)}
+
+def line_for(r):
+    return f"{r['draw_no']} | {r['date']} {r['time']} | {' '.join(map(str,r['numbers']))}"
+
+def append_or_replace(text, line):
+    key = [x.strip() for x in line.split("|")][1]
+    out = []
+    done = False
+    for raw in text.splitlines():
+        if not raw.strip():
+            continue
+        p = [x.strip() for x in raw.split("|")]
+        if len(p)>=2 and p[1]==key:
+            if not done:
+                out.append(line)
+                done=True
+            continue
+        out.append(raw.rstrip())
+    if not done:
+        out.append(line)
+    return "\n".join(out).rstrip()+"\n"
+
+def merge_session(base):
+    extra = st.session_state.get("v33_rows",[])
+    if not extra:
+        return base.copy()
+    x = pd.concat([base.copy(),pd.DataFrame(extra)],ignore_index=True)
+    x["_dt"] = pd.to_datetime(x["date"]+" "+x["time"],format="%d.%m.%Y %H:%M")
+    x["_ord"] = np.arange(len(x))
+    x = (
+        x.sort_values(["_dt","_ord"])
+        .drop_duplicates(["date","time"],keep="last")
+        .drop(columns=["_dt","_ord"])
+        .reset_index(drop=True)
+    )
+    return x
+
+
+# ============================================================
+# TARİHSEL OLAYLAR
+# ============================================================
+
+def target_indices(df, slot):
+    out=[]
+    for i in range(6,len(df)):
+        if str(df.iloc[i]["time"]) != slot:
+            continue
+        if slot!="23:02" and str(df.iloc[i]["date"]) != str(df.iloc[i-1]["date"]):
+            continue
+        out.append(i)
+    return out
+
+def note_character(df):
+    sets=[set(x) for x in df["numbers"]]
+    rows=[]
+    for i in range(1,len(df)):
+        slot=str(df.iloc[i]["time"])
+        if slot!="23:02" and str(df.iloc[i]["date"]) != str(df.iloc[i-1]["date"]):
+            continue
+        y=sets[i]; src=sets[i-1]
+        arr=sorted(y)
+        adj2=sum(1 for a,b in zip(arr,arr[1:]) if b==a+1)
+        adj3=sum(1 for a,b,c in zip(arr,arr[1:],arr[2:]) if b==a+1 and c==b+1)
+        rows.append({"Nota":slot,"Taşıma":len(src&y),"Ard2":adj2,"Ard3":adj3})
+    raw=pd.DataFrame(rows)
+    out=[]
+    for slot in SLOTS:
+        x=raw[raw["Nota"]==slot]
+        if x.empty: continue
+        out.append({
+            "Nota":slot,
+            "Örnek":len(x),
+            "Ort Taşıma":round(x["Taşıma"].mean(),2),
+            "Medyan":round(x["Taşıma"].median(),1),
+            "Min":int(x["Taşıma"].min()),
+            "Max":int(x["Taşıma"].max()),
+            "Ort Ard2":round(x["Ard2"].mean(),2),
+            "Ard3 Var %":round(100*(x["Ard3"]>0).mean(),1),
+        })
+    return pd.DataFrame(out)
+
+
+# ============================================================
+# V4 — VERİDEN REJİM KEŞFİ / TAŞIMA İZİ / DİNLENİP DÖNÜŞ
+# ============================================================
+
+REGIMES = ["DÜŞÜK", "NORMAL", "YÜKSEK"]
+
+def regime_of(carry_count):
+    if carry_count <= 3:
+        return "DÜŞÜK"
+    if carry_count <= 6:
+        return "NORMAL"
+    return "YÜKSEK"
+
+
+def _adj2_count(s):
+    a = sorted(s)
+    return sum(1 for x, y in zip(a, a[1:]) if y == x + 1)
+
+
+def _adj3_count(s):
+    a = sorted(s)
+    return sum(1 for x, y, z in zip(a, a[1:], a[2:]) if y == x + 1 and z == y + 1)
+
+
+def _same_note_prior_sets(sets, inds, i, k=6):
+    return [sets[j] for j in inds if j < i][-k:]
+
+
+def _same_note_prior_carry(sets, inds, i, k=6):
+    vals = []
+    for j in inds:
+        if j >= i:
+            break
+        vals.append(len(sets[j-1] & sets[j]))
+    return vals[-k:]
+
+
+def _transition_context(sets, inds, i):
+    """Hedef i'nin sonucu görülmeden, yalnız i öncesinden rejim bağlamı."""
+    src = sets[i-1]
+    prev6 = sets[max(0, i-6):i]
+    prev_carries = []
+    for j in range(max(1, i-3), i):
+        prev_carries.append(len(sets[j-1] & sets[j]))
+    prev_carries = ([5.0] * (3-len(prev_carries))) + [float(x) for x in prev_carries]
+
+    same_c = _same_note_prior_carry(sets, inds, i, 6)
+    same_mean = float(np.mean(same_c)) if same_c else 5.0
+    same_std = float(np.std(same_c)) if len(same_c) >= 2 else 1.5
+
+    source_recent = [recent_count(prev6, n) for n in src]
+    absent = [n for n in range(1,81) if n not in src]
+    absent_gap = [gap(prev6, n) for n in absent]
+
+    return np.array([
+        prev_carries[-1] / 10.0,
+        prev_carries[-2] / 10.0,
+        prev_carries[-3] / 10.0,
+        same_mean / 10.0,
+        min(same_std, 4.0) / 4.0,
+        _adj2_count(src) / 10.0,
+        _adj3_count(src) / 5.0,
+        sum(n % 2 for n in src) / 20.0,
+        sum(n <= 40 for n in src) / 20.0,
+        np.mean(source_recent) / 6.0 if source_recent else 0.5,
+        sum(x >= 2 for x in source_recent) / 20.0 if source_recent else 0.0,
+        sum(g in (1,2) for g in absent_gap) / 60.0 if absent_gap else 0.0,
+        sum(g in (3,4) for g in absent_gap) / 60.0 if absent_gap else 0.0,
+        sum(g >= 5 for g in absent_gap) / 60.0 if absent_gap else 0.0,
+    ], dtype=float)
+
+
+def _current_context(train, target_slot):
+    sets = [set(x) for x in train["numbers"]]
+    inds = target_indices(train, target_slot)
+    # "i" yeni hedefin indeksidir; sets[i] henüz yok.
+    i = len(sets)
+    src = sets[-1]
+    prev6 = sets[-6:]
+    prev_carries = []
+    for j in range(max(1, i-3), i):
+        prev_carries.append(len(sets[j-1] & sets[j]))
+    prev_carries = ([5.0] * (3-len(prev_carries))) + [float(x) for x in prev_carries]
+
+    same_c = []
+    for j in inds[-6:]:
+        same_c.append(len(sets[j-1] & sets[j]))
+    same_mean = float(np.mean(same_c)) if same_c else 5.0
+    same_std = float(np.std(same_c)) if len(same_c) >= 2 else 1.5
+
+    source_recent = [recent_count(prev6, n) for n in src]
+    absent = [n for n in range(1,81) if n not in src]
+    absent_gap = [gap(prev6, n) for n in absent]
+
+    return np.array([
+        prev_carries[-1] / 10.0,
+        prev_carries[-2] / 10.0,
+        prev_carries[-3] / 10.0,
+        same_mean / 10.0,
+        min(same_std, 4.0) / 4.0,
+        _adj2_count(src) / 10.0,
+        _adj3_count(src) / 5.0,
+        sum(n % 2 for n in src) / 20.0,
+        sum(n <= 40 for n in src) / 20.0,
+        np.mean(source_recent) / 6.0 if source_recent else 0.5,
+        sum(x >= 2 for x in source_recent) / 20.0 if source_recent else 0.0,
+        sum(g in (1,2) for g in absent_gap) / 60.0 if absent_gap else 0.0,
+        sum(g in (3,4) for g in absent_gap) / 60.0 if absent_gap else 0.0,
+        sum(g >= 5 for g in absent_gap) / 60.0 if absent_gap else 0.0,
+    ], dtype=float)
+
+
+def learn_regime_model(train, target_slot):
+    """
+    Üç rejim baştan 'strateji' diye dayatılmaz.
+    Aynı hedef notasının geçmiş geçişlerinden:
+      DÜŞÜK  = 0-3 taşıma
+      NORMAL = 4-6 taşıma
+      YÜKSEK = 7+ taşıma
+    bağlamları öğrenilir.
+    """
+    sets = [set(x) for x in train["numbers"]]
+    inds = target_indices(train, target_slot)
+    if len(inds) < 12:
+        raise ValueError(f"{target_slot} notası için rejim öğrenmeye yeterli geçmiş yok.")
+
+    hist = []
+    for i in inds:
+        cc = len(sets[i-1] & sets[i])
+        hist.append({
+            "i": i,
+            "x": _transition_context(sets, inds, i),
+            "carry": cc,
+            "regime": regime_of(cc),
+        })
+
+    x_now = _current_context(train, target_slot)
+    # Aynı nota içinde yakın komşu bağlamlar. 12-18 komşu küçük örnek aşırılığını azaltır.
+    distances = []
+    for h in hist:
+        d = float(np.sqrt(np.mean((h["x"] - x_now) ** 2)))
+        distances.append((d, h))
+    distances.sort(key=lambda z: z[0])
+    k = min(max(12, int(round(math.sqrt(len(distances))*2.2))), 18, len(distances))
+    nearest = distances[:k]
+
+    raw = Counter()
+    carry_num = 0.0
+    carry_den = 0.0
+    for d, h in nearest:
+        w = 1.0 / (0.055 + d)
+        raw[h["regime"]] += w
+        carry_num += w * h["carry"]
+        carry_den += w
+
+    # Aynı-nota genel dağılımını küçük prior olarak ekle.
+    global_counts = Counter(h["regime"] for h in hist)
+    total_global = max(1, sum(global_counts.values()))
+    for r in REGIMES:
+        raw[r] += 2.5 * global_counts[r] / total_global
+
+    total = sum(raw.values()) or 1.0
+    probs = {r: raw[r] / total for r in REGIMES}
+    expected = carry_num / carry_den if carry_den else np.mean([h["carry"] for h in hist])
+    recommended = max(REGIMES, key=lambda r: probs[r])
+
+    # Tarihsel rejim özeti
+    carry_by_regime = {}
+    for r in REGIMES:
+        vals = [h["carry"] for h in hist if h["regime"] == r]
+        carry_by_regime[r] = float(np.mean(vals)) if vals else {"DÜŞÜK":2.5,"NORMAL":5.0,"YÜKSEK":7.5}[r]
+
+    return {
+        "probs": probs,
+        "expected_carry": float(expected),
+        "recommended": recommended,
+        "neighbors": k,
+        "examples": len(hist),
+        "carry_by_regime": carry_by_regime,
+        "hist": hist,
+    }
+
+
+def _bucket_same6(v):
+    if v <= 1: return "0-1"
+    if v <= 3: return "2-3"
+    return "4-6"
+
+
+def build_candidate_model(train, target_slot):
+    """
+    Skor = tek sıra değil; her rejim için ayrı koşullu kanallar öğrenilir.
+    Koşullar: nota (fonksiyon zaten nota-özel), kaynakta var/yok,
+    son-6 görünüm, path3/path4, streak/gap, aynı notanın son 6 günü,
+    2'li taşıma paketi ve zayıf ardışık bağlam.
+    """
+    sets = [set(x) for x in train["numbers"]]
+    inds = target_indices(train, target_slot)
+    if len(inds) < 12:
+        raise ValueError(f"{target_slot} notası için yeterli geçmiş yok.")
+
+    feat = defaultdict(lambda: [0,0])
+    feat_global = defaultdict(lambda: [0,0])
+    num = defaultdict(lambda: [0,0])
+    pair_seen = Counter()
+    pair_survive = Counter()
+    adj = defaultdict(lambda: [0,0])
+
+    for i in inds:
+        y = sets[i]
+        src = sets[i-1]
+        prev6 = sets[i-6:i]
+        same_prev = _same_note_prior_sets(sets, inds, i, 6)
+        cc = len(src & y)
+        rg = regime_of(cc)
+
+        for n in range(1,81):
+            present = n in src
+            hit = int(n in y)
+            c6 = recent_count(prev6, n)
+            p6 = path6(prev6, n)
+            s6 = sum(n in z for z in same_prev)
+            sb = _bucket_same6(s6)
+
+            basic = [
+                ("side", present),
+                ("count6", present, c6),
+                ("path3", present, p6[-3:]),
+                ("same6", present, sb),
+            ]
+            if present:
+                basic += [
+                    ("streak", streak(prev6,n)),
+                    ("path4", True, p6[-4:]),
+                ]
+            else:
+                g = gap(prev6,n)
+                basic += [
+                    ("gap", g),
+                    ("gap_path3", g, p6[-3:]),
+                    ("path4", False, p6[-4:]),
+                ]
+
+            for b in basic:
+                feat[(rg,) + b][0] += hit
+                feat[(rg,) + b][1] += 1
+                feat_global[b][0] += hit
+                feat_global[b][1] += 1
+
+            nh = ((n-1) in src) + ((n+1) in src)
+            trip = int(
+                ((n-2) in src and (n-1) in src)
+                or ((n-1) in src and (n+1) in src)
+                or ((n+1) in src and (n+2) in src)
+            )
+            adj[(rg,present,int(nh),trip)][0] += hit
+            adj[(rg,present,int(nh),trip)][1] += 1
+            num[(rg,present,n)][0] += hit
+            num[(rg,present,n)][1] += 1
+
+        for a,b in combinations(sorted(src),2):
+            pair_seen[(rg,a,b)] += 1
+            if a in y and b in y:
+                pair_survive[(rg,a,b)] += 1
+
+    return {
+        "feat": feat,
+        "feat_global": feat_global,
+        "num": num,
+        "pair_seen": pair_seen,
+        "pair_survive": pair_survive,
+        "examples": len(inds),
+    }
+
+
+def _blend_feature_rate(model, regime, key, prior=BASE):
+    hr,nr = model["feat"][(regime,) + key]
+    hg,ng = model["feat_global"][key]
+    # Rejim-hücresi küçükse global nota hücresine geri çekil.
+    rr = shrink(hr,nr,prior,10)
+    rg = shrink(hg,ng,prior,20)
+    alpha = min(0.82, nr / (nr + 12.0))
+    return alpha*rr + (1-alpha)*rg, nr
+
+
+def score_v4_candidates(train, target_slot, regime_model, candidate_model):
+    sets = [set(x) for x in train["numbers"]]
+    src = sets[-1]
+    prev6 = sets[-6:]
+    inds = target_indices(train,target_slot)
+    same_prev = [sets[j] for j in inds][-6:]
+
+    rows = []
+    for n in range(1,81):
+        present = n in src
+        c6 = recent_count(prev6,n)
+        p6 = path6(prev6,n)
+        s6 = sum(n in z for z in same_prev)
+        sb = _bucket_same6(s6)
+        g = gap(prev6,n)
+
+        regime_scores = {}
+        channel_by_regime = {}
+
+        for rg in REGIMES:
+            keys = [
+                ("side",present),
+                ("count6",present,c6),
+                ("path3",present,p6[-3:]),
+                ("same6",present,sb),
+            ]
+            if present:
+                keys += [
+                    ("streak",streak(prev6,n)),
+                    ("path4",True,p6[-4:]),
+                ]
+            else:
+                keys += [
+                    ("gap",g),
+                    ("gap_path3",g,p6[-3:]),
+                    ("path4",False,p6[-4:]),
+                ]
+
+            vals = []
+            supports = []
+            for key in keys:
+                r,sup = _blend_feature_rate(candidate_model,rg,key,BASE)
+                vals.append(r); supports.append(sup)
+
+            nh = int(((n-1) in src) + ((n+1) in src))
+            tri = int(
+                ((n-2) in src and (n-1) in src)
+                or ((n-1) in src and (n+1) in src)
+                or ((n+1) in src and (n+2) in src)
+            )
+            ah,an = candidate_model["adj"][(rg,present,nh,tri)] if "adj" in candidate_model else (0,0)
+            # Eski dosyaya dönük güvenlik; aşağıda modelde adj var.
+            adj_rate = shrink(ah,an,BASE,18) if an else BASE
+
+            ih,it = candidate_model["num"][(rg,present,n)]
+            id_rate = shrink(ih,it,BASE,45)
+
+            # Paket yalnız kaynak sayı için ve ancak yeterli destekle.
+            pair_rate = BASE*BASE
+            pair_label = ""
+            if present:
+                prs = []
+                for m in src:
+                    if m == n: continue
+                    a,b = sorted((n,m))
+                    ps = candidate_model["pair_seen"][(rg,a,b)]
+                    if ps >= 4:
+                        ph = candidate_model["pair_survive"][(rg,a,b)]
+                        pr = shrink(ph,ps,BASE*BASE,8)
+                        prs.append((pr,m,ph,ps))
+                if prs:
+                    prs.sort(reverse=True)
+                    top = prs[:3]
+                    pair_rate = float(np.mean([x[0] for x in top]))
+                    x = top[0]
+                    pair_label = f"{n}-{x[1]} ({x[2]}/{x[3]})"
+
+            # Kanal ortalaması; kimlik ve ardışıklık özellikle zayıf.
+            core = float(np.mean(vals))
+            package_lift = min(0.18, max(0.0, pair_rate - BASE*BASE) * 1.7)
+            score = 0.86*core + 0.06*id_rate + 0.04*adj_rate + 0.04*(BASE + package_lift)
+            regime_scores[rg] = score
+
+            # "Karşı skor" için en güçlü bağımsız kanal; ortalamada gömülmesin.
+            lifts = [max(0.0, v-BASE) for v in vals]
+            strongest = sorted(lifts, reverse=True)[:3]
+            counter = BASE + (0.45*strongest[0] + 0.30*strongest[1] + 0.15*strongest[2] if len(strongest)>=3 else sum(strongest))
+            counter += 0.05*max(0.0, adj_rate-BASE)
+            if present:
+                counter += 0.05*max(0.0, pair_rate*3.0-BASE)
+            channel_by_regime[rg] = {
+                "counter": float(counter),
+                "support": int(np.median(supports)) if supports else 0,
+                "pair": float(pair_rate),
+                "pair_label": pair_label,
+            }
+
+        weighted = sum(regime_model["probs"][rg] * regime_scores[rg] for rg in REGIMES)
+        counter_weighted = sum(regime_model["probs"][rg] * channel_by_regime[rg]["counter"] for rg in REGIMES)
+        confidence = 0.65*weighted + 0.35*counter_weighted
+
+        rows.append({
+            "Sayı": n,
+            "Kaynakta": present,
+            "Gap": g,
+            "6 Yol": p6,
+            "Son6 Görünüm": c6,
+            "AynıNota6": s6,
+            "DÜŞÜK": regime_scores["DÜŞÜK"],
+            "NORMAL": regime_scores["NORMAL"],
+            "YÜKSEK": regime_scores["YÜKSEK"],
+            "DÜŞÜK Karşı": channel_by_regime["DÜŞÜK"]["counter"],
+            "NORMAL Karşı": channel_by_regime["NORMAL"]["counter"],
+            "YÜKSEK Karşı": channel_by_regime["YÜKSEK"]["counter"],
+            "Beklenen Skor": weighted,
+            "Karşı Skor": counter_weighted,
+            "Kanıt": confidence,
+            "Destek": int(round(sum(regime_model["probs"][rg]*channel_by_regime[rg]["support"] for rg in REGIMES))),
+            "Paket": max(channel_by_regime[rg]["pair"] for rg in REGIMES),
+            "En İyi Paket": next(
+                (channel_by_regime[rg]["pair_label"] for rg in sorted(REGIMES,key=lambda x:regime_model["probs"][x],reverse=True)
+                 if channel_by_regime[rg]["pair_label"]), ""
+            ),
+        })
+
+    tab = pd.DataFrame(rows)
+
+    # Her rejim ve birleşik skor için ayrı lig sıraları.
+    for rg in REGIMES:
+        tab[f"{rg} Lig Sıra"] = 0
+    tab["Lig Sıra"] = 0
+    for present in [True,False]:
+        idx = tab.index[tab["Kaynakta"] == present]
+        tab.loc[idx,"Lig Sıra"] = tab.loc[idx,"Kanıt"].rank(ascending=False,method="first").astype(int)
+        for rg in REGIMES:
+            tab.loc[idx,f"{rg} Lig Sıra"] = tab.loc[idx,rg].rank(ascending=False,method="first").astype(int)
+
+    tab["Ham Sıra"] = tab["Beklenen Skor"].rank(ascending=False,method="first").astype(int)
+    # Orta/düşük ham skor fakat bağımsız kanıtta yüksek.
+    tab["Gizli Aday"] = (
+        tab["Ham Sıra"].between(9,55)
+        & (
+            (tab["Karşı Skor"].rank(pct=True) >= .78)
+            | (tab["Kanıt"].rank(pct=True) >= .78)
+        )
+    )
+    return tab.sort_values(["Kanıt","Beklenen Skor"],ascending=False).reset_index(drop=True)
+
+
+def build_v4_pools(tab, regime_model):
+    """
+    Önce geniş havuz, sonra dar boğaz.
+    Havuz tek Top-N değildir: rejim skorları + karşı-skor + paket/kanıt kanallarından toplanır.
+    """
+    carry = tab[tab["Kaynakta"]].copy()
+    ret = tab[~tab["Kaynakta"]].copy()
+    rec = regime_model["recommended"]
+
+    carry_pool = []
+    def c_take(frame, limit):
+        for n in frame["Sayı"].astype(int):
+            if n not in carry_pool:
+                carry_pool.append(n)
+            if len(carry_pool) >= limit:
+                break
+
+    c_take(carry.sort_values([rec,"Kanıt"],ascending=False),5)
+    c_take(carry.sort_values(["Karşı Skor","Kanıt"],ascending=False),8)
+    c_take(carry.sort_values(["Paket","Kanıt"],ascending=False),10)
+    c_take(carry.sort_values(["Kanıt","Beklenen Skor"],ascending=False),12)
+
+    return_pool = []
+    def r_take(frame, limit):
+        for n in frame["Sayı"].astype(int):
+            if n not in return_pool:
+                return_pool.append(n)
+            if len(return_pool) >= limit:
+                break
+
+    # Gap cepleri ayrı tutulur; tek gap bütün dönüş havuzunu ele geçirmez.
+    r_take(ret[ret["Gap"].between(1,2)].sort_values([rec,"Karşı Skor"],ascending=False),6)
+    r_take(ret[ret["Gap"].between(3,4)].sort_values([rec,"Karşı Skor"],ascending=False),12)
+    r_take(ret[ret["Gap"]>=5].sort_values([rec,"Karşı Skor"],ascending=False),16)
+    r_take(ret.sort_values(["Karşı Skor","Kanıt"],ascending=False),20)
+
+    union = tab[tab["Sayı"].isin(set(carry_pool)|set(return_pool))].copy()
+    # Dar boğaz 16: rejim-uyumlu kanıt + karşı-skor. Kaynak/dönüş dengesi rejim olasılığına göre.
+    union["Dar Puan"] = (
+        0.55*union[rec] +
+        0.25*union["Karşı Skor"] +
+        0.20*union["Kanıt"]
+    )
+    narrow = union.sort_values(["Dar Puan","Kanıt"],ascending=False).head(16)["Sayı"].astype(int).tolist()
+    return carry_pool, return_pool, narrow
+
+
+def _pick_unique(frame, selected, why, label, count):
+    got = 0
+    for _,r in frame.iterrows():
+        n = int(r["Sayı"])
+        if n in selected:
+            continue
+        selected.append(n)
+        why[n] = label
+        got += 1
+        if got >= count:
+            break
+    return got
+
+
+def regime_ticket(tab, regime, narrow_pool=None):
+    """
+    Üç kupon artık üç keyfi 'strateji' değil:
+      DÜŞÜK  taşıma rejimi hipotezi
+      NORMAL taşıma rejimi hipotezi
+      YÜKSEK taşıma rejimi hipotezi
+    """
+    t = tab.copy()
+    if narrow_pool:
+        # Önce dar havuz, fakat gizli aday gerektiğinde dışarıdan kurtarma yapılabilir.
+        main = t[t["Sayı"].isin(narrow_pool)].copy()
+    else:
+        main = t
+
+    carry = main[main["Kaynakta"]].sort_values(
+        [regime,"Kanıt","Karşı Skor"],ascending=False
+    )
+    ret = main[~main["Kaynakta"]].sort_values(
+        [regime,"Karşı Skor","Kanıt"],ascending=False
+    )
+
+    if regime == "DÜŞÜK":
+        carry_n, return_n = 2, 4
+    elif regime == "NORMAL":
+        carry_n, return_n = 3, 3
+    else:
+        carry_n, return_n = 4, 2
+
+    selected, why = [], {}
+    _pick_unique(carry,selected,why,f"{regime}/Taşıma",carry_n)
+    _pick_unique(ret,selected,why,f"{regime}/Dönüş",return_n)
+
+    # 7. koltuk: ham Top-8 dışında ama koşullu kanıdı güçlü orta/düşük aday.
+    hidden = t[t["Gizli Aday"]].sort_values(
+        [f"{regime} Karşı",regime,"Kanıt"],ascending=False
+    )
+    _pick_unique(hidden,selected,why,f"{regime}/Gizli-OrtaDüşük",1)
+
+    fallback = main.sort_values([regime,"Karşı Skor","Kanıt"],ascending=False)
+    _pick_unique(fallback,selected,why,f"{regime}/Tamamlama",7-len(selected))
+    if len(selected)<7:
+        fallback2=t.sort_values([regime,"Karşı Skor","Kanıt"],ascending=False)
+        _pick_unique(fallback2,selected,why,f"{regime}/Tamamlama",7-len(selected))
+
+    return selected[:7], why
+
+
+def prediction_bundle(train, target_date, target_slot):
+    regime_model = learn_regime_model(train,target_slot)
+    candidate_model = build_candidate_model(train,target_slot)
+
+    # score fonksiyonunun zayıf ardışık bağlam sayaçlarına erişmesi için.
+    # Python dict'e sonradan eklemek, kodu açık tutuyor.
+    # build_candidate_model içindeki adj değişkeni burada yeniden üretilemez; modelin parçası olmalı.
+    # Eski kayıtlarda yoksa score tarafı BASE'e düşer.
+    if "adj" not in candidate_model:
+        # build_candidate_model fonksiyonunun lokal adj'sini modele eklemek için emniyet:
+        # Bu blok normalde çalışmaz; aşağıdaki reconstruct yalnız uyumluluk amaçlıdır.
+        candidate_model["adj"] = defaultdict(lambda:[0,0])
+
+    tab = score_v4_candidates(train,target_slot,regime_model,candidate_model)
+    carry_pool, return_pool, narrow = build_v4_pools(tab,regime_model)
+
+    tickets, reasons = {}, {}
+    for rg in REGIMES:
+        tickets[rg], reasons[rg] = regime_ticket(tab,rg,narrow)
+
+    rec = regime_model["recommended"]
+    return {
+        "regime": regime_model,
+        "table": tab,
+        "carry_pool": carry_pool,
+        "return_pool": return_pool,
+        "narrow_pool": narrow,
+        "tickets": tickets,
+        "ticket_reasons": reasons,
+        "recommended": rec,
+        "final": tickets[rec],
+        "reasons": reasons[rec],
+        "target_date": target_date,
+        "target_time": target_slot,
+    }
+
+
+# build_candidate_model'e adj sayaçlarını modele dahil eden küçük sarmalayıcı.
+_build_candidate_model_original = build_candidate_model
+def build_candidate_model(train, target_slot):
+    sets = [set(x) for x in train["numbers"]]
+    inds = target_indices(train, target_slot)
+    if len(inds) < 12:
+        raise ValueError(f"{target_slot} notası için yeterli geçmiş yok.")
+
+    feat = defaultdict(lambda:[0,0])
+    feat_global = defaultdict(lambda:[0,0])
+    num = defaultdict(lambda:[0,0])
+    pair_seen = Counter()
+    pair_survive = Counter()
+    adj = defaultdict(lambda:[0,0])
+
+    for i in inds:
+        y=sets[i]; src=sets[i-1]; prev6=sets[i-6:i]
+        same_prev=_same_note_prior_sets(sets,inds,i,6)
+        rg=regime_of(len(src&y))
+        for n in range(1,81):
+            present=n in src; hit=int(n in y); c6=recent_count(prev6,n)
+            p6=path6(prev6,n); s6=sum(n in z for z in same_prev); sb=_bucket_same6(s6)
+            basic=[("side",present),("count6",present,c6),("path3",present,p6[-3:]),("same6",present,sb)]
+            if present:
+                basic += [("streak",streak(prev6,n)),("path4",True,p6[-4:])]
+            else:
+                g=gap(prev6,n)
+                basic += [("gap",g),("gap_path3",g,p6[-3:]),("path4",False,p6[-4:])]
+            for b in basic:
+                feat[(rg,)+b][0]+=hit; feat[(rg,)+b][1]+=1
+                feat_global[b][0]+=hit; feat_global[b][1]+=1
+            nh=int(((n-1) in src)+((n+1) in src))
+            tri=int(((n-2) in src and (n-1) in src) or ((n-1) in src and (n+1) in src) or ((n+1) in src and (n+2) in src))
+            adj[(rg,present,nh,tri)][0]+=hit; adj[(rg,present,nh,tri)][1]+=1
+            num[(rg,present,n)][0]+=hit; num[(rg,present,n)][1]+=1
+
+        for a,b in combinations(sorted(src),2):
+            pair_seen[(rg,a,b)]+=1
+            if a in y and b in y:
+                pair_survive[(rg,a,b)]+=1
+
+    return {
+        "feat":feat,"feat_global":feat_global,"num":num,
+        "pair_seen":pair_seen,"pair_survive":pair_survive,"adj":adj,
+        "examples":len(inds),
+    }
+
+
+# ============================================================
+# WALK-FORWARD
+# ============================================================
+
+def walk_forward(df, ntest=72):
+    start=max(180,len(df)-int(ntest))
+    rows=[]
+    for i in range(start,len(df)):
+        train=df.iloc[:i].reset_index(drop=True)
+        tgt=df.iloc[i]
+        try:
+            pred=prediction_bundle(train,str(tgt["date"]),str(tgt["time"]))
+        except Exception:
+            continue
+
+        actual=set(tgt["numbers"])
+        prev=set(train.iloc[-1]["numbers"])
+        actual_carry=prev&actual
+        actual_return=actual-prev
+        actual_regime=regime_of(len(actual_carry))
+
+        rec=pred["recommended"]
+        rows.append({
+            "Çekiliş":int(tgt["draw_no"]),
+            "Tarih":str(tgt["date"]),
+            "Saat":str(tgt["time"]),
+            "Gerçek Rejim":actual_regime,
+            "Önerilen Rejim":rec,
+            "Rejim Doğru":int(rec==actual_regime),
+            "Gerçek Taşıma":len(actual_carry),
+            "Beklenen Taşıma":round(pred["regime"]["expected_carry"],2),
+            "Taşıma Havuzu":len(set(pred["carry_pool"])&actual_carry),
+            "Dönüş Havuzu":len(set(pred["return_pool"])&actual_return),
+            "Dar16":len(set(pred["narrow_pool"])&actual),
+            "DÜŞÜK İsabet":len(set(pred["tickets"]["DÜŞÜK"])&actual),
+            "NORMAL İsabet":len(set(pred["tickets"]["NORMAL"])&actual),
+            "YÜKSEK İsabet":len(set(pred["tickets"]["YÜKSEK"])&actual),
+            "Önerilen İsabet":len(set(pred["final"])&actual),
+            "Önerilen Kupon":"-".join(map(str,pred["final"])),
+        })
+    return pd.DataFrame(rows)
+
+# ============================================================
+# UYGULAMA
+# ============================================================
+
+st.title("🧬 Sayı Laboratuvarı V4 — Veri-Önce Rejim Motoru")
+st.caption(
+    "Önce taşıma rejimini (DÜŞÜK / NORMAL / YÜKSEK) tahmin eder; sonra aynı nota içinde "
+    "taşıma izi, dinlenip dönüş, son-6 yol ve orta/düşük skor kanıtlarını ayrı işler."
+)
+
+with st.sidebar:
+    st.header("Veri")
+    upload=st.file_uploader("Geçici veri.txt",type=["txt"])
+    st.caption("Kalıcı kullanımda repo veri.txt okunur.")
+
+if upload:
+    base_df=parse_pipe(upload.read().decode("utf-8"))
+    source=f"Geçici: {upload.name}"
+else:
+    base_df=parse_pipe(repo_text())
+    source="Repo veri.txt"
+
+if base_df.empty:
+    st.error("Veri bulunamadı.")
+    st.stop()
+
+# V4 kendi session anahtarını kullanır; eski sürüm kalıntıları karışmaz.
+def merge_v4_session(base):
+    extra=st.session_state.get("v4_rows",[])
+    if not extra:
+        return base.copy()
+    x=pd.concat([base.copy(),pd.DataFrame(extra)],ignore_index=True)
+    x["_dt"]=pd.to_datetime(x["date"]+" "+x["time"],format="%d.%m.%Y %H:%M")
+    x["_ord"]=np.arange(len(x))
+    x=(x.sort_values(["_dt","_ord"])
+       .drop_duplicates(["date","time"],keep="last")
+       .drop(columns=["_dt","_ord"])
+       .reset_index(drop=True))
+    return x
+
+df=merge_v4_session(base_df)
+
+st.caption(
+    f"📂 {source} · {len(df)} çekiliş · {df['date'].nunique()} gün · "
+    f"son: #{df.iloc[-1]['draw_no']} {df.iloc[-1]['date']} {df.iloc[-1]['time']}"
+)
+
+tabs=st.tabs([
+    "⚡ Hızlı",
+    "🌗 Rejim",
+    "🫱 Taşıma İzleri",
+    "😴 Dinlenip Dönüş",
+    "🎯 Dar Boğaz",
+    "🎼 Nota",
+    "🧪 Kör Test",
+    "💾 Kayıt",
+])
+
+with tabs[0]:
+    st.subheader("⚡ Sonucu aynen yapıştır → sonraki V4 analizi")
+    paste=st.text_area(
+        "Gelen sonuç",
+        height=300,
+        placeholder=(
+            "Çekiliş no: 48814\n"
+            "13.08.2026 - 23:02\n"
+            "2\n5\n7\n8\n11\n17\n20\n22\n24\n33\n"
+            "42\n46\n50\n52\n65\n68\n70\n71\n74\n78"
+        ),
+        key="v4_paste",
+    )
+
+    if st.button("⚡ İŞLE + V4 ÜRET",type="primary",use_container_width=True):
+        try:
+            r=parse_block(paste)
+
+            old=st.session_state.get("v4_last_prediction")
+            if old and old["target_date"]==r["date"] and old["target_time"]==r["time"]:
+                actual=set(r["numbers"]); src=set(old["source_numbers"])
+                actual_carry=src&actual; actual_return=actual-src
+                report={
+                    "target":f"{r['date']} {r['time']}",
+                    "actual_regime":regime_of(len(actual_carry)),
+                    "recommended":old["recommended"],
+                    "tickets":{rg:sorted(set(old["tickets"][rg])&actual) for rg in REGIMES},
+                    "carry_actual":sorted(actual_carry),
+                    "carry_hits":sorted(set(old["carry_pool"])&actual_carry),
+                    "return_hits":sorted(set(old["return_pool"])&actual_return),
+                    "narrow_hits":sorted(set(old["narrow_pool"])&actual),
+                }
+                st.session_state["v4_last_report"]=report
+
+            rows=st.session_state.get("v4_rows",[])
+            rows=[x for x in rows if not (x["date"]==r["date"] and x["time"]==r["time"])]
+            rows.append(r); st.session_state["v4_rows"]=rows
+
+            work=merge_v4_session(base_df)
+            nd,nt=next_target(r["date"],r["time"])
+            pred=prediction_bundle(work,nd,nt)
+            pred["source_numbers"]=r["numbers"]
+            st.session_state["v4_last_prediction"]=pred
+            st.session_state["v4_last_result"]=r
+            st.success(f"✅ #{r['draw_no']} işlendi. Hedef: {nd} {nt}")
+        except Exception as e:
+            st.error(f"V4 işlem başarısız: {e}")
+
+    report=st.session_state.get("v4_last_report")
+    if report:
+        with st.expander("🔎 Önceki V4 tahmininin gerçek sonuç karnesi",expanded=True):
+            st.write(
+                f"Gerçek rejim: **{report['actual_regime']}** · "
+                f"önerilen: **{report['recommended']}**"
+            )
+            for rg in REGIMES:
+                hits=report["tickets"][rg]
+                st.write(f"**{rg}: {len(hits)}/7** — " + (" ".join(map(str,hits)) or "yok"))
+            st.write(
+                f"Gerçek taşınanlar ({len(report['carry_actual'])}): "
+                + " ".join(map(str,report["carry_actual"]))
+            )
+            st.write(
+                f"Taşıma havuzu yakaladı **{len(report['carry_hits'])}**: "
+                + (" ".join(map(str,report["carry_hits"])) or "yok")
+            )
+            st.write(
+                f"Dönüş havuzu yakaladı **{len(report['return_hits'])}**: "
+                + (" ".join(map(str,report["return_hits"])) or "yok")
+            )
+            st.write(
+                f"Dar-16 gerçek sayı yakaladı **{len(report['narrow_hits'])}/16**: "
+                + (" ".join(map(str,report["narrow_hits"])) or "yok")
+            )
+
+    pred=st.session_state.get("v4_last_prediction")
+    if pred:
+        rm=pred["regime"]
+        st.markdown(f"## 🎯 V4 — {pred['target_date']} {pred['target_time']}")
+        p1,p2,p3=st.columns(3)
+        p1.metric("Düşük rejim",f"%{100*rm['probs']['DÜŞÜK']:.1f}")
+        p2.metric("Normal rejim",f"%{100*rm['probs']['NORMAL']:.1f}")
+        p3.metric("Yüksek rejim",f"%{100*rm['probs']['YÜKSEK']:.1f}")
+        st.info(
+            f"Önerilen rejim: **{pred['recommended']}** · "
+            f"beklenen taşıma: **{rm['expected_carry']:.2f}/20** · "
+            f"{rm['neighbors']} benzer geçmiş bağlam kullanıldı."
+        )
+
+        cols=st.columns(3)
+        emoji={"DÜŞÜK":"🌘","NORMAL":"🌗","YÜKSEK":"🌕"}
+        for j,rg in enumerate(REGIMES):
+            with cols[j]:
+                st.markdown(f"### {emoji[rg]} {rg} Kuponu")
+                st.code("  ".join(f"{n:02d}" for n in pred["tickets"][rg]))
+                st.caption(
+                    " · ".join(
+                        f"{n:02d}:{pred['ticket_reasons'][rg].get(n,'')}"
+                        for n in pred["tickets"][rg]
+                    )
+                )
+
+        c1,c2=st.columns(2)
+        with c1:
+            st.markdown("### 🫱 Taşıma Havuzu — 12")
+            st.code(" ".join(f"{n:02d}" for n in pred["carry_pool"]))
+        with c2:
+            st.markdown("### 😴 Dönüş Havuzu — 20")
+            st.code(" ".join(f"{n:02d}" for n in pred["return_pool"]))
+
+        st.markdown("### 🔬 Dar Boğaz — 16")
+        st.code(" ".join(f"{n:02d}" for n in pred["narrow_pool"]))
+        st.caption(
+            "Bu 16 sayı tek yüksek skor sırasından değil; önerilen rejim + karşı-skor + kanıt birleşiminden gelir."
+        )
+
+with tabs[1]:
+    st.subheader("🌗 Rejim Algılayıcı")
+    slot=st.selectbox("Hedef nota",SLOTS,index=1,key="v4_regime_slot")
+    try:
+        rm=learn_regime_model(df,slot)
+        a,b,c,d=st.columns(4)
+        a.metric("DÜŞÜK",f"%{100*rm['probs']['DÜŞÜK']:.1f}")
+        b.metric("NORMAL",f"%{100*rm['probs']['NORMAL']:.1f}")
+        c.metric("YÜKSEK",f"%{100*rm['probs']['YÜKSEK']:.1f}")
+        d.metric("Beklenen taşıma",f"{rm['expected_carry']:.2f}")
+        st.write(
+            f"Öneri: **{rm['recommended']}**. Bu seçim sadece nota ortalamasına değil; "
+            "son üç taşıma, aynı-nota son altı, kaynak çekiliş yapısı ve son-6 görünüm yoğunluğuna bakar."
+        )
+        reg_rows=[]
+        for rg in REGIMES:
+            reg_rows.append({
+                "Rejim":rg,
+                "Olasılık %":round(100*rm["probs"][rg],1),
+                "Tarihsel rejim ort. taşıma":round(rm["carry_by_regime"][rg],2),
+            })
+        st.dataframe(pd.DataFrame(reg_rows),use_container_width=True,hide_index=True)
+    except Exception as e:
+        st.info(str(e))
+
+with tabs[2]:
+    st.subheader("🫱 Taşıma İzleri — önceki 20 kendi liginde")
+    slot=st.selectbox("Taşıma hedef notası",SLOTS,index=1,key="v4_carry_slot")
+    try:
+        rm=learn_regime_model(df,slot)
+        cm=build_candidate_model(df,slot)
+        t=score_v4_candidates(df,slot,rm,cm)
+        carry=t[t["Kaynakta"]].sort_values(
+            [rm["recommended"],"Karşı Skor","Kanıt"],ascending=False
+        ).copy()
+        cols=["Sayı","Lig Sıra","DÜŞÜK","NORMAL","YÜKSEK","Karşı Skor","Kanıt",
+              "6 Yol","Son6 Görünüm","AynıNota6","Paket","En İyi Paket","Gizli Aday"]
+        for c in ["DÜŞÜK","NORMAL","YÜKSEK","Karşı Skor","Kanıt","Paket"]:
+            carry[c]=carry[c].map(lambda x:round(float(x),3))
+        st.dataframe(carry[cols],use_container_width=True,hide_index=True)
+    except Exception as e:
+        st.info(str(e))
+
+with tabs[3]:
+    st.subheader("😴 Dinlenip Dönüş — kaynakta olmayan 60 kendi liginde")
+    slot=st.selectbox("Dönüş hedef notası",SLOTS,index=1,key="v4_return_slot")
+    try:
+        rm=learn_regime_model(df,slot)
+        cm=build_candidate_model(df,slot)
+        t=score_v4_candidates(df,slot,rm,cm)
+        ret=t[~t["Kaynakta"]].sort_values(
+            [rm["recommended"],"Karşı Skor","Kanıt"],ascending=False
+        ).copy()
+        cols=["Sayı","Lig Sıra","Gap","6 Yol","Son6 Görünüm","AynıNota6",
+              "DÜŞÜK","NORMAL","YÜKSEK","Karşı Skor","Kanıt","Gizli Aday"]
+        for c in ["DÜŞÜK","NORMAL","YÜKSEK","Karşı Skor","Kanıt"]:
+            ret[c]=ret[c].map(lambda x:round(float(x),3))
+        st.dataframe(ret[cols].head(35),use_container_width=True,hide_index=True)
+    except Exception as e:
+        st.info(str(e))
+
+with tabs[4]:
+    st.subheader("🎯 Havuz → Dar Boğaz → 3 Rejim Kuponu")
+    slot=st.selectbox("Dar boğaz hedef notası",SLOTS,index=1,key="v4_narrow_slot")
+    try:
+        pred=prediction_bundle(df,str(df.iloc[-1]["date"]),slot)
+        st.write(
+            f"Rejim önerisi: **{pred['recommended']}** · "
+            f"Beklenen taşıma {pred['regime']['expected_carry']:.2f}"
+        )
+        st.code("Dar16: " + " ".join(f"{n:02d}" for n in pred["narrow_pool"]))
+        narrow=pred["table"][pred["table"]["Sayı"].isin(pred["narrow_pool"])].copy()
+        narrow["Dar Sıra"]=narrow["Kanıt"].rank(ascending=False,method="first").astype(int)
+        narrow=narrow.sort_values(["Kanıt","Karşı Skor"],ascending=False)
+        for c in ["DÜŞÜK","NORMAL","YÜKSEK","Beklenen Skor","Karşı Skor","Kanıt"]:
+            narrow[c]=narrow[c].map(lambda x:round(float(x),3))
+        st.dataframe(
+            narrow[["Sayı","Kaynakta","Gap","Ham Sıra","Lig Sıra","DÜŞÜK","NORMAL","YÜKSEK",
+                    "Beklenen Skor","Karşı Skor","Kanıt","6 Yol","Gizli Aday"]],
+            use_container_width=True,hide_index=True
+        )
+    except Exception as e:
+        st.info(str(e))
+
+with tabs[5]:
+    st.subheader("🎼 Nota Karakteri")
+    st.dataframe(note_character(df),use_container_width=True,hide_index=True)
+    st.info(
+        "V4 nota farkını sert kural yapmaz. Nota, rejim ve sayı yollarını koşullandıran bağlamdır."
+    )
+
+with tabs[6]:
+    st.subheader("🧪 Sızıntısız Walk-Forward")
+    ntest=st.selectbox("Test adedi",[24,48,72,120,180],index=2,key="v4_test_n")
+    if st.button("🚀 V4 TEST ET",type="primary",use_container_width=True):
+        with st.spinner("Her hedef yalnız geçmiş veriyle yeniden kuruluyor..."):
+            bt=walk_forward(df,ntest)
+        st.session_state["v4_bt"]=bt
+
+    bt=st.session_state.get("v4_bt",pd.DataFrame())
+    if isinstance(bt,pd.DataFrame) and not bt.empty:
+        a,b,c,d,e=st.columns(5)
+        a.metric("Test",len(bt))
+        b.metric("Rejim doğruluğu",f"%{100*bt['Rejim Doğru'].mean():.1f}")
+        c.metric("Önerilen ort.",f"{bt['Önerilen İsabet'].mean():.2f}/7")
+        d.metric("3+ oranı",f"%{100*(bt['Önerilen İsabet']>=3).mean():.1f}")
+        e.metric("Dar16 ort.",f"{bt['Dar16'].mean():.2f}/16")
+
+        st.caption(
+            "Rastgele 7 sayının teorik beklenen isabeti 1.75'tir. "
+            "V4'ün amacı tek geçmiş örneği parlatmak değil; rejim ve dar-boğazın ileri testte değer katıp katmadığını ölçmektir."
+        )
+
+        by=bt.groupby("Saat").agg(
+            Test=("Önerilen İsabet","size"),
+            Rejim=("Rejim Doğru","mean"),
+            Onerilen=("Önerilen İsabet","mean"),
+            Dusuk=("DÜŞÜK İsabet","mean"),
+            Normal=("NORMAL İsabet","mean"),
+            Yuksek=("YÜKSEK İsabet","mean"),
+            TasimaPool=("Taşıma Havuzu","mean"),
+            DonusPool=("Dönüş Havuzu","mean"),
+            Dar16=("Dar16","mean"),
+        ).reset_index()
+        by["Rejim %"]=(100*by.pop("Rejim")).round(1)
+        for c in ["Onerilen","Dusuk","Normal","Yuksek","TasimaPool","DonusPool","Dar16"]:
+            by[c]=by[c].round(2)
+        st.dataframe(by,use_container_width=True,hide_index=True)
+        st.dataframe(bt.sort_values("Çekiliş",ascending=False),use_container_width=True,hide_index=True)
+
+with tabs[7]:
+    st.subheader("💾 Kalıcı veri.txt")
+    r=st.session_state.get("v4_last_result")
+    if r:
+        line=line_for(r)
+        st.code(line)
+        if st.button("💾 Son sonucu GitHub veri.txt'ye yaz",type="primary"):
+            try:
+                token,repo,branch,path=github_config()
+                if not token:
+                    st.error("GITHUB_TOKEN tanımlı değil.")
+                else:
+                    text,_=github_read(token,repo,branch,path)
+                    updated=append_or_replace(text,line)
+                    github_write(
+                        token,repo,branch,path,updated,
+                        f"V4 add {r['draw_no']} {r['date']} {r['time']}"
+                    )
+                    st.success("Kalıcı veri.txt güncellendi.")
+            except Exception as e:
+                st.error(str(e))
+        try:
+            updated=append_or_replace(repo_text(),line)
+            st.download_button(
+                "⬇️ Güncel veri.txt indir",
+                updated.encode("utf-8"),
+                file_name="veri.txt",
+                mime="text/plain",
+            )
+        except Exception:
+            pass
+    else:
+        st.caption("Önce hızlı sekmede bir sonuç işle.")
+
+st.divider()
+st.caption(
+    "V4 araştırma aracıdır. Geçmiş örüntüler bağımsız gelecek çekilişlerini garanti etmez. "
+    "Programın ana ilkesi: önce rejimi ve aday havuzunu ölç, sonra daralt; ham Top-7'yi final sanma."
+)
