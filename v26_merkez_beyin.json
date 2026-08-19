@@ -1,0 +1,163 @@
+{
+  "version": "V25",
+  "experts": {
+    "TAŞIMA": {
+      "tests": 1,
+      "hit_total": 1.0,
+      "last_hits": [
+        1
+      ],
+      "positive": 0,
+      "zero": 0
+    },
+    "YENİ AKTİVASYON→TAŞIMA": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "GAP-1": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "GAP-2": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "GAP-3": {
+      "tests": 1,
+      "hit_total": 2.0,
+      "last_hits": [
+        2
+      ],
+      "positive": 1,
+      "zero": 0
+    },
+    "GAP-4/5": {
+      "tests": 1,
+      "hit_total": 1.0,
+      "last_hits": [
+        1
+      ],
+      "positive": 0,
+      "zero": 0
+    },
+    "GAP-6+": {
+      "tests": 1,
+      "hit_total": 3.0,
+      "last_hits": [
+        3
+      ],
+      "positive": 1,
+      "zero": 0
+    },
+    "SERİ→UYKU→DÖNÜŞ": {
+      "tests": 1,
+      "hit_total": 1.0,
+      "last_hits": [
+        1
+      ],
+      "positive": 0,
+      "zero": 0
+    },
+    "KÜME TAŞIMA": {
+      "tests": 1,
+      "hit_total": 1.0,
+      "last_hits": [
+        1
+      ],
+      "positive": 0,
+      "zero": 0
+    },
+    "KÜME DÖNÜŞ": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "AYNI YAŞAM İZİ": {
+      "tests": 1,
+      "hit_total": 1.0,
+      "last_hits": [
+        1
+      ],
+      "positive": 0,
+      "zero": 0
+    },
+    "KÜME ZAMAN RİTMİ": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "ARDIŞIK/+2/+3": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "BANT/KOMŞU": {
+      "tests": 1,
+      "hit_total": 0.0,
+      "last_hits": [
+        0
+      ],
+      "positive": 0,
+      "zero": 1
+    },
+    "AYNI SAAT FAZI": {
+      "tests": 1,
+      "hit_total": 2.0,
+      "last_hits": [
+        2
+      ],
+      "positive": 1,
+      "zero": 0
+    },
+    "GECE KARAKTER": {
+      "tests": 1,
+      "hit_total": 2.0,
+      "last_hits": [
+        2
+      ],
+      "positive": 1,
+      "zero": 0
+    }
+  },
+  "surgery": {
+    "tests": 1,
+    "triggered": 0,
+    "base_hit_total": 0.0,
+    "exp_hit_total": 0.0,
+    "positive": 0,
+    "negative": 0,
+    "neutral": 0,
+    "approved": false
+  },
+  "evaluated_draws": [
+    49476
+  ],
+  "updated_at": "2026-08-19 19:53:19"
+}
