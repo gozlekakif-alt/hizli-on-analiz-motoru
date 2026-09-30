@@ -1,5 +1,0 @@
-streamlit>=1.39
-pandas>=2.0
-numpy>=1.26
-scikit-learn>=1.4
-requests>=2.31
