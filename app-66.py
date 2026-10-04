@@ -1,0 +1,2112 @@
+# -*- coding: utf-8 -*-
+"""
+HIZLI ON — AİLE & RİTİM LABORATUVARI V1
+
+Kilitli tanım:
+- Bir aile yalnızca üyelerinin TAMAMI AYNI TEK ÇEKİLİŞTE bulunduğunda aktive olur.
+- Saat içinde birikme / pencere birleşimi aktivasyon değildir.
+- Aile boyutları 2,3,4,5,6,7,8,9,10 sırayla işlenir.
+- Ana ritim mesafesi çekiliş numarası farkıdır.
+- APP düşük RAM için boyut boyut çalışır, sonuçları SQLite'a yazar ve kaldığı yerden devam eder.
+
+Not:
+Bu yazılım geçmiş çekiliş örüntülerini araştırır; gelecek çekiliş veya kazanç garantisi vermez.
+"""
+
+from __future__ import annotations
+
+import base64
+import csv
+import gzip
+import gc
+import hashlib
+import io
+import itertools
+import json
+import math
+import os
+import re
+import secrets
+import sqlite3
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import Counter, defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Iterable, List, Tuple
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+# --------------------------------------------------------------------------------------
+# SAYFA / SABİTLER
+# --------------------------------------------------------------------------------------
+st.set_page_config(page_title="Hızlı On — Aile & Ritim", page_icon="🧬", layout="wide")
+
+APP_VERSION = "AILE_RITIM_V3.0_GITHUB_STATE"
+DEFAULT_DATA_FILE = Path("veri.txt")
+# Aynı Streamlit konteynerinde sayfa yenilense / yeni tarayıcı oturumu açılsa bile
+# aynı yerel DB kullanılır. Eski sürümde session_state ile dosya adı değiştiği için
+# ilerleme ekranda sıfırlanmış görünüyordu.
+SESSION_DB_ID = st.session_state.setdefault("_aile_db_id", secrets.token_hex(8))
+DB_PATH = Path(f"/tmp/aile_ritim_v30_{SESSION_DB_ID}.sqlite3")
+DEFAULT_REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
+DEFAULT_BRANCH = "main"
+DEFAULT_PATH = "veri.txt"
+CHECKPOINT_BRANCH_DEFAULT = "app-state"
+CHECKPOINT_ROOT_DEFAULT = ".aile_ritim_state_v30"
+CHECKPOINT_CHUNK_BYTES = 4 * 1024 * 1024  # kompakt DB için 4 MB parçalar
+REMOTE_AUTOSAVE_SECONDS = 120  # yalnız küçük durum dosyası; tamamlanan boyutlar kalıcı GitHub sonucuna yazılır
+SIZES = list(range(2, 11))
+LOW_MASK = (1 << 64) - 1
+
+# RAM'i korumak için:
+# 2..4: 1..80 evrenindeki aileleri tam tarar.
+# 5..6: gün gün; aynı saat/dakika ve gün içi sabit ritimlerden aday çıkarır.
+# 7..10: tekrar eden büyük aileler için çekiliş-kesişim aday taraması kullanır.
+EXHAUSTIVE_MAX_K = 4
+DAY_RHYTHM_MIN_K = 5
+DAY_RHYTHM_MAX_K = 6
+PAIR_SCAN_MIN_K = 7
+MAX_DAY_COMBOS_PER_INTERSECTION = 5000
+
+# Ritim tanımının en küçük örnek sayısı. 3 aktivasyon düz ritmi (d,d) gösterebilir.
+MIN_ACTIVATIONS = 3
+
+# --------------------------------------------------------------------------------------
+# YARDIMCILAR
+# --------------------------------------------------------------------------------------
+def safe_secret(name: str, default: str = "") -> str:
+    try:
+        v = st.secrets.get(name, default)
+        return str(v) if v is not None else default
+    except Exception:
+        return default
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def github_read_text(repo: str, branch: str, path: str, token: str = "") -> str:
+    """Public repo için RAW, token varsa GitHub API kullanır."""
+    if token:
+        url = f"https://api.github.com/repos/{repo}/contents/{path}?ref={branch}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/vnd.github.raw+json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "hizli-on-aile-ritim",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.read().decode("utf-8", errors="replace")
+    url = f"https://raw.githubusercontent.com/{repo}/{branch}/{path}"
+    req = urllib.request.Request(url, headers={"User-Agent": "hizli-on-aile-ritim"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.read().decode("utf-8", errors="replace")
+
+
+def load_data_text(uploaded=None):
+    """Öncelik: yüklenen dosya > repo içindeki veri.txt > GitHub raw/API."""
+    if uploaded is not None:
+        raw = uploaded.getvalue()
+        for enc in ("utf-8", "utf-8-sig", "cp1254", "latin-1"):
+            try:
+                return raw.decode(enc), f"Yüklenen dosya: {uploaded.name}"
+            except Exception:
+                pass
+        return raw.decode("utf-8", errors="replace"), f"Yüklenen dosya: {uploaded.name}"
+
+    if DEFAULT_DATA_FILE.exists():
+        return DEFAULT_DATA_FILE.read_text(encoding="utf-8", errors="replace"), "GitHub/yerel veri.txt"
+
+    repo = safe_secret("GITHUB_REPO", DEFAULT_REPO) or DEFAULT_REPO
+    branch = safe_secret("GITHUB_BRANCH", DEFAULT_BRANCH) or DEFAULT_BRANCH
+    path = safe_secret("GITHUB_DATA_PATH", DEFAULT_PATH) or DEFAULT_PATH
+    token = safe_secret("GITHUB_TOKEN", "")
+    try:
+        return github_read_text(repo, branch, path, token), f"GitHub: {repo}/{path}"
+    except Exception as e:
+        return "", f"GitHub veri.txt okunamadı: {e}"
+
+
+class GitHubAPIError(RuntimeError):
+    def __init__(self, status: int, detail: str, url: str):
+        self.status = int(status)
+        self.detail = detail
+        self.url = url
+        super().__init__(f"GitHub HTTP {status}: {detail}")
+
+
+def _clean_github_token(token: str) -> str:
+    t = (token or "").strip().strip('"').strip("'")
+    if t.lower().startswith("bearer "):
+        t = t[7:].strip()
+    elif t.lower().startswith("token "):
+        t = t[6:].strip()
+    return t
+
+
+def checkpoint_settings():
+    repo = (safe_secret("GITHUB_REPO", DEFAULT_REPO) or DEFAULT_REPO).strip()
+    base_branch = (safe_secret("GITHUB_BRANCH", DEFAULT_BRANCH) or DEFAULT_BRANCH).strip()
+    state_branch = (
+        safe_secret("GITHUB_CHECKPOINT_BRANCH", CHECKPOINT_BRANCH_DEFAULT)
+        or CHECKPOINT_BRANCH_DEFAULT
+    ).strip()
+    root = (
+        safe_secret("GITHUB_CHECKPOINT_ROOT", CHECKPOINT_ROOT_DEFAULT)
+        or CHECKPOINT_ROOT_DEFAULT
+    ).strip().strip("/")
+    token = (
+        safe_secret("GITHUB_TOKEN", "")
+        or safe_secret("GH_TOKEN", "")
+        or safe_secret("GITHUB_PAT", "")
+    )
+    return repo, base_branch, state_branch, root, _clean_github_token(token)
+
+
+def _github_api_request(url: str, token: str, method: str = "GET", payload=None,
+                        accept: str = "application/vnd.github+json", timeout: int = 90,
+                        expect_json: bool = True):
+    headers = {
+        "Accept": accept,
+        "User-Agent": "hizli-on-aile-ritim",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    data = None
+    if payload is not None:
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = r.read()
+            if not expect_json:
+                return body
+            ctype = (r.headers.get("Content-Type") or "").lower()
+            if "json" in ctype:
+                return json.loads(body.decode("utf-8", errors="replace"))
+            return body
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+            try:
+                obj = json.loads(body)
+                detail = obj.get("message", body)
+                errors = obj.get("errors")
+                if errors:
+                    detail += f" | {errors}"
+            except Exception:
+                detail = body
+        except Exception:
+            detail = str(e)
+        detail = (detail or str(e)).replace("\n", " ")[:900]
+        raise GitHubAPIError(e.code, detail, url) from e
+
+
+def _api_path(path: str) -> str:
+    return urllib.parse.quote(path.strip("/"), safe="/")
+
+
+def _git_blob_sha(data: bytes) -> str:
+    h = hashlib.sha1()
+    h.update(f"blob {len(data)}\0".encode("ascii"))
+    h.update(data)
+    return h.hexdigest()
+
+
+def ensure_checkpoint_branch(repo: str, base_branch: str, state_branch: str, token: str):
+    """app-state dalını güvenli biçimde oluşturur; 422'yi körlemesine yutmaz."""
+    ref = urllib.parse.quote(f"heads/{state_branch}", safe="/")
+    ref_url = f"https://api.github.com/repos/{repo}/git/ref/{ref}"
+    try:
+        _github_api_request(ref_url, token)
+        return
+    except GitHubAPIError as e:
+        if e.status != 404:
+            raise
+
+    base_ref = urllib.parse.quote(f"heads/{base_branch}", safe="/")
+    base = _github_api_request(
+        f"https://api.github.com/repos/{repo}/git/ref/{base_ref}", token
+    )
+    sha = base["object"]["sha"]
+
+    try:
+        _github_api_request(
+            f"https://api.github.com/repos/{repo}/git/refs",
+            token,
+            method="POST",
+            payload={"ref": f"refs/heads/{state_branch}", "sha": sha},
+        )
+    except GitHubAPIError as create_err:
+        # Aynı anda başka oturum dalı oluşturmuşsa 422 gelebilir. Gerçekten oluştu mu kontrol et.
+        if create_err.status == 422:
+            try:
+                _github_api_request(ref_url, token)
+                return
+            except Exception:
+                pass
+        raise
+
+
+def github_file_meta(repo: str, branch: str, path: str, token: str):
+    url = (
+        f"https://api.github.com/repos/{repo}/contents/{_api_path(path)}"
+        f"?ref={urllib.parse.quote(branch, safe='')}"
+    )
+    try:
+        return _github_api_request(url, token)
+    except GitHubAPIError as e:
+        if e.status == 404:
+            return None
+        raise
+
+
+def github_get_bytes(repo: str, branch: str, path: str, token: str) -> bytes:
+    url = (
+        f"https://api.github.com/repos/{repo}/contents/{_api_path(path)}"
+        f"?ref={urllib.parse.quote(branch, safe='')}"
+    )
+    return _github_api_request(
+        url, token, accept="application/vnd.github.raw+json", timeout=120, expect_json=False
+    )
+
+
+def github_put_bytes(repo: str, branch: str, path: str, token: str,
+                     data: bytes, message: str):
+    """Küçük parça dosyasını yaz. Aynı içerik varsa commit üretmez."""
+    url = f"https://api.github.com/repos/{repo}/contents/{_api_path(path)}"
+    meta = github_file_meta(repo, branch, path, token)
+    local_blob_sha = _git_blob_sha(data)
+    if meta and meta.get("sha") == local_blob_sha:
+        return "unchanged"
+
+    body = {
+        "message": message,
+        "content": base64.b64encode(data).decode("ascii"),
+        "branch": branch,
+    }
+    if meta and meta.get("sha"):
+        body["sha"] = meta["sha"]
+
+    try:
+        _github_api_request(url, token, method="PUT", payload=body, timeout=180)
+        return "written"
+    except GitHubAPIError as first_err:
+        # Paralel/önceki commit yüzünden SHA eskidiyse bir kez tazele ve yeniden dene.
+        if first_err.status not in (409, 422):
+            raise
+        meta2 = github_file_meta(repo, branch, path, token)
+        body2 = {
+            "message": message,
+            "content": base64.b64encode(data).decode("ascii"),
+            "branch": branch,
+        }
+        if meta2 and meta2.get("sha"):
+            if meta2.get("sha") == local_blob_sha:
+                return "unchanged"
+            body2["sha"] = meta2["sha"]
+        _github_api_request(url, token, method="PUT", payload=body2, timeout=180)
+        return "written"
+
+
+def _db_progress_score(path: Path, data_hash: str):
+    """Yerel oturum DB'sinin kısa durum puanı."""
+    if not path.exists() or path.stat().st_size == 0:
+        return (-1, -1, -1, "")
+    con = None
+    try:
+        con = sqlite3.connect(path, timeout=5)
+        rows = con.execute(
+            "SELECT done,scanned,updated_at FROM progress WHERE data_hash=?", (data_hash,)
+        ).fetchall()
+        done_sum = sum(int(r[0] or 0) for r in rows) if rows else 0
+        scanned_sum = sum(int(r[1] or 0) for r in rows) if rows else 0
+        result_count = int(con.execute(
+            "SELECT COUNT(*) FROM results WHERE data_hash=?", (data_hash,)
+        ).fetchone()[0] or 0)
+        updated = max((str(r[2] or "") for r in rows), default="")
+        return (done_sum, scanned_sum, result_count, updated)
+    except Exception:
+        return (-1, -1, -1, "")
+    finally:
+        if con is not None:
+            try: con.close()
+            except Exception: pass
+
+
+def _checkpoint_paths(root: str, data_hash: str):
+    base = f"{root}/{data_hash}"
+    return base, f"{base}/progress.json"
+
+
+def _result_remote_path(base_path: str, k: int) -> str:
+    return f"{base_path}/size-{int(k):02d}.csv.gz"
+
+
+def _export_size_result_bytes(con, data_hash: str, k: int) -> tuple[bytes, int]:
+    """Bir boyutun kompakt sonucunu gzip CSV olarak üretir."""
+    buf = io.BytesIO()
+    count = 0
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=6) as gz:
+        wrapper = io.TextIOWrapper(gz, encoding="utf-8-sig", newline="", write_through=True)
+        w = csv.writer(wrapper)
+        w.writerow([
+            "family_mask","family","support","rhythm_types","rhythm_detail","time_character"
+        ])
+        cur = con.execute(
+            """SELECT family_mask,family,support,rhythm_types,rhythm_detail,time_character
+               FROM results WHERE data_hash=? AND size=? ORDER BY support DESC,family ASC""",
+            (data_hash, int(k)),
+        )
+        for row in cur:
+            w.writerow(row)
+            count += 1
+        wrapper.flush()
+        wrapper.detach()
+    return buf.getvalue(), count
+
+
+def _import_size_result_bytes(con, data_hash: str, k: int, packed: bytes) -> int:
+    """GitHub'daki tamamlanmış boyut sonucunu yerel oturum DB'sine geri kurar."""
+    inserted = 0
+    con.execute("DELETE FROM results WHERE data_hash=? AND size=?", (data_hash, int(k)))
+    with gzip.GzipFile(fileobj=io.BytesIO(packed), mode="rb") as gz:
+        wrapper = io.TextIOWrapper(gz, encoding="utf-8-sig", newline="")
+        reader = csv.DictReader(wrapper)
+        batch = []
+        for row in reader:
+            batch.append((
+                data_hash, int(k), str(row.get("family_mask") or ""), str(row.get("family") or ""),
+                int(float(row.get("support") or 0)), str(row.get("rhythm_types") or ""),
+                str(row.get("rhythm_detail") or ""), str(row.get("time_character") or ""),
+            ))
+            if len(batch) >= 2000:
+                con.executemany(
+                    """INSERT OR REPLACE INTO results(
+                           data_hash,size,family_mask,family,support,rhythm_types,rhythm_detail,time_character
+                       ) VALUES(?,?,?,?,?,?,?,?)""", batch
+                )
+                inserted += len(batch)
+                batch.clear()
+        if batch:
+            con.executemany(
+                """INSERT OR REPLACE INTO results(
+                       data_hash,size,family_mask,family,support,rhythm_types,rhythm_detail,time_character
+                   ) VALUES(?,?,?,?,?,?,?,?)""", batch
+            )
+            inserted += len(batch)
+    con.commit()
+    return inserted
+
+
+def _github_put_with_retry(repo, branch, path, token, content, message, tries=3):
+    last = None
+    for attempt in range(tries):
+        try:
+            return github_put_bytes(repo, branch, path, token, content, message)
+        except Exception as e:
+            last = e
+            time.sleep(0.8 * (attempt + 1))
+    raise last
+
+
+def _load_remote_state(repo: str, branch: str, path: str, token: str):
+    try:
+        raw = github_get_bytes(repo, branch, path, token)
+        obj = json.loads(raw.decode("utf-8"))
+        if obj.get("format") != "family-rhythm-state-v30":
+            return None
+        return obj
+    except GitHubAPIError as e:
+        if e.status == 404:
+            return None
+        raise
+
+
+def save_checkpoint_to_github(con, data_hash: str, reason: str = "checkpoint"):
+    """
+    V3.0 kalıcılık: açık SQLite dosyasını ASLA GitHub'a kopyalamaz.
+    Yalnız tamamlanan boyutların kompakt gzip CSV'sini ve küçük progress.json'u yazar.
+    Böylece database locked / disk I/O / yarım SQLite snapshot döngüsü ortadan kalkar.
+    """
+    repo, base_branch, state_branch, root, token = checkpoint_settings()
+    if not token:
+        return False, "GITHUB_TOKEN yok; tamamlanan boyut kalıcılaştırılamaz."
+    try:
+        con.commit()
+        ensure_checkpoint_branch(repo, base_branch, state_branch, token)
+        base_path, state_path = _checkpoint_paths(root, data_hash)
+        state = _load_remote_state(repo, state_branch, state_path, token) or {
+            "format": "family-rhythm-state-v30",
+            "app_version": APP_VERSION,
+            "data_hash": data_hash,
+            "sizes": {},
+        }
+        state["app_version"] = APP_VERSION
+        state["data_hash"] = data_hash
+        state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        state["reason"] = reason
+        state.setdefault("sizes", {})
+
+        rows = con.execute(
+            """SELECT size,method,cursor,done,scanned,rhythmic_found,updated_at
+               FROM progress WHERE data_hash=? ORDER BY size""", (data_hash,)
+        ).fetchall()
+        newly_saved = []
+        for k, method, cursor, done, scanned, found, updated_at in rows:
+            key = str(int(k))
+            current_count = int(con.execute(
+                "SELECT COUNT(*) FROM results WHERE data_hash=? AND size=?", (data_hash, int(k))
+            ).fetchone()[0] or 0)
+            entry = state["sizes"].get(key, {})
+            if int(done or 0) == 1:
+                # Boyut tamamlanınca sonuç dosyasını önce yaz, state'i EN SON güncelle.
+                need_write = (
+                    int(entry.get("done", 0) or 0) != 1 or
+                    int(entry.get("result_count", -1) or -1) != current_count or
+                    str(entry.get("method", "")) != str(method)
+                )
+                if need_write:
+                    packed, result_count = _export_size_result_bytes(con, data_hash, int(k))
+                    remote_result = _result_remote_path(base_path, int(k))
+                    _github_put_with_retry(
+                        repo, state_branch, remote_result, token, packed,
+                        f"Aile ritim V3 size {int(k)} tamam · {reason}",
+                    )
+                    entry = {
+                        "done": 1,
+                        "method": str(method),
+                        "result_file": remote_result,
+                        "result_count": int(result_count),
+                        "sha256": hashlib.sha256(packed).hexdigest(),
+                        "scanned": int(scanned or 0),
+                        "found": int(found or 0),
+                        "updated_at": str(updated_at or ""),
+                    }
+                    state["sizes"][key] = entry
+                    newly_saved.append(int(k))
+            else:
+                # Tamamlanmamış boyutun cursor'u yalnız bilgi amaçlıdır; restart sonrası bu boyut 0'dan başlar.
+                state["current"] = {
+                    "size": int(k), "method": str(method), "scanned": int(scanned or 0),
+                    "found": int(found or 0), "updated_at": str(updated_at or ""),
+                }
+                break
+
+        state_bytes = json.dumps(state, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        _github_put_with_retry(
+            repo, state_branch, state_path, token, state_bytes,
+            f"Aile ritim V3 progress · {reason}",
+        )
+        completed = sorted(int(k) for k,v in state.get("sizes", {}).items() if int(v.get("done",0) or 0)==1)
+        return True, (
+            f"GitHub V3 kalıcı durum OK · tamamlanan={completed or '-'}"
+            + (f" · yeni kaydedilen={newly_saved}" if newly_saved else "")
+        )
+    except GitHubAPIError as e:
+        return False, f"GitHub durum yazılamadı: HTTP {e.status} · {e.detail}"
+    except Exception as e:
+        return False, f"GitHub durum yazılamadı: {e}"
+
+
+def restore_checkpoint_from_github(data_hash: str):
+    """V3.0: yalnız TAMAMLANMIŞ boyutları GitHub'dan geri kurar; açık DB dosyası değiştirilmez."""
+    repo, _, state_branch, root, token = checkpoint_settings()
+    if not token:
+        return False, "GITHUB_TOKEN bulunamadı; kalıcı durum okunamadı."
+    base_path, state_path = _checkpoint_paths(root, data_hash)
+    try:
+        state = _load_remote_state(repo, state_branch, state_path, token)
+        if not state:
+            return False, "Henüz GitHub V3 kalıcı durum kaydı yok."
+        if state.get("data_hash") != data_hash:
+            return False, "GitHub V3 durumu başka veri.txt için."
+
+        con = db_connect()
+        restored_sizes = []
+        try:
+            for k in SIZES:
+                entry = (state.get("sizes") or {}).get(str(int(k)), {})
+                if int(entry.get("done", 0) or 0) != 1:
+                    # Eski yerel yarım ilerleme varsa restart sonrası sıfırdan başlat.
+                    ensure_progress(con, data_hash, int(k), method_for_size(int(k)))
+                    con.execute(
+                        """UPDATE progress SET cursor=0,done=0,scanned=0,rhythmic_found=0,updated_at=?
+                           WHERE data_hash=? AND size=?""",
+                        (datetime.now().isoformat(timespec="seconds"), data_hash, int(k)),
+                    )
+                    con.execute("DELETE FROM results WHERE data_hash=? AND size=?", (data_hash, int(k)))
+                    con.commit()
+                    continue
+
+                ensure_progress(con, data_hash, int(k), str(entry.get("method") or method_for_size(int(k))))
+                local_done = con.execute(
+                    "SELECT done FROM progress WHERE data_hash=? AND size=?", (data_hash, int(k))
+                ).fetchone()
+                local_count = int(con.execute(
+                    "SELECT COUNT(*) FROM results WHERE data_hash=? AND size=?", (data_hash, int(k))
+                ).fetchone()[0] or 0)
+                target_count = int(entry.get("result_count", 0) or 0)
+                if not local_done or int(local_done[0] or 0) != 1 or local_count != target_count:
+                    packed = github_get_bytes(repo, state_branch, str(entry["result_file"]), token)
+                    if hashlib.sha256(packed).hexdigest() != str(entry.get("sha256") or ""):
+                        raise RuntimeError(f"{k}'li sonuç dosyası doğrulaması başarısız")
+                    _import_size_result_bytes(con, data_hash, int(k), packed)
+                con.execute(
+                    """UPDATE progress SET method=?,cursor=0,done=1,scanned=?,rhythmic_found=?,updated_at=?
+                       WHERE data_hash=? AND size=?""",
+                    (
+                        str(entry.get("method") or method_for_size(int(k))),
+                        int(entry.get("scanned",0) or 0), int(entry.get("found",target_count) or target_count),
+                        str(entry.get("updated_at") or datetime.now().isoformat(timespec="seconds")),
+                        data_hash, int(k),
+                    ),
+                )
+                con.commit()
+                restored_sizes.append(int(k))
+        finally:
+            con.close()
+        return True, f"GitHub V3 tamamlanan boyutlar geri kuruldu: {restored_sizes or '-'}"
+    except GitHubAPIError as e:
+        if e.status == 404:
+            return False, "Henüz GitHub V3 kalıcı durum kaydı yok."
+        return False, f"GitHub V3 durum okunamadı: HTTP {e.status} · {e.detail}"
+    except Exception as e:
+        return False, f"GitHub V3 durum okunamadı: {e}"
+
+
+def github_auth_status():
+    repo, _, _, _, token = checkpoint_settings()
+    if not token:
+        return False, "GITHUB_TOKEN bulunamadı — kalıcı GitHub kaydı yapılamaz."
+    try:
+        _github_api_request(f"https://api.github.com/repos/{repo}", token)
+        return True, f"GitHub token kabul edildi · repo: {repo}"
+    except GitHubAPIError as e:
+        return False, f"GitHub token/repo kontrolü başarısız: HTTP {e.status} · {e.detail}"
+    except Exception as e:
+        return False, f"GitHub kontrolü başarısız: {e}"
+
+
+def import_result_backup(uploaded, con, data_hash: str):
+    """
+    Eski CSV veya CSV.GZ çıktısını yeni SQLite'a taşır.
+    2'li ve 3'lü boyutlar bu projede tamamlanmış eski çıktı olarak işaretlenebilir.
+    4+ satırlar korunur fakat ilerleme baştan doğrulanır; INSERT OR IGNORE tekrarları engeller.
+    """
+    if uploaded is None:
+        return False, "Yedek dosya seçilmedi."
+
+    name = (uploaded.name or "").lower()
+    uploaded.seek(0)
+    if name.endswith(".gz"):
+        raw_stream = gzip.GzipFile(fileobj=uploaded, mode="rb")
+        text_stream = io.TextIOWrapper(raw_stream, encoding="utf-8-sig", errors="replace", newline="")
+    else:
+        text_stream = io.TextIOWrapper(uploaded, encoding="utf-8-sig", errors="replace", newline="")
+
+    counts = Counter()
+    inserted = 0
+    try:
+        reader = csv.DictReader(text_stream)
+        required = {"size", "family", "support",
+                    "rhythm_types", "rhythm_detail", "time_character"}
+        if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+            return False, "CSV sütunları bu uygulamanın yedeğiyle uyumlu değil."
+
+        for row in reader:
+            try:
+                k = int(row["size"])
+                nums = tuple(int(x) for x in row["family"].split("-"))
+                if k not in SIZES or len(nums) != k:
+                    continue
+                counts[k] += 1
+                cur = con.execute(
+                    """INSERT OR IGNORE INTO results(
+                           data_hash,size,family_mask,family,support,
+                           rhythm_types,rhythm_detail,time_character
+                       ) VALUES(?,?,?,?,?,?,?,?)""",
+                    (
+                        data_hash, k, str(family_mask(nums)), row["family"],
+                        int(row["support"]), row["rhythm_types"],
+                        row["rhythm_detail"], row["time_character"],
+                    ),
+                )
+                inserted += int(cur.rowcount > 0)
+                if inserted and inserted % 5000 == 0:
+                    con.commit()
+            except Exception:
+                continue
+        con.commit()
+
+        # Bu kullanıcının eski çıktısında 2'li ve 3'lü tamamlanmıştı.
+        for k in (2, 3):
+            if counts.get(k, 0):
+                total = math.comb(80, k)
+                max_first = 80 - k + 1
+                con.execute(
+                    """UPDATE progress
+                       SET cursor=?,done=1,scanned=?,rhythmic_found=?,updated_at=?
+                       WHERE data_hash=? AND size=?""",
+                    (
+                        max_first + 1, total, counts[k],
+                        datetime.now().isoformat(timespec="seconds"), data_hash, k,
+                    ),
+                )
+        # 4+ sonuçları korunur ama cursor ilerletilmez; eksik prefix varsa güvenli biçimde yeniden taranır.
+        for k in range(4, 11):
+            if counts.get(k, 0):
+                con.execute(
+                    """UPDATE progress
+                       SET rhythmic_found=(SELECT COUNT(*) FROM results WHERE data_hash=? AND size=?),
+                           updated_at=?
+                       WHERE data_hash=? AND size=?""",
+                    (
+                        data_hash, k, datetime.now().isoformat(timespec="seconds"),
+                        data_hash, k,
+                    ),
+                )
+        con.commit()
+        return True, (
+            f"Yedek içe aktarıldı · yeni kayıt {inserted:,} · "
+            f"2'li={counts.get(2,0):,} · 3'lü={counts.get(3,0):,} · "
+            f"4+'lı={sum(v for kk,v in counts.items() if kk>=4):,}"
+        ).replace(",", ".")
+    finally:
+        try:
+            text_stream.detach()
+        except Exception:
+            pass
+
+
+def _parse_nums_field(s: str) -> List[int]:
+    nums = [int(x) for x in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", s)]
+    nums = [n for n in nums if 1 <= n <= 80]
+    # sıra sonucu değiştirmez; tekrarlı sayıları ayıkla
+    return sorted(set(nums))
+
+
+def parse_draws(text: str) -> pd.DataFrame:
+    rows = []
+
+    # 1) Kompakt satırlar:
+    # 51213;25.08.2026 00:02;2,4,...
+    # 51213 | 25.08.2026 00:02 | 2 4 ...
+    line_re = re.compile(
+        r"^\s*#?(\d{4,})\s*[;|]\s*(\d{2}\.\d{2}\.\d{4})\s+" 
+        r"(\d{2}:\d{2})\s*[;|]\s*(.*?)\s*$"
+    )
+    for line in text.splitlines():
+        m = line_re.match(line)
+        if not m:
+            continue
+        draw = int(m.group(1))
+        ds, ts = m.group(2), m.group(3)
+        nums = _parse_nums_field(m.group(4))
+        if len(nums) == 20:
+            try:
+                dt = datetime.strptime(f"{ds} {ts}", "%d.%m.%Y %H:%M")
+            except Exception:
+                continue
+            rows.append((draw, dt, nums))
+
+    # 2) Milli Piyango kopyala-yapıştır biçimi
+    # Çekiliş no: 55118 / 11.09.2026-23:57 / 20 sayı ayrı satırlar
+    if not rows:
+        lines = text.splitlines()
+        i = 0
+        while i < len(lines):
+            s = lines[i].strip()
+            if "Çekiliş no" not in s and "çekiliş no" not in s.lower():
+                i += 1
+                continue
+
+            draw = None
+            m = re.search(r"(\d{4,})", s)
+            if m:
+                draw = int(m.group(1))
+            j = i + 1
+            if draw is None:
+                while j < min(i + 5, len(lines)):
+                    m = re.fullmatch(r"\s*#?\s*(\d{4,})\s*", lines[j])
+                    if m:
+                        draw = int(m.group(1)); j += 1; break
+                    j += 1
+            if draw is None:
+                i += 1; continue
+
+            dt = None
+            while j < min(i + 10, len(lines)):
+                m = re.search(r"(\d{2}\.\d{2}\.\d{4})\s*[- ]\s*(\d{2}:\d{2})", lines[j])
+                if m:
+                    try:
+                        dt = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%d.%m.%Y %H:%M")
+                    except Exception:
+                        dt = None
+                    j += 1
+                    break
+                j += 1
+            if dt is None:
+                i += 1; continue
+
+            nums = []
+            while j < len(lines) and len(nums) < 20:
+                if "Çekiliş no" in lines[j] or "çekiliş no" in lines[j].lower():
+                    break
+                m = re.fullmatch(r"\s*(\d{1,2})\s*", lines[j])
+                if m:
+                    n = int(m.group(1))
+                    if 1 <= n <= 80:
+                        nums.append(n)
+                j += 1
+            nums = sorted(set(nums))
+            if len(nums) == 20:
+                rows.append((draw, dt, nums))
+            i = max(i + 1, j)
+
+    if not rows:
+        return pd.DataFrame(columns=["draw", "dt", "nums"])
+
+    # Aynı çekilişi tekilleştir, kronolojik sıraya koy
+    best = {}
+    for draw, dt, nums in rows:
+        best[(draw, dt)] = nums
+    out = pd.DataFrame([(d, dt, ns) for (d, dt), ns in best.items()], columns=["draw", "dt", "nums"])
+    out = out.sort_values(["draw", "dt"]).drop_duplicates(subset=["draw"], keep="last").reset_index(drop=True)
+    return out
+
+
+def nums_to_mask(nums: Iterable[int]) -> int:
+    m = 0
+    for n in nums:
+        m |= 1 << (int(n) - 1)
+    return m
+
+
+def mask_to_nums(mask: int) -> Tuple[int, ...]:
+    out = []
+    m = int(mask)
+    while m:
+        lsb = m & -m
+        out.append(lsb.bit_length())  # bit 0 -> sayı 1
+        m ^= lsb
+    return tuple(out)
+
+
+def family_mask(nums: Iterable[int]) -> int:
+    return nums_to_mask(nums)
+
+
+def family_text(nums: Iterable[int]) -> str:
+    return "-".join(f"{int(n):02d}" for n in nums)
+
+
+def bits_to_indices(b: int) -> List[int]:
+    out = []
+    x = int(b)
+    while x:
+        lsb = x & -x
+        out.append(lsb.bit_length() - 1)
+        x ^= lsb
+    return out
+
+
+def build_vertical_bits(df: pd.DataFrame):
+    """Yalnız gerekli bit yapılarını üret; tüm draw mask listesini RAM'de tutma."""
+    num_bits = [0] * 81
+    n = len(df)
+    lows = np.empty(n, dtype=np.uint64)
+    highs = np.empty(n, dtype=np.uint64)
+    for i, nums in enumerate(df["nums"]):
+        bit = 1 << i
+        m = nums_to_mask(nums)
+        lows[i] = np.uint64(m & LOW_MASK)
+        highs[i] = np.uint64((m >> 64) & LOW_MASK)
+        for num in nums:
+            num_bits[int(num)] |= bit
+    return num_bits, lows, highs
+
+
+def occurrence_bits(nums: Tuple[int, ...], num_bits: List[int]) -> int:
+    b = num_bits[nums[0]]
+    for n in nums[1:]:
+        b &= num_bits[n]
+        if not b:
+            break
+    return b
+
+# --------------------------------------------------------------------------------------
+# RİTİM SINIFLANDIRMA
+# --------------------------------------------------------------------------------------
+def _best_equal_run(gaps: List[int]):
+    best = None
+    i = 0
+    while i < len(gaps):
+        j = i + 1
+        while j < len(gaps) and gaps[j] == gaps[i]:
+            j += 1
+        run = j - i
+        if run >= 2 and (best is None or run > best[0]):
+            best = (run, i, j, gaps[i])
+        i = j
+    return best
+
+
+def classify_rhythms(draws: List[int], near_tol: int = 1):
+    """Aktivasyon çekilişleri arasındaki ardışık farklardan ritimleri bulur."""
+    if len(draws) < 3:
+        return [], [], []
+    gaps = [int(draws[i + 1] - draws[i]) for i in range(len(draws) - 1)]
+    labels = []
+    details = []
+
+    # DÜZ: en az d,d (3 aktivasyon). Daha uzunu otomatik yakalanır.
+    eq = _best_equal_run(gaps)
+    if eq:
+        run, i, j, d = eq
+        labels.append("DUZ")
+        details.append(f"DUZ:+{d} x{run}")
+
+    # YAKIN DÜZ: en az 3 gap, yayılım tolerans içinde; tam eşit değil.
+    if len(gaps) >= 3:
+        best_near = None
+        for w in range(min(6, len(gaps)), 2, -1):
+            for i in range(0, len(gaps) - w + 1):
+                seg = gaps[i:i + w]
+                if max(seg) - min(seg) <= near_tol and len(set(seg)) > 1:
+                    best_near = seg
+                    break
+            if best_near:
+                break
+        if best_near:
+            labels.append("YAKIN")
+            details.append("YAKIN:" + ",".join(f"+{x}" for x in best_near))
+
+    # ZİKZAK / ABAB
+    for i in range(len(gaps) - 3):
+        a, b, c, d = gaps[i:i + 4]
+        if a == c and b == d and a != b:
+            labels.append("ZIKZAK")
+            details.append(f"ZIKZAK:+{a},+{b},+{a},+{b}")
+            break
+
+    # ÇİFT RİTİM: A,A,B,A,A,B
+    for i in range(len(gaps) - 5):
+        s = gaps[i:i + 6]
+        if s[0] == s[1] == s[3] == s[4] and s[2] == s[5] and s[0] != s[2]:
+            labels.append("CIFT_RITIM")
+            details.append("CIFT:" + ",".join(f"+{x}" for x in s))
+            break
+
+    # 3'lü tekrar: ABCABC
+    for i in range(len(gaps) - 5):
+        s = gaps[i:i + 6]
+        if s[:3] == s[3:6] and len(set(s[:3])) > 1:
+            labels.append("TEKRAR_3")
+            details.append("TEKRAR3:" + ",".join(f"+{x}" for x in s))
+            break
+
+    # Katlanarak / azalarak: aynı tam sayı oranıyla en az 3 gap
+    for i in range(len(gaps) - 2):
+        a, b, c = gaps[i:i + 3]
+        if a > 0 and b > a and b % a == 0:
+            q = b // a
+            if q >= 2 and c == b * q:
+                labels.append("KATLANARAK")
+                details.append(f"KATLANARAK:x{q} ({a},{b},{c})")
+                break
+    for i in range(len(gaps) - 2):
+        a, b, c = gaps[i:i + 3]
+        if c > 0 and a > b and a % b == 0 and b % c == 0:
+            q1, q2 = a // b, b // c
+            if q1 == q2 and q1 >= 2:
+                labels.append("AZALARAK")
+                details.append(f"AZALARAK:/{q1} ({a},{b},{c})")
+                break
+
+    # Basamaklı: gap farkları sabit ve sıfır değil; en az 4 gap tercih, 3 gap da kabul.
+    for i in range(len(gaps) - 2):
+        a, b, c = gaps[i:i + 3]
+        step = b - a
+        if step != 0 and c - b == step and min(a, b, c) > 0:
+            # mümkünse 4. gap da aynı adımda mı?
+            seg = [a, b, c]
+            if i + 3 < len(gaps) and gaps[i + 3] - c == step and gaps[i + 3] > 0:
+                seg.append(gaps[i + 3])
+            labels.append("BASAMAKLI")
+            details.append("BASAMAK:" + ",".join(f"+{x}" for x in seg))
+            break
+
+    # Tekilleştir
+    labels = list(dict.fromkeys(labels))
+    details = list(dict.fromkeys(details))
+    return labels, details, gaps
+
+
+def time_character(idxs: List[int], df: pd.DataFrame) -> str:
+    if not idxs:
+        return ""
+    dts = [pd.Timestamp(df.iloc[i]["dt"]) for i in idxs]
+    mins = [x.minute for x in dts]
+    hrs = [x.hour for x in dts]
+    parts = []
+    if len(set(mins)) == 1:
+        parts.append(f"dakika=:{mins[0]:02d}")
+    else:
+        mc = Counter(mins).most_common(1)[0]
+        if mc[1] >= 3:
+            parts.append(f"dakika_baskin=:{mc[0]:02d}({mc[1]}/{len(mins)})")
+    if len(set(hrs)) == 1:
+        parts.append(f"saat={hrs[0]:02d}:xx")
+    else:
+        hc = Counter(hrs).most_common(1)[0]
+        if hc[1] >= 3:
+            parts.append(f"saat_baskin={hc[0]:02d}:xx({hc[1]}/{len(hrs)})")
+    return ";".join(parts)
+
+def method_for_size(k: int) -> str:
+    if k <= EXHAUSTIVE_MAX_K:
+        return "EXHAUSTIVE_80"
+    if DAY_RHYTHM_MIN_K <= k <= DAY_RHYTHM_MAX_K:
+        return "DAY_RHYTHM_TARGET"
+    return "PAIR_INTERSECTION"
+
+
+# --------------------------------------------------------------------------------------
+# SQLITE
+# --------------------------------------------------------------------------------------
+def _table_info(con, table: str):
+    try:
+        return con.execute(f"PRAGMA table_info({table})").fetchall()
+    except Exception:
+        return []
+
+
+def _table_columns(con, table: str):
+    return {str(r[1]) for r in _table_info(con, table)}
+
+
+def _pk_columns(con, table: str):
+    info = _table_info(con, table)
+    return [str(r[1]) for r in sorted((r for r in info if int(r[5]) > 0), key=lambda r: int(r[5]))]
+
+
+def _rebuild_progress_table(con):
+    """progress tablosunu ALTER/RENAME kullanmadan güvenli biçimde yeniden kurar."""
+    rows = []
+    info = _table_info(con, "progress")
+    if info:
+        cols = {str(r[1]) for r in info}
+        if {"data_hash", "size"}.issubset(cols):
+            def expr(name, default_sql):
+                return name if name in cols else default_sql
+            try:
+                rows = con.execute(
+                    f"""
+                    SELECT
+                        data_hash,
+                        size,
+                        {expr('method', "''")},
+                        {expr('cursor', '0')},
+                        {expr('done', '0')},
+                        {expr('scanned', '0')},
+                        {expr('rhythmic_found', '0')},
+                        {expr('updated_at', 'NULL')}
+                    FROM progress
+                    WHERE data_hash IS NOT NULL AND size IS NOT NULL
+                    """
+                ).fetchall()
+            except sqlite3.Error:
+                rows = []
+
+    con.execute("DROP TABLE IF EXISTS progress")
+    con.execute(
+        """
+        CREATE TABLE progress(
+            data_hash TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            method TEXT NOT NULL,
+            cursor INTEGER NOT NULL DEFAULT 0,
+            done INTEGER NOT NULL DEFAULT 0,
+            scanned INTEGER NOT NULL DEFAULT 0,
+            rhythmic_found INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT,
+            PRIMARY KEY(data_hash, size)
+        )
+        """
+    )
+    if rows:
+        con.executemany(
+            """INSERT OR REPLACE INTO progress(
+                   data_hash,size,method,cursor,done,scanned,rhythmic_found,updated_at
+               ) VALUES(?,?,?,?,?,?,?,?)""",
+            rows,
+        )
+
+def _rebuild_results_table(con):
+    """results tablosu uyumsuzsa temiz ve kesin şemayla yeniden kurar; ALTER/RENAME kullanmaz."""
+    con.execute("DROP TABLE IF EXISTS results")
+    con.execute(
+        """
+        CREATE TABLE results(
+            data_hash TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            family_mask TEXT NOT NULL,
+            family TEXT NOT NULL,
+            support INTEGER NOT NULL,
+            rhythm_types TEXT NOT NULL,
+            rhythm_detail TEXT NOT NULL,
+            time_character TEXT NOT NULL,
+            PRIMARY KEY(data_hash, size, family_mask)
+        )
+        """
+    )
+
+def _repair_schema(con):
+    """V1.8 kesin şemasını doğrular; uyumsuz tabloları RENAME kullanmadan yeniden kurar."""
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS meta(
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
+
+    expected_progress = {
+        "data_hash", "size", "method", "cursor", "done", "scanned", "rhythmic_found", "updated_at"
+    }
+    expected_results = {
+        "data_hash", "size", "family_mask", "family", "support",
+        "rhythm_types", "rhythm_detail", "time_character"
+    }
+
+    pcols = _table_columns(con, "progress")
+    ppk = _pk_columns(con, "progress")
+    if pcols != expected_progress or ppk != ["data_hash", "size"]:
+        _rebuild_progress_table(con)
+
+    rcols = _table_columns(con, "results")
+    rpk = _pk_columns(con, "results")
+    if rcols != expected_results or rpk != ["data_hash", "size", "family_mask"]:
+        _rebuild_results_table(con)
+
+    # Tablo hiç yoksa rebuild fonksiyonları zaten oluşturur; yine de garanti et.
+    if not _table_info(con, "progress"):
+        _rebuild_progress_table(con)
+    if not _table_info(con, "results"):
+        _rebuild_results_table(con)
+
+    con.commit()
+
+def _quarantine_sqlite_files(path: Path, tag: str = "uyumsuz"):
+    """Sorunlu SQLite dosyasını kenara alır; WAL/SHM kalıntılarını temizler."""
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if path.exists():
+        bad = path.with_name(f"{path.stem}.{tag}_{stamp}{path.suffix}")
+        try:
+            path.replace(bad)
+        except Exception:
+            try:
+                path.unlink()
+            except Exception:
+                pass
+    for extra in (Path(str(path) + "-wal"), Path(str(path) + "-shm"), Path(str(path) + "-journal")):
+        try:
+            extra.unlink()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+
+
+def _open_sqlite_connection(path: Path):
+    con = sqlite3.connect(path, timeout=30)
+    con.execute("PRAGMA busy_timeout=30000")
+    # V3.0: her Streamlit oturumu ayrı yerel DB kullanır; oturumlar birbirini kilitlemez.
+    try:
+        con.execute("PRAGMA journal_mode=MEMORY")
+    except sqlite3.Error:
+        pass
+    con.execute("PRAGMA synchronous=NORMAL")
+    con.execute("PRAGMA cache_size=-8192")
+    con.execute("PRAGMA temp_store=FILE")
+    con.execute("PRAGMA mmap_size=0")
+    return con
+
+
+def _schema_write_probe(con):
+    """progress tablosuna gerçek yazma yapılabildiğini yan etkisiz doğrular."""
+    probe_hash = "__schema_probe_v30__"
+    con.execute("SAVEPOINT v30_probe")
+    try:
+        con.execute(
+            """INSERT OR REPLACE INTO progress(
+                   data_hash,size,method,cursor,done,scanned,rhythmic_found,updated_at
+               ) VALUES(?,?,?,?,?,?,?,?)""",
+            (probe_hash, 2, "PROBE", 0, 0, 0, 0, datetime.now().isoformat(timespec="seconds")),
+        )
+        con.execute("DELETE FROM progress WHERE data_hash=?", (probe_hash,))
+        con.execute("ROLLBACK TO v30_probe")
+        con.execute("RELEASE v30_probe")
+    except Exception:
+        try:
+            con.execute("ROLLBACK TO v30_probe")
+            con.execute("RELEASE v30_probe")
+        except Exception:
+            pass
+        raise
+
+
+def db_connect():
+    """V3.0 yerel oturum DB'si; kalıcı otorite GitHub progress.json + boyut sonuçlarıdır."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    # Ön kontrol: fiziksel DB bozuksa taşı.
+    if DB_PATH.exists() and DB_PATH.stat().st_size > 0:
+        probe = None
+        try:
+            probe = sqlite3.connect(DB_PATH, timeout=10)
+            probe.execute("PRAGMA busy_timeout=10000")
+            ok = probe.execute("PRAGMA quick_check").fetchone()
+            if not ok or str(ok[0]).lower() != "ok":
+                raise sqlite3.DatabaseError("quick_check başarısız")
+        except sqlite3.Error:
+            if probe is not None:
+                try: probe.close()
+                except Exception: pass
+            _quarantine_sqlite_files(DB_PATH, "bozuk")
+        finally:
+            if probe is not None:
+                try: probe.close()
+                except Exception: pass
+
+    # Birinci deneme: mevcut V1.7 DB'yi şema onarımı + gerçek yazma probundan geçir.
+    con = None
+    try:
+        con = _open_sqlite_connection(DB_PATH)
+        _repair_schema(con)
+        con.commit()
+        _schema_write_probe(con)
+        con.commit()
+        return con
+    except sqlite3.Error:
+        if con is not None:
+            try:
+                con.rollback()
+            except Exception:
+                pass
+            try:
+                con.close()
+            except Exception:
+                pass
+
+    # Herhangi bir SQLite hatasında eski dosyaya tutunma: temiz V1.7 DB oluştur.
+    _quarantine_sqlite_files(DB_PATH, "sqlite_hata")
+    con = _open_sqlite_connection(DB_PATH)
+    _repair_schema(con)
+    con.commit()
+    _schema_write_probe(con)
+    con.commit()
+    return con
+
+
+def ensure_progress(con, data_hash: str, k: int, method: str):
+    sql = """INSERT OR IGNORE INTO progress(data_hash,size,method,cursor,done,scanned,rhythmic_found,updated_at)
+             VALUES(?,?,?,?,0,0,0,?)"""
+    args = (data_hash, k, method, 0, datetime.now().isoformat(timespec="seconds"))
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            con.execute(sql, args)
+            con.commit()
+            break
+        except sqlite3.OperationalError as e:
+            last_error = e
+            try: con.rollback()
+            except Exception: pass
+            if "locked" in str(e).lower() or "busy" in str(e).lower():
+                time.sleep(0.35 * (attempt + 1))
+                continue
+            break
+        except sqlite3.Error as e:
+            last_error = e
+            try: con.rollback()
+            except Exception: pass
+            break
+    else:
+        pass
+
+    row = None
+    try:
+        row = con.execute(
+            "SELECT method FROM progress WHERE data_hash=? AND size=?", (data_hash, k)
+        ).fetchone()
+    except sqlite3.Error:
+        row = None
+
+    if row is None:
+        try:
+            _rebuild_progress_table(con)
+            con.commit()
+            con.execute(sql, args)
+            con.commit()
+            row = (method,)
+        except sqlite3.Error:
+            try: con.rollback()
+            except Exception: pass
+            if last_error is not None:
+                raise last_error
+            raise
+
+    # V1.9'da 5/6 yöntemi değişti. Eski cursor yeni yönteme taşınamaz; sadece bu boyutun ilerlemesini sıfırla.
+    if row and str(row[0]) != method:
+        found_now = con.execute(
+            "SELECT COUNT(*) FROM results WHERE data_hash=? AND size=?", (data_hash, k)
+        ).fetchone()[0]
+        con.execute(
+            """UPDATE progress SET method=?,cursor=0,done=0,scanned=0,rhythmic_found=?,updated_at=?
+               WHERE data_hash=? AND size=?""",
+            (method, int(found_now), datetime.now().isoformat(timespec="seconds"), data_hash, k),
+        )
+        con.commit()
+
+def get_progress(con, data_hash: str, k: int):
+    r = con.execute(
+        "SELECT method,cursor,done,scanned,rhythmic_found FROM progress WHERE data_hash=? AND size=?",
+        (data_hash, k),
+    ).fetchone()
+    return r or ("", 0, 0, 0, 0)
+
+
+def update_progress(con, data_hash: str, k: int, cursor: int, done: int, scanned: int, found: int):
+    con.execute(
+        """UPDATE progress SET cursor=?,done=?,scanned=?,rhythmic_found=?,updated_at=?
+           WHERE data_hash=? AND size=?""",
+        (cursor, done, scanned, found, datetime.now().isoformat(timespec="seconds"), data_hash, k),
+    )
+    con.commit()
+
+
+def insert_result(con, data_hash: str, k: int, nums: Tuple[int, ...], occ_b: int,
+                  df: pd.DataFrame, near_tol: int = 1,
+                  extra_label: str = "", extra_detail: str = "") -> bool:
+    support = int(occ_b.bit_count())
+    if support < MIN_ACTIVATIONS:
+        return False
+    idxs = bits_to_indices(occ_b)
+    draw_list = [int(df.iloc[i]["draw"]) for i in idxs]
+    labels, details, gaps = classify_rhythms(draw_list, near_tol=near_tol)
+
+    # 5/6 gün-ritim taramasında aile doğrudan gün içi/saat sabitliğinden aday olduysa,
+    # global gap sınıfı çıkmasa bile hedef etiketiyle sakla.
+    if extra_label and extra_label not in labels:
+        labels.append(extra_label)
+    if extra_detail and extra_detail not in details:
+        details.append(extra_detail)
+    if not labels:
+        return False
+
+    fm = str(family_mask(nums))
+    cur = con.execute(
+        """INSERT OR IGNORE INTO results(
+               data_hash,size,family_mask,family,support,rhythm_types,rhythm_detail,time_character
+           ) VALUES(?,?,?,?,?,?,?,?)""",
+        (
+            data_hash, k, fm, family_text(nums), support,
+            ",".join(labels),
+            " | ".join(details),
+            time_character(idxs, df),
+        ),
+    )
+
+    # Aile daha önce bulunmuşsa yeni gün-ritim kanıtını kaybetme; ayrıntıyı bir kez ekle.
+    if cur.rowcount == 0 and extra_detail:
+        old = con.execute(
+            "SELECT rhythm_types,rhythm_detail FROM results WHERE data_hash=? AND size=? AND family_mask=?",
+            (data_hash, k, fm),
+        ).fetchone()
+        if old:
+            old_types = str(old[0] or "")
+            old_detail = str(old[1] or "")
+            new_types = old_types
+            if extra_label and extra_label not in old_types.split(","):
+                new_types = (old_types + "," + extra_label).strip(",")
+            new_detail = old_detail
+            if extra_detail not in old_detail:
+                new_detail = (old_detail + " | " + extra_detail).strip(" |")
+            con.execute(
+                "UPDATE results SET rhythm_types=?,rhythm_detail=? WHERE data_hash=? AND size=? AND family_mask=?",
+                (new_types, new_detail, data_hash, k, fm),
+            )
+    return cur.rowcount > 0
+
+
+# --------------------------------------------------------------------------------------
+# TARAMA — 2..4 TAM EVREN / 5..6 GÜN-RİTİM / 7..10 KESİŞİM ADAYI
+# --------------------------------------------------------------------------------------
+def scan_exhaustive_k(con, data_hash: str, k: int, num_bits: List[int], df: pd.DataFrame,
+                      near_tol: int, progress_box, status_box, stop_after_seconds: int = 0):
+    """1..80'den C(80,k) aileyi prefix-prefix tarar. RAM sabittir, prefix checkpointlidir."""
+    method, cursor, done, scanned, found = get_progress(con, data_hash, k)
+    if done:
+        return scanned, found, True
+
+    max_first = 80 - k + 1  # ilk sayı 1..max_first
+    start_first = max(1, int(cursor) if int(cursor) > 0 else 1)
+    started = time.time()
+    last_remote_save = time.time()
+    pending_commit = 0
+
+    # K için teorik toplam kombinasyon
+    total = math.comb(80, k)
+
+    for first in range(start_first, max_first + 1):
+        tail_iter = itertools.combinations(range(first + 1, 81), k - 1)
+        first_bits = num_bits[first]
+        for tail in tail_iter:
+            nums = (first,) + tail
+            b = first_bits
+            for n in tail:
+                b &= num_bits[n]
+                if not b:
+                    break
+            scanned += 1
+            if b and b.bit_count() >= MIN_ACTIVATIONS:
+                if insert_result(con, data_hash, k, nums, b, df, near_tol):
+                    found += 1
+                    pending_commit += 1
+                    if pending_commit >= 2000:
+                        con.commit()
+                        pending_commit = 0
+
+        # Prefix bitince yerel checkpoint kesinleşir.
+        next_first = first + 1
+        update_progress(con, data_hash, k, next_first, 0, scanned, found)
+        frac = min(1.0, scanned / max(1, total))
+        progress_box.progress(
+            frac,
+            text=f"{k}'li: {scanned:,}/{total:,} aile tarandı · ritimli {found:,}".replace(",", ".")
+        )
+        status_box.caption(
+            f"Yerel checkpoint: {k}'li ilk sayı {first} tamamlandı."
+        )
+
+        # Uzun taramada yaklaşık 10 dakikada bir kalıcı GitHub checkpoint.
+        now = time.time()
+        if now - last_remote_save >= REMOTE_AUTOSAVE_SECONDS:
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_ilk_{first}"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            last_remote_save = time.time()
+
+        if stop_after_seconds and time.time() - started >= stop_after_seconds:
+            con.commit()
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_sure_dilimi"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            return scanned, found, False
+
+    con.commit()
+    update_progress(con, data_hash, k, max_first + 1, 1, scanned, found)
+    progress_box.progress(
+        1.0, text=f"{k}'li tamamlandı · ritimli {found:,}".replace(",", ".")
+    )
+    ok_remote, remote_msg = save_checkpoint_to_github(
+        con, data_hash, f"{k}li_tamam"
+    )
+    if ok_remote:
+        status_box.success(remote_msg)
+    else:
+        status_box.warning(remote_msg)
+    return scanned, found, True
+
+
+def _row_mask(lows: np.ndarray, highs: np.ndarray, i: int) -> int:
+    return int(lows[i]) | (int(highs[i]) << 64)
+
+
+def _add_mask_candidates(candidate_map: dict, inter_mask: int, k: int,
+                         evidence: str, priority: int):
+    nums_root = mask_to_nums(inter_mask)
+    n = len(nums_root)
+    if n < k:
+        return 0
+    combo_count = math.comb(n, k)
+    if combo_count > MAX_DAY_COMBOS_PER_INTERSECTION:
+        return 0
+    added = 0
+    for nums in itertools.combinations(nums_root, k):
+        fm = family_mask(nums)
+        prev = candidate_map.get(fm)
+        if prev is None or priority > prev[2]:
+            candidate_map[fm] = (nums, evidence, priority)
+            if prev is None:
+                added += 1
+    return added
+
+
+def scan_day_rhythm_candidates_k(con, data_hash: str, k: int, num_bits: List[int],
+                                  df: pd.DataFrame, lows: np.ndarray, highs: np.ndarray,
+                                  near_tol: int, progress_box, status_box,
+                                  stop_after_seconds: int = 0):
+    """
+    5/6 için tam C(80,k) taraması yapmaz.
+    Her günü ayrı işler ve dört güçlü aday kaynağı kullanır:
+      1) aynı gün aynı saat içindeki tekrar kesişimleri,
+      2) aynı gün aynı dakika kolonundaki tekrarlar,
+      3) aynı gün çekiliş numarası farkı sabit 3 aktivasyon (A, A+d, A+2d),
+      4) farklı günlerde aynı HH:MM slotunda tekrar eden kesişimler.
+    Aday aile daha sonra BÜTÜN veri üzerinde tam aktivasyon ve ritim açısından doğrulanır.
+    """
+    method, cursor, done, scanned, found = get_progress(con, data_hash, k)
+    if done:
+        return scanned, found, True
+
+    dates = list(pd.Series(df["dt"].dt.date.unique()).sort_values())
+    start_day = max(0, int(cursor or 0))
+    started = time.time()
+    last_remote_save = time.time()
+    pending_commit = 0
+
+    # Farklı günlerde aynı HH:MM slotunu yakalamak için tek küçük indeks.
+    slot_groups = defaultdict(list)
+    for idx, ts in enumerate(df["dt"]):
+        slot_groups[pd.Timestamp(ts).strftime("%H:%M")].append(idx)
+
+    for day_pos in range(start_day, len(dates)):
+        day = dates[day_pos]
+        day_idxs = df.index[df["dt"].dt.date == day].tolist()
+        day_idxs.sort(key=lambda i: (int(df.iloc[i]["draw"]), pd.Timestamp(df.iloc[i]["dt"])))
+        if not day_idxs:
+            update_progress(con, data_hash, k, day_pos + 1, 0, scanned, found)
+            continue
+
+        candidate_map = {}
+
+        # 1) Aynı gün aynı saat içindeki ikili tekrarlar.
+        by_hour = defaultdict(list)
+        by_minute = defaultdict(list)
+        for i in day_idxs:
+            ts = pd.Timestamp(df.iloc[i]["dt"])
+            by_hour[ts.hour].append(i)
+            by_minute[ts.minute].append(i)
+
+        for hh, group in by_hour.items():
+            if len(group) < 2:
+                continue
+            for a, b in itertools.combinations(group, 2):
+                inter = _row_mask(lows, highs, a) & _row_mask(lows, highs, b)
+                if inter.bit_count() >= k:
+                    _add_mask_candidates(
+                        candidate_map, inter, k,
+                        f"GUN_RITIM:{day} AYNI_SAAT={hh:02d}:xx", 1,
+                    )
+
+        # 2) Aynı gün farklı saatlerde aynı dakika (:02/:07/... gibi) tekrarları.
+        for mm, group in by_minute.items():
+            if len(group) < 2:
+                continue
+            for a, b in itertools.combinations(group, 2):
+                inter = _row_mask(lows, highs, a) & _row_mask(lows, highs, b)
+                if inter.bit_count() >= k:
+                    _add_mask_candidates(
+                        candidate_map, inter, k,
+                        f"GUN_RITIM:{day} AYNI_DAKIKA=:{mm:02d}", 2,
+                    )
+
+        # 3) Gün içinde gerçek çekiliş numarası farkı sabit olan 3 aktivasyon.
+        draw_to_idx = {int(df.iloc[i]["draw"]): i for i in day_idxs}
+        draws = sorted(draw_to_idx)
+        for ai, d1 in enumerate(draws[:-2]):
+            i1 = draw_to_idx[d1]
+            for d2 in draws[ai + 1:-1]:
+                gap = d2 - d1
+                d3 = d2 + gap
+                i3 = draw_to_idx.get(d3)
+                if i3 is None:
+                    continue
+                i2 = draw_to_idx[d2]
+                inter = (_row_mask(lows, highs, i1) &
+                         _row_mask(lows, highs, i2) &
+                         _row_mask(lows, highs, i3))
+                if inter.bit_count() >= k:
+                    t1 = pd.Timestamp(df.iloc[i1]["dt"]).strftime("%H:%M")
+                    t2 = pd.Timestamp(df.iloc[i2]["dt"]).strftime("%H:%M")
+                    t3 = pd.Timestamp(df.iloc[i3]["dt"]).strftime("%H:%M")
+                    _add_mask_candidates(
+                        candidate_map, inter, k,
+                        f"GUN_RITIM:{day} SABIT_CEKILIS_FARKI=+{gap} ({t1},{t2},{t3})", 4,
+                    )
+
+        # 4) Önceki günlerle aynı tam saat/dakika slotunda tekrarlayan aileler.
+        for i in day_idxs:
+            ts = pd.Timestamp(df.iloc[i]["dt"])
+            slot = ts.strftime("%H:%M")
+            current_mask = _row_mask(lows, highs, i)
+            for j in slot_groups.get(slot, []):
+                if j >= i:
+                    break
+                if pd.Timestamp(df.iloc[j]["dt"]).date() == day:
+                    continue
+                inter = current_mask & _row_mask(lows, highs, j)
+                if inter.bit_count() >= k:
+                    prev_day = pd.Timestamp(df.iloc[j]["dt"]).date()
+                    _add_mask_candidates(
+                        candidate_map, inter, k,
+                        f"SAAT_RITIM:{slot} GUNLER_ARASI={prev_day}->{day}", 3,
+                    )
+
+        # Bu günün hedef adaylarını bütün 36 günlük veri üzerinde doğrula.
+        for fm, (nums, evidence, priority) in candidate_map.items():
+            scanned += 1
+            occ_b = occurrence_bits(nums, num_bits)
+            if occ_b.bit_count() < MIN_ACTIVATIONS:
+                continue
+            if insert_result(
+                con, data_hash, k, nums, occ_b, df, near_tol,
+                extra_label="GUN_RITIM_HEDEF", extra_detail=evidence,
+            ):
+                found += 1
+                pending_commit += 1
+                if pending_commit >= 1000:
+                    con.commit()
+                    pending_commit = 0
+
+        update_progress(con, data_hash, k, day_pos + 1, 0, scanned, found)
+        frac = (day_pos + 1) / max(1, len(dates))
+        progress_box.progress(
+            frac,
+            text=(f"{k}'li gün-ritim: {day_pos+1}/{len(dates)} gün · "
+                  f"hedef aday {scanned:,} · ritimli {found:,}").replace(",", "."),
+        )
+        status_box.caption(
+            f"{day} tamamlandı · bu gün {len(candidate_map):,} benzersiz hedef aday üretildi."
+            .replace(",", ".")
+        )
+
+        now = time.time()
+        if now - last_remote_save >= REMOTE_AUTOSAVE_SECONDS:
+            con.commit()
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_gun_{day_pos+1}"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            last_remote_save = time.time()
+
+        if stop_after_seconds and time.time() - started >= stop_after_seconds:
+            con.commit()
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_gun_ritim_sure_dilimi"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            return scanned, found, False
+
+        gc.collect()
+
+    con.commit()
+    update_progress(con, data_hash, k, len(dates), 1, scanned, found)
+    progress_box.progress(
+        1.0,
+        text=f"{k}'li gün-ritim tamamlandı · hedef ritimli {found:,}".replace(",", "."),
+    )
+    ok_remote, remote_msg = save_checkpoint_to_github(con, data_hash, f"{k}li_gun_ritim_tamam")
+    if ok_remote:
+        status_box.success(remote_msg)
+    else:
+        status_box.warning(remote_msg)
+    return scanned, found, True
+
+
+def scan_pair_candidates_k(con, data_hash: str, k: int, num_bits: List[int], df: pd.DataFrame,
+                           lows: np.ndarray, highs: np.ndarray, near_tol: int,
+                           progress_box, status_box, stop_after_seconds: int = 0):
+    """
+    Büyük ailelerde bütün C(80,k) evrenini üretmek yerine gerçek çekiliş çiftlerinin
+    ortak kümelerinden k'li aday üretir. Destek ve ritim daha sonra tam veri üzerinde doğrulanır.
+    """
+    method, cursor, done, scanned, found = get_progress(con, data_hash, k)
+    if done:
+        return scanned, found, True
+
+    n = len(df)
+    start_i = max(1, int(cursor) if int(cursor) > 0 else 1)
+    started = time.time()
+    last_remote_save = time.time()
+
+    existing = {
+        str(row[0]) for row in con.execute(
+            "SELECT family_mask FROM results WHERE data_hash=? AND size=?", (data_hash, k)
+        )
+    }
+    pending_commit = 0
+
+    for i in range(start_i, n):
+        inter_lo = np.bitwise_and(lows[:i], lows[i])
+        inter_hi = np.bitwise_and(highs[:i], highs[i])
+        counts = (
+            np.bitwise_count(inter_lo).astype(np.uint16)
+            + np.bitwise_count(inter_hi).astype(np.uint16)
+        )
+        js = np.flatnonzero(counts >= k)
+
+        for j in js.tolist():
+            m = int(inter_lo[j]) | (int(inter_hi[j]) << 64)
+            root_nums = mask_to_nums(m)
+            for nums in itertools.combinations(root_nums, k):
+                scanned += 1
+                fm = str(family_mask(nums))
+                if fm in existing:
+                    continue
+                b = occurrence_bits(nums, num_bits)
+                if b.bit_count() < MIN_ACTIVATIONS:
+                    continue
+                if insert_result(con, data_hash, k, nums, b, df, near_tol):
+                    existing.add(fm)
+                    found += 1
+                    pending_commit += 1
+                    if pending_commit >= 2000:
+                        con.commit()
+                        pending_commit = 0
+
+        update_progress(con, data_hash, k, i + 1, 0, scanned, found)
+        if i % 10 == 0 or i == n - 1:
+            frac = (i + 1) / max(1, n)
+            progress_box.progress(
+                frac,
+                text=f"{k}'li: çekiliş {i+1:,}/{n:,} · aday {scanned:,} · ritimli {found:,}".replace(",", ".")
+            )
+            status_box.caption(
+                f"Yerel checkpoint: {k}'li çekiliş indeks {i+1} seviyesinde."
+            )
+
+        now = time.time()
+        if now - last_remote_save >= REMOTE_AUTOSAVE_SECONDS:
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_index_{i+1}"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            last_remote_save = time.time()
+
+        if stop_after_seconds and time.time() - started >= stop_after_seconds:
+            con.commit()
+            ok_remote, remote_msg = save_checkpoint_to_github(
+                con, data_hash, f"{k}li_sure_dilimi"
+            )
+            if ok_remote:
+                status_box.success(remote_msg)
+            else:
+                status_box.warning(remote_msg)
+            return scanned, found, False
+
+    con.commit()
+    update_progress(con, data_hash, k, n, 1, scanned, found)
+    progress_box.progress(
+        1.0, text=f"{k}'li tamamlandı · ritimli {found:,}".replace(",", ".")
+    )
+    ok_remote, remote_msg = save_checkpoint_to_github(
+        con, data_hash, f"{k}li_tamam"
+    )
+    if ok_remote:
+        status_box.success(remote_msg)
+    else:
+        status_box.warning(remote_msg)
+    return scanned, found, True
+
+
+# --------------------------------------------------------------------------------------
+# RAPOR
+# --------------------------------------------------------------------------------------
+def _family_occurrence_detail(family: str, num_bits: List[int], df: pd.DataFrame):
+    nums = tuple(int(x) for x in str(family).split("-") if x)
+    if not nums:
+        return "", "", ""
+    b = occurrence_bits(nums, num_bits)
+    idxs = bits_to_indices(b)
+    draws = [int(df.iloc[i]["draw"]) for i in idxs]
+    times = [pd.Timestamp(df.iloc[i]["dt"]).strftime("%Y-%m-%d %H:%M") for i in idxs]
+    gaps = [draws[i+1] - draws[i] for i in range(len(draws)-1)]
+    return ",".join(map(str, draws)), " | ".join(times), ",".join(map(str, gaps))
+
+
+def build_report(con, data_hash: str, df: pd.DataFrame, source: str) -> str:
+    # Geri uyumluluk için var; büyük raporda write_report_txt_gz tercih edilir.
+    return "Büyük rapor düşük RAM için yalnız sıkıştırılmış çıktı olarak hazırlanır."
+
+def build_csv(con, data_hash: str) -> str:
+    return "size,family,support,rhythm_types,rhythm_detail,time_character\n"
+
+def _export_paths(data_hash: str):
+    short = data_hash[:12]
+    return (
+        Path(f"/tmp/HIZLI_ON_AILE_RITIM_TEK_RAPOR_{short}.txt.gz"),
+        Path(f"/tmp/HIZLI_ON_AILE_RITIM_SONUCLAR_{short}.csv.gz"),
+    )
+
+
+def write_report_txt_gz(con, data_hash: str, df: pd.DataFrame, source: str, path: Path):
+    """Kompakt DB'den ayrıntıları gerektiğinde hesaplayıp gzip'e akıtır."""
+    num_bits, _, _ = build_vertical_bits(df)
+    with gzip.open(path, "wt", encoding="utf-8", newline="") as f:
+        f.write("=" * 130 + "\nHIZLI ON — AİLE & RİTİM TEK RAPOR\n" + "=" * 130 + "\n")
+        f.write(f"APP: {APP_VERSION}\nKaynak: {source}\nVeri SHA256: {data_hash}\n")
+        f.write(f"Çekiliş: {len(df)}\nGün: {df['dt'].dt.date.nunique()}\n")
+        if not df.empty:
+            f.write(f"Aralık: {df.iloc[0]['dt']:%d.%m.%Y %H:%M} -> {df.iloc[-1]['dt']:%d.%m.%Y %H:%M}\n")
+        f.write("\nKİLİTLİ AKTİVASYON TANIMI: Ailenin bütün üyeleri AYNI TEK ÇEKİLİŞTE birlikte bulunmalıdır.\n\n")
+        for k in SIZES:
+            p = con.execute(
+                "SELECT method,cursor,done,scanned,rhythmic_found FROM progress WHERE data_hash=? AND size=?",
+                (data_hash, k),
+            ).fetchone()
+            if p:
+                f.write(f"{k}'li durum | yöntem={p[0]} | tamam={p[2]} | taranan_aday={p[3]} | ritimli_aile={p[4]}\n")
+        f.write("\n")
+        for k in SIZES:
+            f.write("#" * 130 + "\n")
+            count = con.execute(
+                "SELECT COUNT(*) FROM results WHERE data_hash=? AND size=?", (data_hash, k)
+            ).fetchone()[0]
+            f.write(f"{k}'Lİ AİLELER — RİTİMLİ TAM AKTİVASYONLAR | adet={count}\n")
+            f.write("#" * 130 + "\n")
+            cur = con.execute(
+                """SELECT family,support,rhythm_types,rhythm_detail,time_character
+                   FROM results WHERE data_hash=? AND size=? ORDER BY support DESC, family ASC""",
+                (data_hash, k),
+            )
+            for family, support, rtypes, rdetail, tchar in cur:
+                draws, times, gaps = _family_occurrence_detail(family, num_bits, df)
+                f.write(f"{family} | tam_aktivasyon={support} | ritim={rtypes} | {rdetail}\n")
+                f.write(f"  çekilişler: {draws}\n  aralıklar: {gaps}\n  zamanlar: {times}\n")
+                if tchar:
+                    f.write(f"  zaman_karakteri: {tchar}\n")
+            f.write("\n")
+
+
+def write_results_csv_gz(con, data_hash: str, df: pd.DataFrame, path: Path):
+    """CSV ayrıntılarını kompakt DB'den gerektiğinde üretir; DB'yi şişirmez."""
+    num_bits, _, _ = build_vertical_bits(df)
+    with gzip.open(path, "wt", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["size", "family", "support", "draws", "times", "gaps", "rhythm_types", "rhythm_detail", "time_character"])
+        cur = con.execute(
+            """SELECT size,family,support,rhythm_types,rhythm_detail,time_character
+               FROM results WHERE data_hash=? ORDER BY size,support DESC,family""",
+            (data_hash,),
+        )
+        for size, family, support, rtypes, rdetail, tchar in cur:
+            draws, times, gaps = _family_occurrence_detail(family, num_bits, df)
+            w.writerow([size, family, support, draws, times, gaps, rtypes, rdetail, tchar])
+
+
+# --------------------------------------------------------------------------------------
+# UI
+# --------------------------------------------------------------------------------------
+st.title("🧬 Hızlı On — Aile & Ritim Laboratuvarı")
+st.caption(
+    "Tek çekilişte tam aktivasyon • 2'li→10'lu sırayla • çekiliş mesafesi ritimleri • "
+    "düşük RAM V3.0 • SABİT kompakt SQLite + 2 dk GitHub checkpoint • 2–4 tam tarama • 5–6 gün/saat ritim hedefi • 7–10 kesişim adayı"
+)
+
+with st.expander("Kilitli kurallar", expanded=False):
+    st.write(
+        "Bir 6'lı aile ancak 6 sayının tamamı aynı çekilişin REAL20'sinde birlikteyse 6/6 aktive sayılır. "
+        "Aynı kural 2'li–10'lu bütün aileler için geçerlidir. Saat içinde parça parça tamamlanma kabul edilmez."
+    )
+    st.write(
+        "Ritim hesabı tam aktivasyon çekiliş numaralarının farklarından yapılır: düz, yakın, zikzak, "
+        "katlanarak, azalarak, basamaklı, ABAB/çift ve ABCABC tekrar desenleri."
+    )
+
+uploaded = st.file_uploader("İstersen veri.txt yükle (boş bırakırsan GitHub/yerel veri.txt otomatik okunur)", type=["txt"])
+text, source = load_data_text(uploaded)
+
+if not text:
+    st.error(source)
+    st.stop()
+
+df = parse_draws(text)
+if df.empty:
+    st.error("veri.txt bulundu ama geçerli 20 sayılık çekiliş satırı okunamadı.")
+    st.stop()
+
+df["dt"] = pd.to_datetime(df["dt"])
+data_hash = sha256_text(text)
+
+# Veri kalite özeti
+by_day = df.groupby(df["dt"].dt.date).size()
+full217 = int((by_day == 217).sum())
+partial = int((by_day != 217).sum())
+
+a,b,c,d = st.columns(4)
+a.metric("Çekiliş", f"{len(df):,}".replace(",", "."))
+b.metric("Gün", int(df["dt"].dt.date.nunique()))
+c.metric("217 tam gün", full217)
+d.metric("Eksik/farklı gün", partial)
+st.success(f"Veri tanındı — {source}")
+st.caption(f"İlk: #{int(df.iloc[0]['draw'])} {df.iloc[0]['dt']:%d.%m.%Y %H:%M} · Son: #{int(df.iloc[-1]['draw'])} {df.iloc[-1]['dt']:%d.%m.%Y %H:%M}")
+
+# Aynı draw no sırasındaki boşluk bilgisi
+if len(df) > 1:
+    draw_diffs = np.diff(df["draw"].to_numpy(dtype=np.int64))
+    missing_steps = int(np.sum(np.maximum(draw_diffs - 1, 0)))
+else:
+    missing_steps = 0
+if missing_steps:
+    st.warning(f"Çekiliş numarası sırasındaki toplam boşluk: {missing_steps}. Ritim hesabında gerçek çekiliş numarası farkı kullanılacak.")
+
+near_tol = st.number_input("Yakın ritim toleransı (çekiliş farkı)", min_value=0, max_value=10, value=1, step=1)
+run_slice = st.selectbox(
+    "Tek basışta çalışma süresi",
+    ["Tamamlanana kadar", "5 dakika", "10 dakika", "20 dakika"],
+    index=2,
+    help="Uzun taramada süre sınırı seçersen checkpoint kaydedilir; aynı düğmeye tekrar basınca devam eder.",
+)
+limit_map = {"Tamamlanana kadar": 0, "5 dakika": 300, "10 dakika": 600, "20 dakika": 1200}
+stop_after = limit_map[run_slice]
+
+# GitHub bağlantısını ve varsa kalıcı checkpoint'i önce kontrol et.
+auth_ok, auth_msg = github_auth_status()
+if auth_ok:
+    st.success(f"🔐 {auth_msg}")
+else:
+    st.warning(f"⚠️ {auth_msg}")
+
+restored, restore_msg = restore_checkpoint_from_github(data_hash)
+if restored:
+    st.success(f"♻️ {restore_msg}")
+elif "Henüz GitHub" not in restore_msg and "Yerel checkpoint GitHub kaydından geri değil" not in restore_msg:
+    st.caption(f"Checkpoint: {restore_msg}")
+else:
+    st.caption(f"Checkpoint: {restore_msg}")
+
+con = db_connect()
+try:
+    st.caption(f"Yerel kompakt DB: {DB_PATH.stat().st_size/1024/1024:.1f} MB · sabit dosya: {DB_PATH.name}")
+except Exception:
+    pass
+local_state = _db_progress_score(DB_PATH, data_hash)
+st.caption(
+    f"Yerel durum: tamamlanan boyut={local_state[0]} · taranan={max(0,local_state[1]):,} · "
+    f"sonuç={max(0,local_state[2]):,}".replace(",", ".")
+)
+# Farklı veri hashlerinde eski sonuçlar kalabilir ama karışmaz.
+for k in SIZES:
+    method = method_for_size(k)
+    ensure_progress(con, data_hash, k, method)
+
+with st.expander("♻️ Eski CSV sonucunu geri yükle", expanded=False):
+    st.caption(
+        "Eski uygulamadan indirdiğin HIZLI_ON_AILE_RITIM_SONUCLAR.csv veya .csv.gz dosyasını "
+        "buradan içe aktarabilirsin. 2'li ve 3'lü sonuçlar tamamlandı olarak geri kurulur."
+    )
+    backup_upload = st.file_uploader(
+        "CSV / CSV.GZ yedeği",
+        type=["csv", "gz"],
+        key="result_backup_upload",
+    )
+    if st.button("📥 YEDEĞİ İÇE AKTAR VE GITHUB'A KAYDET", use_container_width=True):
+        ok_import, import_msg = import_result_backup(backup_upload, con, data_hash)
+        if ok_import:
+            ok_remote, remote_msg = save_checkpoint_to_github(con, data_hash, "csv_yedek_aktarimi")
+            st.success(import_msg)
+            if ok_remote:
+                st.success(remote_msg)
+            else:
+                st.warning(remote_msg)
+            st.rerun()
+        else:
+            st.warning(import_msg)
+
+# Durum tablosu
+prog_rows = []
+for k in SIZES:
+    method, cursor, done, scanned, found = get_progress(con, data_hash, k)
+    prog_rows.append({
+        "Aile": f"{k}'li",
+        "Yöntem": method,
+        "Durum": "TAMAM" if done else ("DEVAM" if scanned else "BEKLİYOR"),
+        "Taranan": int(scanned),
+        "Ritimli": int(found),
+    })
+st.dataframe(pd.DataFrame(prog_rows), use_container_width=True, hide_index=True)
+
+col1, col2 = st.columns([2,1])
+start = col1.button("▶️ ANALİZİ BAŞLAT / KALDIĞI YERDEN DEVAM ET", type="primary", use_container_width=True)
+reset = col2.button("🧹 Bu veri için sonucu sıfırla", use_container_width=True)
+
+if reset:
+    con.execute("DELETE FROM results WHERE data_hash=?", (data_hash,))
+    con.execute("DELETE FROM progress WHERE data_hash=?", (data_hash,))
+    con.commit()
+    for k in SIZES:
+        method = method_for_size(k)
+        ensure_progress(con, data_hash, k, method)
+    ok_remote, remote_msg = save_checkpoint_to_github(con, data_hash, "sifirlama")
+    st.success("Bu veri için yerel checkpoint ve sonuçlar sıfırlandı.")
+    if ok_remote:
+        st.success("GitHub kalıcı checkpoint de sıfırlandı.")
+    else:
+        st.warning(remote_msg)
+    st.rerun()
+
+if start:
+    num_bits, lows, highs = build_vertical_bits(df)
+    global_started = time.time()
+    overall = st.progress(0.0, text="Hazırlanıyor...")
+    status = st.empty()
+    size_box = st.empty()
+
+    completed_before = sum(int(get_progress(con, data_hash, k)[2]) for k in SIZES)
+
+    for pos, k in enumerate(SIZES):
+        method, cursor, done, scanned, found = get_progress(con, data_hash, k)
+        if done:
+            overall.progress((pos + 1) / len(SIZES), text=f"{k}'li zaten tamam — sonraki boyuta geçiliyor")
+            continue
+
+        size_box.markdown(f"### Şimdi {k}'li aileler işleniyor")
+        pbox = st.progress(0.0)
+
+        # toplam çalışma süresi seçilmişse kalan süreyi aktar
+        remaining = 0
+        if stop_after:
+            elapsed = time.time() - global_started
+            remaining = max(1, int(stop_after - elapsed))
+            if remaining <= 1:
+                status.info("Süre dilimi tamamlandı. Checkpoint kaydedildi; tekrar DEVAM ET'e bas.")
+                break
+
+        if k <= EXHAUSTIVE_MAX_K:
+            scanned, found, done_now = scan_exhaustive_k(
+                con, data_hash, k, num_bits, df, int(near_tol), pbox, status, remaining
+            )
+        elif DAY_RHYTHM_MIN_K <= k <= DAY_RHYTHM_MAX_K:
+            scanned, found, done_now = scan_day_rhythm_candidates_k(
+                con, data_hash, k, num_bits, df, lows, highs,
+                int(near_tol), pbox, status, remaining
+            )
+        else:
+            scanned, found, done_now = scan_pair_candidates_k(
+                con, data_hash, k, num_bits, df, lows, highs, int(near_tol), pbox, status, remaining
+            )
+
+        # Boyut değişiminde geçici NumPy/Python nesnelerini mümkün olduğunca bırak.
+        gc.collect()
+        overall.progress((pos + (1 if done_now else 0)) / len(SIZES), text=f"{k}'li {'tamam' if done_now else 'checkpoint'}")
+        if not done_now:
+            status.info("Bu çalışma dilimi bitti. Sonuç kaydedildi; aynı düğmeye tekrar basınca kaldığı yerden devam eder.")
+            break
+
+    all_done = all(int(get_progress(con, data_hash, k)[2]) == 1 for k in SIZES)
+    if all_done:
+        overall.progress(1.0, text="2'liden 10'luya bütün taramalar tamamlandı.")
+        status.success("Analiz tamamlandı. Tek rapor aşağıda hazır.")
+    else:
+        status.warning("Tarama henüz tamamlanmadı; checkpoint kaydedildi.")
+
+st.divider()
+st.subheader("🎯 5'li / 6'lı gün-saat ritim hedefleri")
+st.caption("Bunlar tam kombinasyon taraması değil; gün içinde sabit ritim veya aynı saat/dakika tekrarı gösterip bütün veri üzerinde doğrulanan ailelerdir.")
+try:
+    target_df = pd.read_sql_query(
+        """SELECT size AS Boyut, family AS Aile, support AS Aktivasyon,
+                  rhythm_types AS Ritim, rhythm_detail AS Kanit, time_character AS Zaman
+           FROM results
+           WHERE data_hash=? AND size IN (5,6) AND rhythm_types LIKE '%GUN_RITIM_HEDEF%'
+           ORDER BY size, support DESC, family
+           LIMIT 200""",
+        con, params=(data_hash,),
+    )
+    if target_df.empty:
+        st.info("Henüz doğrulanmış 5'li/6'lı gün-ritim hedefi yok; tarama ilerledikçe burada görünecek.")
+    else:
+        st.dataframe(target_df, use_container_width=True, hide_index=True)
+except Exception:
+    pass
+
+# Büyük TXT/CSV'yi her Streamlit rerun'ında RAM'e alma. Yalnız kullanıcı isterse diske akıt.
+st.divider()
+st.subheader("📦 Tek çıktı — düşük RAM")
+st.caption("Büyük raporlar otomatik hazırlanmaz. 'Hazırla' dediğinde SQLite'dan satır satır .gz dosyasına yazılır; RAM şişmez.")
+export_txt_path, export_csv_path = _export_paths(data_hash)
+prepare_exports = st.button("📦 SIKIŞTIRILMIŞ TXT + CSV HAZIRLA", use_container_width=True)
+if prepare_exports:
+    with st.spinner("Çıktılar diske yazılıyor..."):
+        write_report_txt_gz(con, data_hash, df, source, export_txt_path)
+        write_results_csv_gz(con, data_hash, df, export_csv_path)
+        gc.collect()
+    st.session_state["exports_ready_hash"] = data_hash
+    st.success("Çıktılar hazır. Aşağıdaki düğmelerden indirebilirsin.")
+
+if st.session_state.get("exports_ready_hash") == data_hash and export_txt_path.exists() and export_csv_path.exists():
+    rc1, rc2 = st.columns(2)
+    with export_txt_path.open("rb") as f_txt:
+        rc1.download_button(
+            "⬇️ TXT.GZ İNDİR",
+            data=f_txt,
+            file_name="HIZLI_ON_AILE_RITIM_TEK_RAPOR.txt.gz",
+            mime="application/gzip",
+            use_container_width=True,
+        )
+    with export_csv_path.open("rb") as f_csv:
+        rc2.download_button(
+            "⬇️ CSV.GZ İNDİR",
+            data=f_csv,
+            file_name="HIZLI_ON_AILE_RITIM_SONUCLAR.csv.gz",
+            mime="application/gzip",
+            use_container_width=True,
+        )
+
+# Ekranı şişirmeden yalnız örnek sonuç göster.
+st.subheader("Sonuç önizleme")
+preview = pd.read_sql_query(
+    """SELECT size AS Boyut, family AS Aile, support AS Aktivasyon,
+              rhythm_types AS Ritim, rhythm_detail AS Detay, time_character AS Zaman
+       FROM results WHERE data_hash=? ORDER BY size, support DESC, family LIMIT 200""",
+    con,
+    params=(data_hash,),
+)
+if preview.empty:
+    st.info("Henüz ritimli aile kaydı yok. Analizi başlat.")
+else:
+    st.dataframe(preview, use_container_width=True, hide_index=True, height=520)
+    st.caption("Ekranda ilk 200 kayıt gösterilir; tam sonuç tek TXT/CSV dosyasındadır.")
+
+st.caption(
+    "Teknik not: 2–4 boyutlarında 1–80 aile evreni tam taranır. "
+    "5–6 boyutlarında gün gün; aynı saat, aynı dakika, gün içi sabit çekiliş farkı ve günler arası aynı saat slotundan hedef aday çıkarılır. "
+    "7–10 boyutlarında gerçek çekiliş çiftlerinin ortak kümelerinden aday çıkarılır. "
+    "Kalıcı checkpoint tek büyük dosya yerine 4 MB kompakt SQLite parçaları halinde app-state dalına yazılır. "
+    "Büyük TXT/CSV yalnız istek üzerine diske akıtılır; her ekran yenilemede RAM'e yüklenmez."
+)
