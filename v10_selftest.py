@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 src=open("v10_app.py",encoding="utf-8").read()
 ast.parse(src)
 names={"pos_of","moment","normalize_numbers","make_draw","parse_draw_line",
-       "parse_history","load_family_csv","train_profiles","active_signals",
+       "parse_pasted_draws","parse_history","load_family_csv","train_profiles","active_signals",
        "daily_chains","make_ticket","result_rows"}
 tree=ast.parse(src)
 nodes=[]
@@ -75,4 +75,21 @@ assert any(r["Hedef gun"]=="2026-09-14" and r["Ardisik gun"]>=3 for r in days),d
 assert env["parse_history"]("123;12.10.2026 00:02;"+",".join(map(str,range(1,21))))[0][0]["pos"]==1
 csv_text="Aile;Boyut;Aktif_Gun\n01-02-03-04-05;5;3\n"
 assert len(env["load_family_csv"](csv_text))==1
-print("PASS: V10 syntax and 217 time slots, family targets, coupons, results, day chains")
+
+# Official pasted user example: accept heading + date/time + 20 vertical numbers.
+paste="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n23\n30\n31\n32\n35\n39\n41\n43\n47\n54\n55\n57\n59\n62\n74\n75"
+found,issues=env["parse_pasted_draws"](paste)
+assert len(found)==1 and not issues,(found,issues)
+assert found[0]["no"]==61629 and found[0]["pos"]==1 and len(found[0]["nums"])==20
+
+for k in range(5,11):
+    fake_signal={"label":"-".join(f"{n:02d}" for n in range(1,k+1)),
+                 "moment":m("2026-10-12",15).isoformat(timespec="minutes")}
+    k_ticket=env["make_ticket"](fake_signal,past+[new],size=k)
+    assert len(k_ticket)==k and set(range(1,k+1)).issubset(k_ticket),k_ticket
+    fake_record={"day":"2026-10-12","pos":15,"time":"00:??","family":fake_signal["label"],
+                 "numbers":k_ticket,"kind":"test"}
+    record=env["result_rows"]([fake_record],past+[new,make("2026-10-12",15,116)])[0]
+    assert record["Sonuc"]==f"{k}/{k}" and record["Boyut"]==k,record
+
+print("PASS: V10 pasted official #61629, 5-10 sized coupons, isabet, target times and chains")
