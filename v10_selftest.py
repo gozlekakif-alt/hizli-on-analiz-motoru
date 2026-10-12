@@ -9,9 +9,10 @@ from collections import Counter, defaultdict
 
 src=open("v10_app.py",encoding="utf-8").read()
 ast.parse(src)
-names={"pos_of","moment","normalize_numbers","make_draw","parse_draw_line",
-       "parse_pasted_draws","parse_history","load_family_csv","train_profiles","active_signals",
-       "daily_chains","make_ticket","result_rows"}
+names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_template",
+       "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","parse_history",
+       "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
+       "active_signals","daily_chains","make_ticket","result_rows"}
 tree=ast.parse(src)
 nodes=[]
 for node in tree.body:
@@ -92,4 +93,76 @@ for k in range(5,11):
     record=env["result_rows"]([fake_record],past+[new,make("2026-10-12",15,116)])[0]
     assert record["Sonuc"]==f"{k}/{k}" and record["Boyut"]==k,record
 
-print("PASS: V10 pasted official #61629, 5-10 sized coupons, isabet, target times and chains")
+
+# Calendar: 01:02 leads to 07:02 on the SAME day; 23:57 leads to 00:02 next day.
+x=env["next_recorded_slot"]([make("2026-10-11",217,61628)])
+assert x["no"]==61629 and x["date"]=="2026-10-12" and x["time"]=="00:02",x
+x=env["next_recorded_slot"]([make("2026-10-12",13,61641)])
+assert x["date"]=="2026-10-12" and x["time"]=="07:02",x
+template=env["next_paste_template"]([make("2026-10-11",217,61628)])
+assert "Çekiliş no:61629" in template and "12.10.2026-00:02" in template,template
+
+# Preserve every old line and reject both same-number and same-slot mismatches.
+raw=("===== preserved V9 header =====\n"
+     +"61628;11.10.2026 23:57;"+",".join(map(str,range(1,21)))+"\n")
+new_record=make("2026-10-12",1,61629)
+merged,count,duplicates=env["merge_draws_into_txt"](raw,[new_record])
+assert merged.startswith(raw) and count==1 and duplicates==0, (count,duplicates)
+assert merged.endswith("61629;12.10.2026 00:02;"+",".join(map(str,range(1,21)))+"\n")
+again,count,duplicates=env["merge_draws_into_txt"](merged,[new_record])
+assert again==merged and count==0 and duplicates==1
+different=dict(new_record)
+different["nums"]=list(range(2,22))
+try:
+    env["merge_draws_into_txt"](merged,[different])
+    raise AssertionError("conflicting draw not rejected")
+except ValueError:
+    pass
+different_slot=dict(new_record)
+different_slot["no"]=61630
+try:
+    env["merge_draws_into_txt"](merged,[different_slot])
+    raise AssertionError("conflicting slot not rejected")
+except ValueError:
+    pass
+
+# Mock large GitHub contents API: >1MB reports no inline content; the blob endpoint is required.
+import base64
+from types import SimpleNamespace
+class FakeResponse:
+    def __init__(self,data,status=200):
+        self._data=data
+        self.status_code=status
+    def json(self):
+        return self._data
+    def raise_for_status(self):
+        if not 200<=self.status_code<300:
+            raise AssertionError("HTTP "+str(self.status_code))
+
+class FakeRequests:
+    def __init__(self,base_text):
+        self.base_text=base_text
+        self.last_put=None
+        self.blob_called=False
+    def get(self,url,**kwargs):
+        if "/git/blobs/" in url:
+            self.blob_called=True
+            return FakeResponse({"encoding":"base64",
+                      "content":base64.b64encode(self.base_text.encode("utf-8")).decode("ascii")})
+        return FakeResponse({"sha":"example_sha","encoding":"none","content":""})
+    def put(self,url,**kwargs):
+        self.last_put=kwargs["json"]
+        return FakeResponse({"content":{"sha":"new-sha"}})
+
+fake=FakeRequests(raw)
+env["requests"]=fake
+env["secret_token"]=lambda:"test-token-never-commit"
+env["secret_admin_pin"]=lambda:"test-pin"
+env["st"]=SimpleNamespace(session_state={"v10_admin_unlocked":True})
+env["github_text"]=SimpleNamespace(clear=lambda:None)
+ok,added,message=env["persist_to_github_veri_txt"]([new_record])
+assert ok and added==1 and fake.blob_called,(ok,added,message)
+assert base64.b64decode(fake.last_put["content"]).decode("utf-8")==merged
+assert fake.last_put["sha"]=="example_sha"
+
+print("PASS: V10 paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
