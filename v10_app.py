@@ -523,6 +523,9 @@ families=load_family_csv(family_text) if family_text else {}
 if not families:
     st.error("Aile CSV bulunamadi; hedef tahmini icin v10_aileler.csv gerekli.")
 draws=all_draws(historical,st.session_state.v10_live)
+# The existing session may contain records not yet written to the main GitHub TXT.
+existing_main_nos={d["no"] for d in historical}
+pending_draws=[d for d in st.session_state.v10_live if d["no"] not in existing_main_nos]
 today=now_tr().date()
 last_day=max([date.fromisoformat(x["day"]) for x in draws],default=today)
 min_day=min([date.fromisoformat(x["day"]) for x in draws],default=today)
@@ -531,6 +534,10 @@ a,b,c=st.columns(3)
 a.metric("Geçmiş çekiliş",len(historical))
 b.metric("Aile havuzu",len(families))
 c.metric("Canlı eklenen",len(st.session_state.v10_live))
+if pending_draws:
+    st.warning(f"⚠️ {len(pending_draws)} çekiliş henüz GitHub ana veri.txt dosyasında değil. Kayıp olmaması için 💾 Yedek & Kayıt bölümünden JSON indir; GitHub için yönetici PIN ile kalıcı kaydet.")
+else:
+    st.caption("GitHub veri.txt'ye eklenmemiş oturum çekilişi görünmüyor.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yedek & Kayıt"])
@@ -538,8 +545,11 @@ tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yed
 with tabs[0]:
     st.subheader("📋 Çekiliş sonucunu aynen yapıştır")
     st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
-    if st.session_state.pop("v10_clear_paste", False):
-        st.session_state["v10_pasted_draw"] = ""
+    next_info=next_recorded_slot(draws)
+    if next_info:
+        st.info(f"📅 Sıradaki kayıt: Çekiliş #{next_info['no']} • {next_info['dt']:%d.%m.%Y} • saat {next_info['time']}")
+    if st.session_state.pop("v10_clear_paste", False) or "v10_pasted_draw" not in st.session_state:
+        st.session_state["v10_pasted_draw"] = next_paste_template(draws)
     pasted=st.text_area("Çekiliş sonuç metni",height=225,key="v10_pasted_draw",
          placeholder="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n...\n75")
     if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
@@ -555,7 +565,15 @@ with tabs[0]:
             known_ids.add(d["no"])
             known_slots.add((d["day"],d["pos"]))
             added+=1
-        saved=auto_save() if added else ""
+        if added:
+            ok,pushed,push_message=persist_to_github_veri_txt(st.session_state.v10_live)
+            if ok:
+                backup_msg=auto_save()
+                saved=push_message+" "+backup_msg
+            else:
+                saved=push_message+" Veriler şimdilik bu oturumda; JSON yedeğini indir."
+        else:
+            saved=""
         st.session_state.v10_last_paste={"added":added,"repeats":repeats,"issues":issues[:5],"saved":saved}
         if added:
             st.session_state["v10_clear_paste"] = True
@@ -566,7 +584,12 @@ with tabs[0]:
         if p["issues"]:
             st.warning("Kontrol: " + " | ".join(p["issues"]))
         if p["saved"]:
-            st.caption(p["saved"])
+            st.info(p["saved"])
+    st.download_button("⬇️ Çekilişlerimin JSON yedeğini indir",
+                       json.dumps({"live":st.session_state.v10_live,
+                                   "tickets":st.session_state.v10_tickets},ensure_ascii=False,indent=2),
+                       file_name="V10_CANLI_KAYIT.json",mime="application/json",
+                       key="v10_quick_backup")
     with st.expander("Tek tek alan doldur (isteğe bağlı)",expanded=False):
         default_no=max([d["no"] for d in draws],default=0)+1
         with st.form("manual_v10",clear_on_submit=False):
@@ -586,7 +609,10 @@ with tabs[0]:
                        (d["day"]==new["day"] and d["pos"]==new["pos"]) for d in draws):
                     raise ValueError("Ayni numara veya saatli cekilis zaten mevcut.")
                 st.session_state.v10_live.append(new)
-                st.success(f"#{new['no']} eklendi. "+auto_save())
+                ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
+                st.success(f"#{new['no']} eklendi. "+message)
+                if ok:
+                    st.caption(auto_save())
             except Exception as exc:
                 st.error("Eklenemedi: "+str(exc))
 
@@ -609,7 +635,13 @@ with tabs[0]:
                 added+=1
             except Exception:
                 invalid+=1
-        st.success(f"{added} cekilis eklendi; {duplicates} tekrar, {invalid} hatali satir. "+auto_save())
+        if added:
+            ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
+        else:
+            ok,message=False,"Yeni çekiliş yok."
+        st.success(f"{added} çekiliş eklendi; {duplicates} tekrar, {invalid} hatalı satır. "+message)
+        if ok:
+            st.caption(auto_save())
     if st.session_state.v10_live:
         st.write("**Son eklenen çekilişler**")
         st.dataframe([{"No":d["no"],"Tarih":d["day"],"Saat":d["dt"][11:16],
@@ -770,7 +802,20 @@ with tabs[3]:
                     st.error("PIN yanlis.")
     elif tok:
         st.warning("GitHub'a guvenli yazma kapali. Secrets'e V10_ADMIN_PIN ekleyin.")
-    st.caption("ChatGPT'ye GitHub baglamak Streamlit'e token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN olmali.")
+    st.caption("ChatGPT'ye GitHub bağlamak Streamlit'e token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN olmalı.")
+    st.write("**Ana veri.txt kalıcı kayıt**")
+    if pending_draws:
+        st.warning(f"{len(pending_draws)} yeni çekiliş henüz veri.txt içinde değil.")
+    else:
+        st.success("Bu oturumun tüm çekilişleri ana veri.txt içinde veya zaten kayıtlı.")
+    if st.button("💾 Eklenmemiş çekilişleri GitHub veri.txt'ye kaydet"):
+        ok,pushed,message=persist_to_github_veri_txt(st.session_state.v10_live)
+        st.session_state["v10_last_github_push"]=message
+        if ok:
+            auto_save()
+        st.rerun()
+    if st.session_state.get("v10_last_github_push"):
+        st.info(st.session_state["v10_last_github_push"])
     payload={"live":st.session_state.v10_live,"tickets":st.session_state.v10_tickets}
     st.download_button("⬇️ Canli cekilis ve kupon JSON yedegi",
                        json.dumps(payload,ensure_ascii=False,indent=2),
