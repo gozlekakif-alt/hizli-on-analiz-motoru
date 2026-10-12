@@ -4,6 +4,7 @@ V9 app.py ve veri.txt dosyalarini degistirmez.
 Python 3.10+; streamlit, requests.
 """
 import base64
+import hmac
 import csv
 import io
 import json
@@ -286,10 +287,20 @@ def validate_saved(value):
     if not isinstance(tickets,list):raise ValueError("Kuponlar listesi gecersiz")
     return {"live":live,"tickets":tickets}
 
+def secret_admin_pin():
+    try:
+        return str(st.secrets.get("V10_ADMIN_PIN", ""))
+    except Exception:
+        return ""
+
 def auto_save():
     tok=secret_token()
     if not tok:
         return "GitHub token ayarli degil; yerel oturum + JSON yedegi kullanin."
+    if not secret_admin_pin():
+        return "Güvenlik: Streamlit Secrets'e V10_ADMIN_PIN eklenmeden GitHub yazma kapali."
+    if not st.session_state.get("v10_admin_unlocked", False):
+        return "GitHub yazma kilitli. Yedek & Kayit sekmesinden PIN ile acin."
     try:
         api_state(tok, {"live":st.session_state.v10_live,
                         "tickets":st.session_state.v10_tickets})
@@ -515,9 +526,22 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("Kalıcı kayıt ve yedek")
     tok=secret_token()
-    st.write("GitHub otomatik kayıt: "+"✅ Token bulundu" if tok else
-             "GitHub otomatik kayıt: ⚠️ Token tanımlı değil")
-    st.caption("ChatGPT'ye GitHub baglamak, Streamlit uygulamasina otomatik token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN gerekir.")
+    pin=secret_admin_pin()
+    st.write("GitHub token: "+"✅ Tanımlı" if tok else "GitHub token: ⚠️ Tanımlı değil")
+    if tok and pin:
+        if st.session_state.get("v10_admin_unlocked", False):
+            st.success("Yonetici yetkisi acik. Kayitlar GitHub'a yazilabilir.")
+        else:
+            secret_entry=st.text_input("GitHub kaydini acmak icin V10 yonetici PIN",type="password")
+            if st.button("🔐 Kalici kaydi ac"):
+                if hmac.compare_digest(secret_entry,pin):
+                    st.session_state.v10_admin_unlocked=True
+                    st.success("Yonetici kilidi acildi.")
+                else:
+                    st.error("PIN yanlis.")
+    elif tok:
+        st.warning("GitHub'a guvenli yazma kapali. Secrets'e V10_ADMIN_PIN ekleyin.")
+    st.caption("ChatGPT'ye GitHub baglamak Streamlit'e token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN olmali.")
     payload={"live":st.session_state.v10_live,"tickets":st.session_state.v10_tickets}
     st.download_button("⬇️ Canli cekilis ve kupon JSON yedegi",
                        json.dumps(payload,ensure_ascii=False,indent=2),
