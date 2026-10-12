@@ -156,6 +156,8 @@ class FakeRequests:
 
 fake=FakeRequests(raw)
 env["requests"]=fake
+env["base64"]=base64
+env["REPO"]="test/example-repo"
 env["secret_token"]=lambda:"test-token-never-commit"
 env["secret_admin_pin"]=lambda:"test-pin"
 env["st"]=SimpleNamespace(session_state={"v10_admin_unlocked":True})
