@@ -1,0 +1,20 @@
+name: V10 Kod Kontrolü
+on:
+  push:
+    paths:
+      - 'v10_app.py'
+      - 'v10_selftest.py'
+      - '.github/workflows/v10-check.yml'
+  workflow_dispatch:
+jobs:
+  syntax-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax
+        run: python -m py_compile v10_app.py
+      - name: Check timing, family models and coupon outcomes
+        run: python v10_selftest.py
