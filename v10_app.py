@@ -59,6 +59,43 @@ def parse_draw_line(line):
     dt = datetime.strptime(p[1].strip(), "%d.%m.%Y %H:%M")
     return make_draw(p[0], dt, p[2].split(","))
 
+
+def parse_pasted_draws(raw):
+    """Read official pasted result blocks and semicolon data lines."""
+    text = raw.replace("\r\n", "\n").replace("\r", "\n")
+    results, problems = [], []
+    for line in text.splitlines():
+        if re.match(r"^\s*\d+\s*;", line):
+            try:
+                d = parse_draw_line(line)
+                if d:
+                    results.append(d)
+            except (ValueError, TypeError) as exc:
+                problems.append(str(exc))
+    pattern = re.compile(r"(?im)^\s*#*\s*Çekiliş\s*no\s*:\s*#*\s*(\d{4,8})\s*$")
+    found = list(pattern.finditer(text))
+    for i, match in enumerate(found):
+        block = text[match.end():found[i + 1].start() if i + 1 < len(found) else len(text)]
+        stamp = re.search(r"(?<!\d)(\d{2}\.\d{2}\.\d{4})\s*[-–]\s*(\d{2}:\d{2})\b", block)
+        if not stamp:
+            problems.append("#" + match.group(1) + ": tarih/saat bulunamadı")
+            continue
+        rest = block[stamp.end():]
+        rest = re.split(r"(?im)^\s*(?:\[\s*)?Detaylar\b|^\s*https?://", rest, maxsplit=1)[0]
+        nums = []
+        for line in rest.splitlines():
+            v = line.strip()
+            if re.fullmatch(r"\d{1,2}(?:\s*[,;\s]\s*\d{1,2})*", v):
+                nums.extend(int(x) for x in re.findall(r"\d{1,2}", v))
+        try:
+            dt = datetime.strptime(stamp.group(1) + " " + stamp.group(2), "%d.%m.%Y %H:%M")
+            results.append(make_draw(match.group(1), dt, nums))
+        except (ValueError, TypeError) as exc:
+            problems.append("#" + match.group(1) + ": " + str(exc))
+    if not results and not problems:
+        problems.append("Çekiliş başlığı bulunamadı: 'Çekiliş no:61629' veya noktalı veri satırı bekleniyor.")
+    return results, problems
+
 def parse_history(raw):
     seen_no, seen_time, draws, errors = set(), set(), [], 0
     for line in raw.splitlines():
