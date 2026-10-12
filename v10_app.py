@@ -37,6 +37,31 @@ def moment(day, pos):
     m = 2 + 5*(pos - 1) if pos <= 13 else 422 + 5*(pos - 14)
     return datetime.combine(date.fromisoformat(day), time()) + timedelta(minutes=m)
 
+
+def next_slot_after(last):
+    """Return the next real scheduled slot, not the next wall-clock five minutes."""
+    if not last:
+        return None
+    dt=datetime.fromisoformat(last["dt"])
+    p=last["pos"]
+    if p==217:
+        candidate=moment((dt.date()+timedelta(days=1)).isoformat(),1)
+    else:
+        candidate=moment(last["day"],p+1)
+    return {"no":last["no"]+1, "date":candidate.date().isoformat(),
+            "time":candidate.strftime("%H:%M"),"dt":candidate}
+
+def next_recorded_slot(history):
+    if not history:
+        return None
+    return next_slot_after(max(history,key=lambda d:(d["dt"],d["no"])))
+
+def next_paste_template(history):
+    nxt=next_recorded_slot(history)
+    if not nxt:
+        return ""
+    return f"Çekiliş no:{nxt['no']}\n{nxt['dt']:%d.%m.%Y-%H:%M}\n"
+
 def normalize_numbers(values):
     arr = [int(x) for x in values]
     if len(arr) != 20 or len(set(arr)) != 20 or any(n < 1 or n > 80 for n in arr):
@@ -112,6 +137,88 @@ def parse_history(raw):
             errors += 1
     draws.sort(key=lambda d:d["dt"])
     return draws, errors
+
+
+def merge_draws_into_txt(existing_text, additions):
+    """Keep every original byte of veri.txt, append only verified, new draw lines.
+
+    Reject conflicting draw number or date/slot, rather than changing history.
+    """
+    history, _=parse_history(existing_text)
+    ids={d["no"]:d for d in history}
+    slots={(d["day"],d["pos"]):d for d in history}
+    seen_ids={}
+    seen_slots={}
+    new=[]
+    skipped=0
+    for d in sorted(additions,key=lambda row:(row["dt"],row["no"])):
+        checked=make_draw(d["no"],d["dt"],d["nums"])
+        ident=checked["no"]
+        key=(checked["day"],checked["pos"])
+        current=ids.get(ident) or slots.get(key) or seen_ids.get(ident) or seen_slots.get(key)
+        if current:
+            if current["no"] != ident or current["dt"] != checked["dt"] or current["nums"] != checked["nums"]:
+                raise ValueError(f"Çelişen çekiliş kaydı: #{ident} / {checked['day']} sıra {checked['pos']}. veri.txt değiştirilmedi.")
+            skipped+=1
+            continue
+        seen_ids[ident]=checked
+        seen_slots[key]=checked
+        new.append(checked)
+    if not new:
+        return existing_text, 0, skipped
+    # Preserve existing headers and ordering; append official semicolon format.
+    joiner="" if not existing_text or existing_text.endswith("\n") else "\n"
+    lines=[f"{d['no']};{datetime.fromisoformat(d['dt']):%d.%m.%Y %H:%M};{','.join(map(str,d['nums']))}"
+           for d in new]
+    return existing_text+joiner+"\n".join(lines)+"\n",len(new),skipped
+
+def persist_to_github_veri_txt(additions):
+    """Optimistic GitHub contents write, including >1 MB source via Git blob API."""
+    tok=secret_token()
+    if not tok:
+        return False,0,"GitHub token tanımlı değil; veri.txt'ye kalıcı kayıt yapılamadı."
+    if not secret_admin_pin():
+        return False,0,"Streamlit Secrets'te V10_ADMIN_PIN yok; güvenlik nedeniyle yazma kapalı."
+    if not st.session_state.get("v10_admin_unlocked",False):
+        return False,0,"GitHub kalıcı kayıt kilitli. Yedek & Kayıt sekmesinde yönetici PIN'ini gir."
+    if not additions:
+        return True,0,"Yeni kayıt yok."
+    url=f"https://api.github.com/repos/{REPO}/contents/veri.txt"
+    headers={"Authorization":"Bearer "+tok,"Accept":"application/vnd.github+json",
+             "X-GitHub-Api-Version":"2022-11-28"}
+    try:
+        for attempt in range(3):
+            response=requests.get(url,headers=headers,params={"ref":"main"},timeout=40)
+            response.raise_for_status()
+            meta=response.json()
+            sha=meta["sha"]
+            if meta.get("encoding")=="base64" and meta.get("content"):
+                body=base64.b64decode(meta["content"]).decode("utf-8-sig")
+            else:
+                # The GitHub Contents endpoint omits file content above 1 MB.
+                blob=requests.get(f"https://api.github.com/repos/{REPO}/git/blobs/{sha}",
+                                  headers=headers,timeout=60)
+                blob.raise_for_status()
+                b=blob.json()
+                if b.get("encoding")!="base64":
+                    raise ValueError("GitHub büyük veri.txt içeriğini okuyamadı.")
+                body=base64.b64decode(b["content"]).decode("utf-8-sig")
+            merged,added,already=merge_draws_into_txt(body,additions)
+            if added==0:
+                github_text.clear()
+                return True,0,f"Yeni çekiliş yok; {already} tanesi zaten veri.txt içinde."
+            payload={"message":f"V10: veri.txt'ye {added} yeni cekilis ekle",
+                     "branch":"main","sha":sha,
+                     "content":base64.b64encode(merged.encode("utf-8")).decode("ascii")}
+            put=requests.put(url,headers=headers,json=payload,timeout=90)
+            if put.status_code in (409,422) and attempt<2:
+                continue
+            put.raise_for_status()
+            github_text.clear()
+            return True,added,f"GitHub veri.txt kalıcı kayıt: {added} yeni çekiliş; {already} zaten mevcuttu."
+        return False,0,"GitHub'da eşzamanlı güncelleme var; tekrar dene."
+    except Exception as exc:
+        return False,0,f"GitHub veri.txt kaydı başarısız: {exc}"
 
 def load_family_csv(content):
     records = {}
