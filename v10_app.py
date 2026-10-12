@@ -431,6 +431,8 @@ tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yed
 with tabs[0]:
     st.subheader("📋 Çekiliş sonucunu aynen yapıştır")
     st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
+    if st.session_state.pop("v10_clear_paste", False):
+        st.session_state["v10_pasted_draw"] = ""
     pasted=st.text_area("Çekiliş sonuç metni",height=225,key="v10_pasted_draw",
          placeholder="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n...\n75")
     if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
@@ -448,6 +450,8 @@ with tabs[0]:
             added+=1
         saved=auto_save() if added else ""
         st.session_state.v10_last_paste={"added":added,"repeats":repeats,"issues":issues[:5],"saved":saved}
+        if added:
+            st.session_state["v10_clear_paste"] = True
         st.rerun()
     if st.session_state.get("v10_last_paste"):
         p=st.session_state.v10_last_paste
