@@ -424,28 +424,55 @@ if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yedek & Kayıt"])
 
 with tabs[0]:
-    st.subheader("Canlı çekiliş ekle")
-    default_no=max([d["no"] for d in draws],default=0)+1
-    with st.form("manual_v10",clear_on_submit=False):
-        no=st.number_input("Çekiliş numarası",min_value=1,value=default_no,step=1)
-        day=st.date_input("Tarih",value=today)
-        hr=st.selectbox("Saat",options=[moment("2026-01-01",p).strftime("%H:%M") for p in range(1,218)],
-                        index=min(216,max(0,pos_of(now_tr())-1 if pos_of(now_tr()) else 0)))
-        nums=st.text_area("Çıkan 20 sayı — virgül/boşlukla ayır",
-                          placeholder="3, 8, 12, 18, ...",height=90)
-        submit=st.form_submit_button("✅ Çekilişi ekle",type="primary")
-    if submit:
-        try:
-            numbers=[int(x) for x in re.findall(r"\d+",nums)]
-            dt=datetime.strptime(f"{day} {hr}","%Y-%m-%d %H:%M")
-            new=make_draw(no,dt,numbers)
-            if any(d["no"]==new["no"] or
-                   (d["day"]==new["day"] and d["pos"]==new["pos"]) for d in draws):
-                raise ValueError("Ayni numara veya saatli cekilis zaten mevcut.")
-            st.session_state.v10_live.append(new)
-            st.success(f"#{new['no']} eklendi. "+auto_save())
-        except Exception as exc:
-            st.error("Eklenemedi: "+str(exc))
+    st.subheader("📋 Çekiliş sonucunu aynen yapıştır")
+    st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
+    pasted=st.text_area("Çekiliş sonuç metni",height=225,key="v10_pasted_draw",
+         placeholder="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n...\n75")
+    if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
+        records, issues=parse_pasted_draws(pasted)
+        known_ids={d["no"] for d in draws}
+        known_slots={(d["day"],d["pos"]) for d in draws}
+        added, repeats = 0, 0
+        for d in records:
+            if d["no"] in known_ids or (d["day"],d["pos"]) in known_slots:
+                repeats+=1
+                continue
+            st.session_state.v10_live.append(d)
+            known_ids.add(d["no"])
+            known_slots.add((d["day"],d["pos"]))
+            added+=1
+        saved=auto_save() if added else ""
+        st.session_state.v10_last_paste={"added":added,"repeats":repeats,"issues":issues[:5],"saved":saved}
+        st.rerun()
+    if st.session_state.get("v10_last_paste"):
+        p=st.session_state.v10_last_paste
+        st.success(f"{p['added']} yeni çekiliş eklendi, {p['repeats']} kayıt zaten vardı.")
+        if p["issues"]:
+            st.warning("Kontrol: " + " | ".join(p["issues"]))
+        if p["saved"]:
+            st.caption(p["saved"])
+    with st.expander("Tek tek alan doldur (isteğe bağlı)",expanded=False):
+        default_no=max([d["no"] for d in draws],default=0)+1
+        with st.form("manual_v10",clear_on_submit=False):
+            no=st.number_input("Çekiliş numarası",min_value=1,value=default_no,step=1)
+            day=st.date_input("Tarih",value=today)
+            hr=st.selectbox("Saat",options=[moment("2026-01-01",p).strftime("%H:%M") for p in range(1,218)],
+                            index=min(216,max(0,pos_of(now_tr())-1 if pos_of(now_tr()) else 0)))
+            nums=st.text_area("Çıkan 20 sayı — virgül/boşlukla ayır",
+                              placeholder="3, 8, 12, 18, ...",height=90)
+            submit=st.form_submit_button("✅ Çekilişi ekle",type="primary")
+        if submit:
+            try:
+                numbers=[int(x) for x in re.findall(r"\d+",nums)]
+                dt=datetime.strptime(f"{day} {hr}","%Y-%m-%d %H:%M")
+                new=make_draw(no,dt,numbers)
+                if any(d["no"]==new["no"] or
+                       (d["day"]==new["day"] and d["pos"]==new["pos"]) for d in draws):
+                    raise ValueError("Ayni numara veya saatli cekilis zaten mevcut.")
+                st.session_state.v10_live.append(new)
+                st.success(f"#{new['no']} eklendi. "+auto_save())
+            except Exception as exc:
+                st.error("Eklenemedi: "+str(exc))
 
     st.write("**Toplu yükleme**")
     st.caption("Tek satır: 61653;12.10.2026 07:57;4,5,16,... şeklinde 20 sayı. Birden çok satır olabilir.")
