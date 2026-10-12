@@ -512,9 +512,15 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("Aile aktivasyonu ve hedef çekiliş")
-    analysis_date=st.date_input("Takip edilen gün",value=today,
+    loaded_dates=Counter(d["day"] for d in draws)
+    recent_day=max(loaded_dates,default=today.isoformat())
+    preferred=today if loaded_dates.get(today.isoformat(),0) else date.fromisoformat(recent_day)
+    if not loaded_dates.get(today.isoformat(),0):
+        st.warning(f"Bugün ({today:%d.%m.%Y}) henüz kayıtlı çekiliş yok. Son kayıt günü {recent_day}; inceleme için o gün seçildi.")
+    analysis_date=st.date_input("İncelenecek gün",value=preferred,
                                 min_value=min_day,max_value=max(today,last_day))
     daystr=analysis_date.isoformat()
+    day_draws=[d for d in draws if d["day"]==daystr]
     current=now_tr() if analysis_date==today else moment(daystr,217)+timedelta(minutes=1)
     cutoff=[d for d in draws if d["day"]<daystr]
     if not families or not cutoff:
@@ -525,9 +531,40 @@ with tabs[1]:
                                 json.dumps(sorted(families),separators=(",",":")))
     signals,hits=active_signals(draws,families,profiles,daystr,current)
     st.caption("Model yalniz secilen gunden ONCEKI kayitlarla kurulur. Gorulmemis hedef saatleri listelenir.")
-    st.metric("Günün aktif aileleri",len(hits))
+    st.markdown("### 📊 Bu tarihte gerçekten neler var?")
+    a,b,c=st.columns(3)
+    a.metric("Seçili gün çekilişi",len(day_draws))
+    b.metric("Tam çıkan farklı aile",len(hits))
+    c.metric("İleri hedef sinyali",len(signals))
+    st.caption(f"Aday havuzu: {len(families)} aile; görünüş yalnız tam sayılar tek çekilişte bulunduğunda sayılır.")
+    if day_draws:
+        first=min(day_draws,key=lambda d:d["dt"])
+        last=max(day_draws,key=lambda d:d["dt"])
+        st.caption(f"İlk kayıt: #{first['no']} {first['dt'][11:16]} • Son kayıt: #{last['no']} {last['dt'][11:16]}")
+    else:
+        st.error(f"{daystr} tarihinde henüz çekiliş verisi bulunmuyor. Önce canlı girişten bu tarihin çekilişlerini ekle.")
+    by_k=Counter(families[label]["k"] for label in hits)
+    sig_by_k=Counter(s["size"] for s in signals)
+    summary=[{"Boyut":f"{k}'li","Aday aile":sum(f["k"]==k for f in families.values()),
+              "Bu gün tam çıkan":by_k[k],
+              "Gelecek saat hedefi":sig_by_k[k]} for k in range(5,11)]
+    st.dataframe(summary,hide_index=True,use_container_width=True)
+    if hits:
+        st.markdown("**O gün çıkan aileler (gerçek çekiliş numarası ve saat)**")
+        observed=[{"Aile":label,"Boyut":families[label]["k"],
+                   "Günlük görünüş":len(recs),
+                   "Çekilişler":", ".join("#"+str(d["no"])+" "+d["dt"][11:16] for d in recs)}
+                  for label,recs in hits.items()]
+        observed.sort(key=lambda x:(-x["Günlük görünüş"],-x["Boyut"],x["Aile"]))
+        st.dataframe(observed[:150],hide_index=True,use_container_width=True)
+        if len(observed)>150:
+            st.caption(f"İlk 150 aile gösterildi; toplam {len(observed)}.")
+    elif day_draws:
+        st.warning("Seçili günün çekilişleri var; ancak mevcut aday havuzundan henüz tam çıkan aile yok. Bu, bütün olası ailelerin çıkmadığı anlamına gelmez.")
     if analysis_date!=today:
-        st.warning("Gecmis gun secili: tam gun verisi gorunebilecegi icin bu canli kor test degildir.")
+        st.info("Geçmiş gün seçildi. Görünüşleri inceleyebilirsin; geçmişte kalmış saatler yeni hedef olarak önerilmez.")
+    elif hits and not signals:
+        st.info("Aile görüldü ama saat hedefi oluşmadı. Neden: geçmişte iki farklı günde aynı aralık desteği yok, ya da bu günün sonraki uygun saatleri henüz hesaplanamıyor.")
     st.markdown("### 5'li – 10'lu hedef kuponları")
     groups={k:[] for k in range(5,11)}
     for signal in signals:
@@ -574,7 +611,7 @@ with tabs[1]:
         st.caption("Gun zinciri kesin saat vermez; bu nedenle otomatik kupon olusturulmaz.")
     else:
         st.caption("Bu tarihten sonraya uzanan +2/+5/+7/+14 zincir hedefi yok.")
-    st.markdown("#### Bugün tam görünen aileler")
+    st.markdown("#### Seçili günde tam görünen aileler — kısa tekrar")
     if hits:
         top=[{"Aile":label,"Boyut":families[label]["k"],
               "Bugunku gorunus":len(recs),
