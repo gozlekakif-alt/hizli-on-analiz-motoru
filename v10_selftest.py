@@ -57,7 +57,7 @@ targets,hits=env["active_signals"](
     past+[new],families,profile,"2026-10-12",m("2026-10-12",11))
 assert len(targets)==1, targets
 assert targets[0]["pos"]==15 and targets[0]["level"]==2, targets
-coupon=env["make_ticket"](targets[0],past+[new])
+coupon=env["make_ticket"](targets[0],past+[new],size=10)
 assert len(coupon)==10 and len(set(coupon))==10 and set(range(1,6)).issubset(coupon)
 ticket={"day":"2026-10-12","pos":15,"time":"00:??","family":labels[0],
         "numbers":coupon,"kind":"test"}
