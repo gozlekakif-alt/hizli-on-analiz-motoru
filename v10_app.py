@@ -271,19 +271,22 @@ def daily_chains(profiles, families, target_day):
             unique[key]=r
     return list(unique.values())
 
-def make_ticket(signal, draws):
+def make_ticket(signal, draws, size=None):
     family = [int(x) for x in signal["label"].split("-")]
+    size = len(family) if size is None else int(size)
+    if size < len(family) or size > 10:
+        raise ValueError("Kupon boyutu aileden küçük veya 10'dan büyük olamaz.")
     # Tamamlama rakamlari HEDEF ANINDAN once bilinen cekilisler.
     before=[d for d in draws if d["dt"]<signal["moment"]][-48:]
     counter=Counter(n for d in before for n in d["nums"] if n not in family)
     result=family[:]
     for n,_ in sorted(counter.items(),key=lambda t:(-t[1],t[0])):
-        if len(result)>=10:break
+        if len(result)>=size:break
         if n not in result:result.append(n)
     for n in range(1,81):
-        if len(result)>=10:break
+        if len(result)>=size:break
         if n not in result:result.append(n)
-    return sorted(result[:10])
+    return sorted(result[:size])
 
 def secret_token():
     try:
@@ -351,9 +354,11 @@ def result_rows(tickets, draws):
     for t in tickets:
         d=actual.get((t["day"],t["pos"]))
         common=sorted(set(t["numbers"])&set(d["nums"])) if d else []
+        k = len(t["numbers"])
         rows.append({"Hedef gun":t["day"],"Saat":t["time"],"Aile":t["family"],
+                     "Boyut":k,
                      "Kupon":"-".join(map(str,t["numbers"])),
-                     "Sonuc":f"{len(common)}/10" if d else "Bekleniyor",
+                     "Sonuc":f"{len(common)}/{k}" if d else "Bekleniyor",
                      "Isabet":len(common) if d else None,
                      "Tutan":"-".join(map(str,common)),
                      "Cekilis_no":d["no"] if d else "",
@@ -519,34 +524,44 @@ with tabs[1]:
     st.metric("Günün aktif aileleri",len(hits))
     if analysis_date!=today:
         st.warning("Gecmis gun secili: tam gun verisi gorunebilecegi icin bu canli kor test degildir.")
-    if signals:
-        st.dataframe([{"Aile":x["label"],"Boyut":x["size"],
-                       "Hedef":str(x["level"])+". gorunus","Saat":x["time"],
-                       "Gunluk sira":x["pos"],"Aralik":"+"+str(x["gap"]),
-                       "Destek (gun)":x["support"],"Kanıt":x["kind"]}
-                      for x in signals[:100]],hide_index=True,use_container_width=True)
-        selected=st.selectbox("Kupon yapilacak hedef",
-                              options=list(range(min(100,len(signals)))),
-                              format_func=lambda i:signals[i]["time"]+" | "+signals[i]["label"]+
-                              " | "+str(signals[i]["level"])+". gorunus")
-        s=signals[selected]
-        proposed=make_ticket(s,draws)
-        st.markdown("**Deneysel 10'lu kupon:** "+", ".join(map(str,proposed)))
-        st.caption("Tam aile "+str(s["size"])+" sayi; kalanlar hedef oncesi son 48 cekilisteki sikliga gore tamamlanir.")
-        if st.button("🎟️ Bu kuponu kaydet",type="primary"):
-            ticket={"day":s["day"],"pos":s["pos"],"time":s["time"],
-                    "family":s["label"],"numbers":proposed,
-                    "kind":s["kind"],"trigger_no":s["trigger_no"],
-                    "created_at":now_tr().isoformat(timespec="seconds")}
-            key=(ticket["day"],ticket["pos"],ticket["family"])
-            existing={(t["day"],t["pos"],t["family"]) for t in st.session_state.v10_tickets}
-            if key in existing:
-                st.warning("Bu hedef kupon zaten kayitli.")
-            else:
-                st.session_state.v10_tickets.append(ticket)
-                st.success("Kupon kaydedildi. "+auto_save())
-    else:
-        st.info("Bu gün için henüz ileri saatli, en az iki geçmiş günle desteklenen bir sinyal yok. Sinyal yoksa 0 kupon.")
+    st.markdown("### 5'li – 10'lu hedef kuponları")
+    groups={k:[] for k in range(5,11)}
+    for signal in signals:
+        groups[signal["size"]].append(signal)
+    for k in range(5,11):
+        options=sorted(groups[k],key=lambda x:(x["pos"],-x["support"],x["label"]))[:30]
+        title=f"{k}'li aileler — {len(groups[k])} sinyal" if options else f"{k}'li aileler — Sinyal yok"
+        with st.expander(title,expanded=bool(options)):
+            if not options:
+                st.caption("Bu boyutta ileri hedef yok. Motor 0 kupon öneriyor.")
+                continue
+            st.dataframe(
+                [{"Aile":x["label"],"Hedef":str(x["level"])+". geliş",
+                  "Saat":x["time"],"Çekiliş sırası":x["pos"],
+                  "Aralık":"+"+str(x["gap"]),
+                  "Destek günü":x["support"],"Sinyal":x["kind"]} for x in options],
+                hide_index=True,use_container_width=True)
+            pick=st.selectbox(f"{k}'li hedef seç",list(range(len(options))),
+                format_func=lambda i:options[i]["time"]+" | "+options[i]["label"],
+                key=f"v10_select_{k}")
+            x=options[pick]
+            ticket_nums=make_ticket(x,draws,size=k)
+            st.markdown(f"**{k}'li kupon: "+", ".join(map(str,ticket_nums))+"**")
+            st.caption(f"{x['day']} {x['time']} · {x['level']}. tam görünüş · {x['kind']}")
+            if st.button(f"🎟️ {k}'li kuponu kaydet",key=f"v10_save_{k}"):
+                ticket={"day":x["day"],"pos":x["pos"],"time":x["time"],
+                        "family":x["label"],"numbers":ticket_nums,
+                        "size":k,"kind":x["kind"],"trigger_no":x["trigger_no"],
+                        "created_at":now_tr().isoformat(timespec="seconds")}
+                key=(ticket["day"],ticket["pos"],ticket["family"])
+                existing={(t["day"],t["pos"],t["family"]) for t in st.session_state.v10_tickets}
+                if key in existing:
+                    st.warning("Bu aile ve hedef için kupon zaten kayıtlı.")
+                else:
+                    st.session_state.v10_tickets.append(ticket)
+                    st.success(f"{k}'li kupon kaydedildi. "+auto_save())
+    if not signals:
+        st.info("Şu an ileri saatli ritim hedefi yok. Yeni çekilişler eklendikçe güncellenir.")
 
     st.markdown("#### 10'lu ailelerin gün zinciri")
     watch=daily_chains(profiles,families,daystr)
@@ -576,8 +591,10 @@ with tabs[2]:
         st.dataframe([{k:v for k,v in r.items() if k!="Isabet"} for r in results],
                      hide_index=True,use_container_width=True)
         counts=Counter(r["Isabet"] for r in completed)
-        st.write("**0/10–10/10 isabet dağılımı**")
-        st.dataframe([{"Isabet":f"{i}/10","Kupon":counts[i]} for i in range(11)],
+        st.write("**5'li–10'lu boyutlara göre isabet dağılımı**")
+        by_k=Counter((r["Boyut"],r["Isabet"]) for r in completed)
+        st.dataframe([{"Boyut":k,"Isabet":f"{i}/{k}","Kupon":by_k[(k,i)]}
+                      for k in range(5,11) for i in range(k+1)],
                      hide_index=True,use_container_width=True)
         mem=io.StringIO()
         writer=csv.DictWriter(mem,fieldnames=results[0].keys(),delimiter=";")
