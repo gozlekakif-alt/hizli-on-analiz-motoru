@@ -37,6 +37,31 @@ def moment(day, pos):
     m = 2 + 5*(pos - 1) if pos <= 13 else 422 + 5*(pos - 14)
     return datetime.combine(date.fromisoformat(day), time()) + timedelta(minutes=m)
 
+
+def next_slot_after(last):
+    """Return the next real scheduled slot, not the next wall-clock five minutes."""
+    if not last:
+        return None
+    dt=datetime.fromisoformat(last["dt"])
+    p=last["pos"]
+    if p==217:
+        candidate=moment((dt.date()+timedelta(days=1)).isoformat(),1)
+    else:
+        candidate=moment(last["day"],p+1)
+    return {"no":last["no"]+1, "date":candidate.date().isoformat(),
+            "time":candidate.strftime("%H:%M"),"dt":candidate}
+
+def next_recorded_slot(history):
+    if not history:
+        return None
+    return next_slot_after(max(history,key=lambda d:(d["dt"],d["no"])))
+
+def next_paste_template(history):
+    nxt=next_recorded_slot(history)
+    if not nxt:
+        return ""
+    return f"Çekiliş no:{nxt['no']}\n{nxt['dt']:%d.%m.%Y-%H:%M}\n"
+
 def normalize_numbers(values):
     arr = [int(x) for x in values]
     if len(arr) != 20 or len(set(arr)) != 20 or any(n < 1 or n > 80 for n in arr):
@@ -112,6 +137,88 @@ def parse_history(raw):
             errors += 1
     draws.sort(key=lambda d:d["dt"])
     return draws, errors
+
+
+def merge_draws_into_txt(existing_text, additions):
+    """Keep every original byte of veri.txt, append only verified, new draw lines.
+
+    Reject conflicting draw number or date/slot, rather than changing history.
+    """
+    history, _=parse_history(existing_text)
+    ids={d["no"]:d for d in history}
+    slots={(d["day"],d["pos"]):d for d in history}
+    seen_ids={}
+    seen_slots={}
+    new=[]
+    skipped=0
+    for d in sorted(additions,key=lambda row:(row["dt"],row["no"])):
+        checked=make_draw(d["no"],d["dt"],d["nums"])
+        ident=checked["no"]
+        key=(checked["day"],checked["pos"])
+        current=ids.get(ident) or slots.get(key) or seen_ids.get(ident) or seen_slots.get(key)
+        if current:
+            if current["no"] != ident or current["dt"] != checked["dt"] or current["nums"] != checked["nums"]:
+                raise ValueError(f"Çelişen çekiliş kaydı: #{ident} / {checked['day']} sıra {checked['pos']}. veri.txt değiştirilmedi.")
+            skipped+=1
+            continue
+        seen_ids[ident]=checked
+        seen_slots[key]=checked
+        new.append(checked)
+    if not new:
+        return existing_text, 0, skipped
+    # Preserve existing headers and ordering; append official semicolon format.
+    joiner="" if not existing_text or existing_text.endswith("\n") else "\n"
+    lines=[f"{d['no']};{datetime.fromisoformat(d['dt']):%d.%m.%Y %H:%M};{','.join(map(str,d['nums']))}"
+           for d in new]
+    return existing_text+joiner+"\n".join(lines)+"\n",len(new),skipped
+
+def persist_to_github_veri_txt(additions):
+    """Optimistic GitHub contents write, including >1 MB source via Git blob API."""
+    tok=secret_token()
+    if not tok:
+        return False,0,"GitHub token tanımlı değil; veri.txt'ye kalıcı kayıt yapılamadı."
+    if not secret_admin_pin():
+        return False,0,"Streamlit Secrets'te V10_ADMIN_PIN yok; güvenlik nedeniyle yazma kapalı."
+    if not st.session_state.get("v10_admin_unlocked",False):
+        return False,0,"GitHub kalıcı kayıt kilitli. Yedek & Kayıt sekmesinde yönetici PIN'ini gir."
+    if not additions:
+        return True,0,"Yeni kayıt yok."
+    url=f"https://api.github.com/repos/{REPO}/contents/veri.txt"
+    headers={"Authorization":"Bearer "+tok,"Accept":"application/vnd.github+json",
+             "X-GitHub-Api-Version":"2022-11-28"}
+    try:
+        for attempt in range(3):
+            response=requests.get(url,headers=headers,params={"ref":"main"},timeout=40)
+            response.raise_for_status()
+            meta=response.json()
+            sha=meta["sha"]
+            if meta.get("encoding")=="base64" and meta.get("content"):
+                body=base64.b64decode(meta["content"]).decode("utf-8-sig")
+            else:
+                # The GitHub Contents endpoint omits file content above 1 MB.
+                blob=requests.get(f"https://api.github.com/repos/{REPO}/git/blobs/{sha}",
+                                  headers=headers,timeout=60)
+                blob.raise_for_status()
+                b=blob.json()
+                if b.get("encoding")!="base64":
+                    raise ValueError("GitHub büyük veri.txt içeriğini okuyamadı.")
+                body=base64.b64decode(b["content"]).decode("utf-8-sig")
+            merged,added,already=merge_draws_into_txt(body,additions)
+            if added==0:
+                github_text.clear()
+                return True,0,f"Yeni çekiliş yok; {already} tanesi zaten veri.txt içinde."
+            payload={"message":f"V10: veri.txt'ye {added} yeni cekilis ekle",
+                     "branch":"main","sha":sha,
+                     "content":base64.b64encode(merged.encode("utf-8")).decode("ascii")}
+            put=requests.put(url,headers=headers,json=payload,timeout=90)
+            if put.status_code in (409,422) and attempt<2:
+                continue
+            put.raise_for_status()
+            github_text.clear()
+            return True,added,f"GitHub veri.txt kalıcı kayıt: {added} yeni çekiliş; {already} zaten mevcuttu."
+        return False,0,"GitHub'da eşzamanlı güncelleme var; tekrar dene."
+    except Exception as exc:
+        return False,0,f"GitHub veri.txt kaydı başarısız: {exc}"
 
 def load_family_csv(content):
     records = {}
@@ -416,6 +523,9 @@ families=load_family_csv(family_text) if family_text else {}
 if not families:
     st.error("Aile CSV bulunamadi; hedef tahmini icin v10_aileler.csv gerekli.")
 draws=all_draws(historical,st.session_state.v10_live)
+# The existing session may contain records not yet written to the main GitHub TXT.
+existing_main_nos={d["no"] for d in historical}
+pending_draws=[d for d in st.session_state.v10_live if d["no"] not in existing_main_nos]
 today=now_tr().date()
 last_day=max([date.fromisoformat(x["day"]) for x in draws],default=today)
 min_day=min([date.fromisoformat(x["day"]) for x in draws],default=today)
@@ -424,6 +534,10 @@ a,b,c=st.columns(3)
 a.metric("Geçmiş çekiliş",len(historical))
 b.metric("Aile havuzu",len(families))
 c.metric("Canlı eklenen",len(st.session_state.v10_live))
+if pending_draws:
+    st.warning(f"⚠️ {len(pending_draws)} çekiliş henüz GitHub ana veri.txt dosyasında değil. Kayıp olmaması için 💾 Yedek & Kayıt bölümünden JSON indir; GitHub için yönetici PIN ile kalıcı kaydet.")
+else:
+    st.caption("GitHub veri.txt'ye eklenmemiş oturum çekilişi görünmüyor.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yedek & Kayıt"])
@@ -431,8 +545,11 @@ tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yed
 with tabs[0]:
     st.subheader("📋 Çekiliş sonucunu aynen yapıştır")
     st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
-    if st.session_state.pop("v10_clear_paste", False):
-        st.session_state["v10_pasted_draw"] = ""
+    next_info=next_recorded_slot(draws)
+    if next_info:
+        st.info(f"📅 Sıradaki kayıt: Çekiliş #{next_info['no']} • {next_info['dt']:%d.%m.%Y} • saat {next_info['time']}")
+    if st.session_state.pop("v10_clear_paste", False) or "v10_pasted_draw" not in st.session_state:
+        st.session_state["v10_pasted_draw"] = next_paste_template(draws)
     pasted=st.text_area("Çekiliş sonuç metni",height=225,key="v10_pasted_draw",
          placeholder="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n...\n75")
     if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
@@ -448,7 +565,15 @@ with tabs[0]:
             known_ids.add(d["no"])
             known_slots.add((d["day"],d["pos"]))
             added+=1
-        saved=auto_save() if added else ""
+        if added:
+            ok,pushed,push_message=persist_to_github_veri_txt(st.session_state.v10_live)
+            if ok:
+                backup_msg=auto_save()
+                saved=push_message+" "+backup_msg
+            else:
+                saved=push_message+" Veriler şimdilik bu oturumda; JSON yedeğini indir."
+        else:
+            saved=""
         st.session_state.v10_last_paste={"added":added,"repeats":repeats,"issues":issues[:5],"saved":saved}
         if added:
             st.session_state["v10_clear_paste"] = True
@@ -459,7 +584,12 @@ with tabs[0]:
         if p["issues"]:
             st.warning("Kontrol: " + " | ".join(p["issues"]))
         if p["saved"]:
-            st.caption(p["saved"])
+            st.info(p["saved"])
+    st.download_button("⬇️ Çekilişlerimin JSON yedeğini indir",
+                       json.dumps({"live":st.session_state.v10_live,
+                                   "tickets":st.session_state.v10_tickets},ensure_ascii=False,indent=2),
+                       file_name="V10_CANLI_KAYIT.json",mime="application/json",
+                       key="v10_quick_backup")
     with st.expander("Tek tek alan doldur (isteğe bağlı)",expanded=False):
         default_no=max([d["no"] for d in draws],default=0)+1
         with st.form("manual_v10",clear_on_submit=False):
@@ -479,7 +609,10 @@ with tabs[0]:
                        (d["day"]==new["day"] and d["pos"]==new["pos"]) for d in draws):
                     raise ValueError("Ayni numara veya saatli cekilis zaten mevcut.")
                 st.session_state.v10_live.append(new)
-                st.success(f"#{new['no']} eklendi. "+auto_save())
+                ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
+                st.success(f"#{new['no']} eklendi. "+message)
+                if ok:
+                    st.caption(auto_save())
             except Exception as exc:
                 st.error("Eklenemedi: "+str(exc))
 
@@ -502,7 +635,13 @@ with tabs[0]:
                 added+=1
             except Exception:
                 invalid+=1
-        st.success(f"{added} cekilis eklendi; {duplicates} tekrar, {invalid} hatali satir. "+auto_save())
+        if added:
+            ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
+        else:
+            ok,message=False,"Yeni çekiliş yok."
+        st.success(f"{added} çekiliş eklendi; {duplicates} tekrar, {invalid} hatalı satır. "+message)
+        if ok:
+            st.caption(auto_save())
     if st.session_state.v10_live:
         st.write("**Son eklenen çekilişler**")
         st.dataframe([{"No":d["no"],"Tarih":d["day"],"Saat":d["dt"][11:16],
@@ -663,7 +802,20 @@ with tabs[3]:
                     st.error("PIN yanlis.")
     elif tok:
         st.warning("GitHub'a guvenli yazma kapali. Secrets'e V10_ADMIN_PIN ekleyin.")
-    st.caption("ChatGPT'ye GitHub baglamak Streamlit'e token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN olmali.")
+    st.caption("ChatGPT'ye GitHub bağlamak Streamlit'e token aktarmaz. Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN olmalı.")
+    st.write("**Ana veri.txt kalıcı kayıt**")
+    if pending_draws:
+        st.warning(f"{len(pending_draws)} yeni çekiliş henüz veri.txt içinde değil.")
+    else:
+        st.success("Bu oturumun tüm çekilişleri ana veri.txt içinde veya zaten kayıtlı.")
+    if st.button("💾 Eklenmemiş çekilişleri GitHub veri.txt'ye kaydet"):
+        ok,pushed,message=persist_to_github_veri_txt(st.session_state.v10_live)
+        st.session_state["v10_last_github_push"]=message
+        if ok:
+            auto_save()
+        st.rerun()
+    if st.session_state.get("v10_last_github_push"):
+        st.info(st.session_state["v10_last_github_push"])
     payload={"live":st.session_state.v10_live,"tickets":st.session_state.v10_tickets}
     st.download_button("⬇️ Canli cekilis ve kupon JSON yedegi",
                        json.dumps(payload,ensure_ascii=False,indent=2),
