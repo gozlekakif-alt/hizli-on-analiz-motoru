@@ -243,7 +243,7 @@ def execute(txt, train_days=36):
         raise ValueError("En az iki tam gün gerekli")
     if not 0<=train_days<len(full):
         raise ValueError("Yanlış öğrenme/test ayrımı")
-    chosen=[],eligibility=Counter(),per_hour=Counter()
+    chosen=[]; eligibility=Counter(); per_hour=Counter()
     for di,(date,records) in enumerate(full):
         day={d["pos"]:d for d in records}
         phase="İlk 36 gün" if di<train_days else "Son 36 gün (ayrı test)"
