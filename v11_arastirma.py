@@ -285,6 +285,8 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
     for k in SIZES:by_size[k].sort()
     support=defaultdict(lambda:defaultdict(set))
     acc={}
+    slot_acc={}
+    target_ledger=[]
     arrivals=Counter()
     arrival_examples=[]
     signal_examples=[]
@@ -319,16 +321,29 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
             h["sıcak"]+=ctx["hot"]
             h["soğuk"]+=ctx["cold"]
             for k in SIZES:
+                ledger={"Tarih":day,"Hedef":actual["no"],
+                        "Saat":actual["dt"][11:16],
+                        "Saat içi çekiliş":phase_slot,
+                        "Boyut":k,"Dönem":phase,
+                        "Son12 benzersiz":ctx["unique12"],
+                        "Son çekilişte yeni":ctx["new20"],
+                        "Sıcak sayı":ctx["hot"],"Soğuk sayı":ctx["cold"]}
                 tickets=constructed_tickets(ctx,k)
                 # matched random coupon with no outcome access: per-target
                 # reproducible seed, no use of Python salted hash().
                 seed=actual["no"]*100+k*13
                 rng=random.Random(seed)
                 random_ticket=tuple(sorted(rng.sample(range(1,81),k)))
-                _accumulate(acc,(phase,k,"Rastgele kontrol"),k,
-                            random_ticket,target)
+                match=_accumulate(acc,(phase,k,"Rastgele kontrol"),k,
+                                  random_ticket,target)
+                _accumulate(slot_acc,(phase,k,"Rastgele kontrol",phase_slot),
+                            k,random_ticket,target)
+                ledger["Rastgele"]=f"{match}/{k}"
                 for method,coupon in tickets.items():
-                    _accumulate(acc,(phase,k,method),k,coupon,target)
+                    match=_accumulate(acc,(phase,k,method),k,coupon,target)
+                    _accumulate(slot_acc,(phase,k,method,phase_slot),
+                                k,coupon,target)
+                    ledger[method]=f"{match}/{k}"
                 candidates=[]
                 for label,f in by_size[k]:
                     feat=family_features(f,prior,ctx)
@@ -356,6 +371,11 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                     score,label,f,sig,feat,prior_days=candidates[0]
                     matched=_accumulate(acc,(phase,k,SIGNAL_METHOD),k,
                                         f["nums"],target)
+                    _accumulate(slot_acc,(phase,k,SIGNAL_METHOD,phase_slot),
+                                k,f["nums"],target)
+                    ledger["Aile sinyali"]=f"{matched}/{k}"
+                    ledger["Aile hedefi"]=label
+                    ledger["Aile sinyal koşulları"]=", ".join(sig["routes"])
                     if len(signal_examples)<180:
                         signal_examples.append({
                             "Gün":day,"Hedef":actual["no"],
@@ -367,6 +387,7 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                             "Son12":"/".join(map(str,feat["overlaps"])),
                             "İsabet":f"{matched}/{k}",
                             "Tam":matched==k})
+                target_ledger.append(ledger)
         # Only now is this day available as historical support for NEXT day.
         for r in records:
             for label,f in families.items():
@@ -399,6 +420,10 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                 "aile_sayısı":{k:len(by_size[k]) for k in SIZES},
                 "dönem_ayrımı":train_days,"kayıp_ara_saat":dict(by_day_count)},
         "methods":_stats_rows(acc),
+        "slots":[{**{"Saat içi çekiliş":slot},**{
+            a:b for a,b in _stats_rows({(phase,k,method):v})[0].items()}}
+                 for (phase,k,method,slot),v in sorted(slot_acc.items())],
+        "target_ledger":target_ledger,
         "arrival":arrival_rows,
         "examples":arrival_examples,
         "signals":signal_examples,
