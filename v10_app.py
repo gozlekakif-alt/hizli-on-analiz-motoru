@@ -272,6 +272,33 @@ def github_text(path):
     res.raise_for_status()
     return res.content.decode("utf-8-sig")
 
+@st.cache_data(ttl=60, show_spinner=False)
+def latest_main_history():
+    """Fresh read from GitHub REST, bypassing cached raw CDN snapshot.
+
+    Only called if the live session appears to have unsaved records.
+    Large veri.txt files require the Git blob endpoint.
+    """
+    url=f"https://api.github.com/repos/{REPO}/contents/veri.txt"
+    headers={"Accept":"application/vnd.github+json",
+             "X-GitHub-Api-Version":"2022-11-28"}
+    response=requests.get(url,headers=headers,params={"ref":"main"},timeout=40)
+    response.raise_for_status()
+    meta=response.json()
+    if meta.get("encoding")=="base64" and meta.get("content"):
+        raw=base64.b64decode(meta["content"]).decode("utf-8-sig")
+    else:
+        blob=requests.get(
+            f"https://api.github.com/repos/{REPO}/git/blobs/{meta['sha']}",
+            headers=headers,timeout=60)
+        blob.raise_for_status()
+        data=blob.json()
+        if data.get("encoding")!="base64" or not data.get("content"):
+            raise ValueError("GitHub kaydı doğrulanamadı.")
+        raw=base64.b64decode(data["content"]).decode("utf-8-sig")
+    return parse_history(raw)
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def train_profiles(history_json, labels_json):
     """Yalniz HEDEF GUNDEN ONCEKI cekilislerden model olusturulur."""
@@ -749,10 +776,25 @@ with st.expander("⚙️ Veri kaynağı ve aile havuzu",expanded=not historical 
 families=load_family_csv(family_text) if family_text else {}
 if not families:
     st.error("Aile CSV bulunamadi; hedef tahmini icin v10_aileler.csv gerekli.")
-draws=all_draws(historical,st.session_state.v10_live)
-# The existing session may contain records not yet written to the main GitHub TXT.
+# If the cached historical snapshot is older than this session's live backup,
+# recheck the actual GitHub main branch BEFORE warning about missing records.
 existing_main_nos={d["no"] for d in historical}
 pending_draws=[d for d in st.session_state.v10_live if d["no"] not in existing_main_nos]
+verified_remote=False
+if pending_draws and not upl:
+    try:
+        fresh_history,fresh_bad=latest_main_history()
+        verified_remote=True
+        if len(fresh_history)>=len(historical):
+            historical,bad=fresh_history,fresh_bad
+            existing_main_nos={d["no"] for d in historical}
+            pending_draws=[d for d in st.session_state.v10_live
+                           if d["no"] not in existing_main_nos]
+    except Exception:
+        # A failed network verification is not proof of a successful save.
+        # Keep the pending warning; no data is discarded.
+        pass
+draws=all_draws(historical,st.session_state.v10_live)
 today=now_tr().date()
 last_day=max([date.fromisoformat(x["day"]) for x in draws],default=today)
 min_day=min([date.fromisoformat(x["day"]) for x in draws],default=today)
@@ -762,9 +804,12 @@ a.metric("Geçmiş çekiliş",len(historical))
 b.metric("Aile havuzu",len(families))
 c.metric("Canlı eklenen",len(st.session_state.v10_live))
 if pending_draws:
-    st.warning(f"⚠️ {len(pending_draws)} çekiliş henüz GitHub ana veri.txt dosyasında değil. Kayıp olmaması için 💾 Yedek & Kayıt bölümünden JSON indir; GitHub için yönetici PIN ile kalıcı kaydet.")
+    extra=(" (GitHub ana dalında yeniden doğrulandı.)" if verified_remote
+           else " (Güncel GitHub kontrolü yapılamadı; yedeğinizi koruyun.)")
+    st.warning(f"⚠️ {len(pending_draws)} çekiliş henüz ana veri.txt içinde görünmüyor."
+               +extra+" 💾 Yedek & Kayıt bölümünden JSON indir ve PIN ile kalıcı kaydı denetle.")
 else:
-    st.caption("GitHub veri.txt'ye eklenmemiş oturum çekilişi görünmüyor.")
+    st.caption("✅ Canlı oturum kayıtlarının tamamı GitHub veri.txt içinde görünüyor.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt"])
