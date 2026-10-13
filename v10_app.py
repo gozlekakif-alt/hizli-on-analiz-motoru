@@ -21,6 +21,8 @@ from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summa
 from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
+from v14_gecis_agi import (replay as v14_replay, preview as v14_preview,
+                           csv_export as v14_csv, clock_slot as v14_clock)
 from v13_havuz_koltuk import (trained_model as v13_train,
                              run_study as v13_study,
                              states_for_day as v13_states,
@@ -961,7 +963,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -2624,3 +2626,192 @@ with tabs[9]:
                                key="v13_export_"+field)
     else:
         st.caption("Test henüz çalıştırılmadı. Yukarıdaki 🚀 düğmesine bas.")
+
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def v14_cached_history_replay(draws_json,first_days):
+    return v14_replay(json.loads(draws_json),train_days=first_days)
+
+
+with tabs[10]:
+    st.subheader("🔄 V14 — 217 çekilişte 80 sayılık zaman ve geçiş ağı")
+    st.caption(
+        "80×80 sayı ilişkisi; +1/+2/+3/+6/+12 çekiliş gecikmeleri; "
+        "önceki 20'den kalan, ayrılan ve yeni giren sayılar. "
+        "Günün 217 çekilişi saat ve ilk-altı / son-altı olarak incelenir. "
+        "V12 aile kulesi ve V13 sıcaklık koltuklarıyla aynı hedefte kıyaslanır."
+    )
+    st.warning(
+        "Hızlı On sonucundaki 20 sayı sıralı toplar değil, bir kümedir. "
+        "23'ün 58'e fiziksel olarak yerini bıraktığı iddia edilemez. "
+        "A→B yalnız istatistiksel birlikte-geçiş gözlemidir. "
+        "Adil çekilişte tek sayının gelecek çekilişte çıkma olasılığı %25'tir."
+    )
+    st.markdown("#### 🔎 İki gerçek çekiliş arasındaki ayrılan / yeni gelen sayılar")
+    v14_positions={r["pos"]:r for r in day_draws}
+    v14_comparisons=[
+        r for r in sorted(day_draws,key=lambda x:x["pos"],reverse=True)
+        if r["pos"]-1 in v14_positions
+    ]
+    if v14_comparisons:
+        chosen=st.selectbox(
+            "Karşılaştırılacak hedef",
+            list(range(len(v14_comparisons))),
+            format_func=lambda i:(
+                f'#{v14_comparisons[i]["no"]} — '
+                f'{v14_comparisons[i]["dt"][11:16]} ('
+                f'{v14_comparisons[i]["pos"]}. çekiliş)'
+            ),
+            key="v14_pair_draw_select"
+        )
+        target=v14_comparisons[chosen]
+        prev=v14_positions[target["pos"]-1]
+        pset=set(prev["nums"]);tset=set(target["nums"])
+        retained=sorted(pset&tset)
+        departed=sorted(pset-tset)
+        arrived=sorted(tset-pset)
+        a,b,c=st.columns(3)
+        a.metric("Aynı kalan",len(retained))
+        b.metric("Ayrılan",len(departed))
+        c.metric("Yeni gelen",len(arrived))
+        st.write("**Aynı kalan:** "+", ".join(map(str,retained)))
+        st.write("**Ayrılan:** "+", ".join(map(str,departed)))
+        st.write("**Yeni gelen:** "+", ".join(map(str,arrived)))
+        st.caption(
+            "Ayrılan ve yeni gelenler, bire bir fiziksel değişim çifti "
+            "değildir. Bu tek çekilişin SONRADAN yapılan betimsel analizidir."
+        )
+    else:
+        st.info("Bu gün kesintisiz en az iki gerçek çekiliş gerekli.")
+
+    firstdays=st.slider(
+        "İlk kaç günle geçiş ağı öğrenilsin?",
+        min_value=20,max_value=50,value=36,step=1,
+        key="v14_train_days"
+    )
+    st.markdown("#### 🧪 217 hedef sırası ve sonradan görmeden kontrol")
+    st.caption(
+        "İlk günler yalnız eğitim verisi olur. Sonraki günler öğrenmeye "
+        "dahil edilmez. Geçiş ağının sayı seçimi; rastgele20, "
+        "V13 sıcaklık ve uygun 7–12 hedeflerinde V12 ile karşılaştırılır. "
+        "80×80 ilişkiler arasından geçmişte en güçlü görünenlerin "
+        "yeni günlerde de aynı performansı verip vermediği ayrıca ölçülür."
+    )
+    if st.button("🚀 V14 — 73 günde 217 sıralı geçiş ağını test et",
+                 key="v14_run_full",type="primary"):
+        with st.spinner(
+            "80×80 geçişler ve beş gecikme; 217 günlük sıra; "
+            "V12/V13 karşılaştırması. Analiz tamamlanana kadar bekle..."
+        ):
+            result=v14_cached_history_replay(
+                json.dumps(draws,separators=(",",":")),firstdays
+            )
+        st.session_state["v14_results"]={
+            "nmax":max((r["no"] for r in draws),default=0),
+            "firstdays":firstdays,"data":result
+        }
+    saved=st.session_state.get("v14_results",{})
+    if saved.get("firstdays")==firstdays:
+        r=saved["data"];meta=r["meta"]
+        if saved.get("nmax")!=max((z["no"] for z in draws),default=0):
+            st.warning("Veri dosyasına yeni çekilişler gelmiş. "
+                       "Son rapor eski sürüme ait olabilir.")
+        k1,k2,k3=st.columns(3)
+        k1.metric("Eğitim günü",meta["train_days"])
+        k2.metric("Ayrı test günü",meta["holdout_days"])
+        k3.metric("Değişim hedefi",meta["test_transitions"])
+        st.caption(
+            f'Test dönemi: {meta["first_test"]} – {meta["last_test"]}. '
+            "Günün ilk çekilişi için aynı güne ait önceki çekiliş "
+            "olmadığından değişim hesabı yapılamaz."
+        )
+        st.markdown("##### 🎯 Ağ motoru ile rastgele sayı kıyaslaması")
+        st.dataframe(r["methods"],hide_index=True,use_container_width=True)
+        st.markdown("##### 📏 Rastgele kontrolüne göre gün bazında fark")
+        st.dataframe(r["paired"],hide_index=True,use_container_width=True)
+        st.caption(
+            "Bu güven aralıkları keşif amaçlıdır. Çok sayıda sayı çifti "
+            "ve yöntem denendiğinden rastlantısal üstünlükler oluşabilir."
+        )
+        st.markdown("##### 🕒 217 pozisyon ve saat grupları")
+        st.dataframe(r["times"],hide_index=True,use_container_width=True)
+        with st.expander("Her saatin ilk 6 / son 6 sayı hareketi"):
+            st.dataframe(r["half_hours"],hide_index=True,
+                         use_container_width=True)
+        with st.expander("217 çekiliş sırası tek tek"):
+            st.dataframe(r["positions"],hide_index=True,
+                         use_container_width=True)
+        st.markdown("##### 🔎 Hangi A'dan sonra hangi B?")
+        st.caption(
+            "Bu listedeki çiftler İLK eğitim günlerinde seçildi. "
+            "Listede her sayı için koşullu çıkış oranı ve SONRAKİ test "
+            "günlerindeki gerçek oran ayrı gösterilir. "
+            "A ayrılırsa B'nin gelmesi şartlı olarak yaklaşık %25,316 "
+            "beklenir; fakat bu koşul hedef öncesinde bilinmez."
+        )
+        st.dataframe(r["pairs"],hide_index=True,use_container_width=True)
+        st.markdown("##### 📥 İndirilebilir araştırma raporları")
+        downloads=(
+            ("217 sıra — bütün değişimler ve kupon isabetleri",
+             "ledger","V14_217_HEDEF_DEFTERI.csv"),
+            ("Saatlik 20 sayı değişim dağılımı",
+             "times","V14_SAATLIK_GECIS.csv"),
+            ("217 pozisyon ayrı ortalama",
+             "positions","V14_217_SIRA_ANALIZ.csv"),
+            ("Saat ilk 6 / son 6 değişim",
+             "half_hours","V14_SAAT_YARIMLARI.csv"),
+            ("80x80 arasından eğitimde seçilen ilişki ve kör test",
+             "pairs","V14_SAYI_GECIS_ILISKILERI.csv"),
+            ("Kupon yöntemleri isabet karşılaştırması",
+             "methods","V14_KUPON_PERFORMANSI.csv"),
+            ("Rastgeleye karşı günlük eşli karşılaştırma",
+             "paired","V14_KARSILASTIRMA.csv")
+        )
+        for label,key,path in downloads:
+            st.download_button(
+                "⬇️ "+label,
+                v14_csv(r[key]),file_name=path,mime="text/csv",
+                key="v14_export_"+key
+            )
+    else:
+        st.info("Geniş V14 analizi henüz çalıştırılmadı. "
+                "Önce 🚀 düğmesine bas.")
+
+    st.markdown("#### 🔭 V14 — gelecek çekiliş adayları")
+    if saved.get("firstdays")==firstdays and analysis_date==today and day_draws:
+        ready=[
+            d for d in day_draws
+            if datetime.fromisoformat(d["dt"])<=now_tr()
+        ]
+        next_pos=max((r["pos"] for r in ready),default=0)+1
+        due=moment(daystr,next_pos) if 2<=next_pos<=217 else None
+        forecast=None
+        if (due is not None and due>now_tr()
+            and next_pos not in {r["pos"] for r in day_draws}):
+            forecast=v14_preview(
+                ready,saved["data"]["model"],saved["data"]["v13_model"],
+                next_pos,max((r["no"] for r in ready),default=0)+1
+            )
+        if forecast:
+            st.write(f'**Sıradaki hedef:** {due:%H:%M} — '
+                     f'{forecast["pos"]}. çekiliş')
+            st.dataframe([
+                {"Yöntem":name,"20 aday":", ".join(map(str,nums))}
+                for name,nums in forecast["predictions"].items()
+            ],hide_index=True,use_container_width=True)
+            with st.expander("1–80 sayının geçiş ağı puanı"):
+                st.dataframe(forecast["nodes"],hide_index=True,
+                             use_container_width=True)
+            st.download_button(
+                "⬇️ Güncel 80 sayı geçiş puanları",
+                v14_csv(forecast["nodes"]),
+                file_name=f"V14_CANLI_80_{daystr}.csv",
+                mime="text/csv",key="v14_live_export"
+            )
+            st.info("Bu sonuçlar henüz kanıtlanmış kupon üstünlüğü değildir.")
+        else:
+            st.caption("Şu an geçmiş kayıtları tam ve saati gelmemiş "
+                       "bir sonraki hedef yok.")
+    else:
+        st.caption("Canlı hedefi görmek için V14'ün tarihsel testini "
+                   "çalıştır ve bugünün verilerini seç.")
