@@ -1,0 +1,31 @@
+name: V23 Aile Ilk Iki Cikis 72 Gun
+on:
+  push:
+    paths:
+      - 'v23_aile_ilk_iki_tamgun.py'
+      - 'v23_family_app.py'
+      - 'v23_selftest.py'
+      - '.github/workflows/v23-check.yml'
+  workflow_dispatch:
+jobs:
+  v23:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V23 and Streamlit integration
+        run: python -m py_compile v23_aile_ilk_iki_tamgun.py v23_family_app.py v23_selftest.py v10_app.py
+      - name: Verify first two family sightings and special clock
+        run: python -u v23_selftest.py
+      - name: Process every complete day in veri.txt
+        run: python -u v23_aile_ilk_iki_tamgun.py --output V23_72_GUN_AILELER_ILK_IKI_TAM_ANALIZ.zip
+      - name: Deliver one downloadable V23 research archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: V23-72-Gun-Tam-Aile-Ilk-Iki
+          path: V23_72_GUN_AILELER_ILK_IKI_TAM_ANALIZ.zip
+          retention-days: 30
+          if-no-files-found: error
