@@ -2,7 +2,7 @@
 """V10 — Six-number SAME-FAMILY SAME-DRAW-GAP repeat engine.
 
 Strict chronology:
-    prior day A family hit twice at draw gap G (historical evidence)
+    prior day A family FIRST hit twice at draw gap G (historical evidence)
     on day B same family hits twice consecutively with gap G
     -> *prospectively* target third full appearance G draws later.
 
@@ -35,11 +35,11 @@ def gap_targets_today(hits, families, profiles, day, current, moment_fn,
         if len(recs)<2:
             continue
         prof=profiles.get(label,{})
-        for a,b in zip(recs,recs[1:]):
+        for a,b in [(recs[0],recs[1])]:
             gap=b["pos"]-a["pos"]
             if gap<1:
                 continue
-            support=int(prof.get("pair",{}).get(gap,0))
+            support=int(prof.get("first",{}).get(gap,0))
             if support<minimum_days:
                 continue
             pos=b["pos"]+gap
@@ -77,9 +77,8 @@ def walkforward_six_gap(draws, families, moment_fn, minimum_days=1,
                         minimum_hour_days=2):
     """Chronological daily replay: only earlier days teach gap rules.
 
-    Earlier training includes *any* two full appearances of the same family
-    per historical day, while a trigger on the test day needs two CONSECUTIVE
-    full family appearances. Results are evaluated only after that day's
+    Earlier training and current-day triggers BOTH use the FIRST TWO complete
+    appearances of the same family, never arbitrary later pairs. Results are evaluated only after that day's
     triggers have been frozen. Hour gate is reported independently.
     """
     fs=six_family_map(families)
@@ -103,7 +102,7 @@ def walkforward_six_gap(draws, families, moment_fn, minimum_days=1,
             today_found[label]=matches
             if len(matches)<2:
                 continue
-            for a,b in zip(matches,matches[1:]):
+            for a,b in [(matches[0],matches[1])]:
                 gap=b["pos"]-a["pos"]
                 support=len(supported[label][gap])
                 if support<minimum_days or b["pos"]+gap>217:
@@ -132,9 +131,8 @@ def walkforward_six_gap(draws, families, moment_fn, minimum_days=1,
         for label,hits in today_found.items():
             for r in hits:
                 earlier_hours[label][moment_fn(day,r["pos"]).hour].add(day)
-            for i,a in enumerate(hits):
-                for b in hits[i+1:]:
-                    supported[label][b["pos"]-a["pos"]].add(day)
+            if len(hits)>=2:
+                supported[label][hits[1]["pos"]-hits[0]["pos"]].add(day)
     # De-duplicate identical family+target, preferring stronger evidence.
     # Different target positions are distinct forecasts.
     unique={}
