@@ -539,3 +539,52 @@ UYGULANAN:
 - V10 selftest: 2 farkli gun, bir gunde birden fazla gorunus,
   dis destek kalmasi, 3 gun sinir filtresi ve 🔥 / normal aile
   ayrimini test eder.
+
+
+====================================================================
+18 — V10 GELIYORUM ERKEN UYARI MOTORU (13.10.2026)
+====================================================================
+Kullanici, tum 1.131 aile icin aile TAMAMLANMADAN ONCE
+"Geliyorum" erken uyari motoru gelistirilmesini ONAYLADI.
+
+Eklendi:
+- v10_geliyorum.py: saf, standart kutuphane ile Aile Geliyorum Motoru
+- v10_app.py: altta "🔮 Geliyorum" V10 sekmesi (altinci sekme).
+- .github/workflows/v10-check.yml: yeni modulu test eder.
+- v10_selftest.py: zaman ve veri sizmasi, kismi eşleşme, gecmis
+  saat destegi, sari/alevli sinyal ve adim adim geriye donuk testler.
+
+Kapsam: 5, 6, 7, 8, 9, 10 sayilik TUM mevcut aile havuzu taranir.
+Kismi gorunus alt limitleri sirayla 4/5, 4/6, 5/7, 6/8, 6/9, 7/10.
+Son uc gercek gorulmus cekilisten tam-kismi eslesme aranir.
+
+Siniflama:
+- Sari erken uyari: kismi belirti var, fakat kupon icin gereken
+  tarihsel hedef saat gun destegi yeterli degil; kupon YOK.
+- Alev Geliyorum: hedef saat diliminde en az 2 (secim 3 ise 3)
+  AYRI GUNDE o aile TAM gorunmus ve bugun son uc cekiliste
+  kismi belirti mevcut; daha onceki gunlerin verisiyle
+  gorece kuvvetli betimsel bir isaret (tahmin olasiligi degil).
+- Cift Alev: hedef gune uyan bir sabit aralik zinciri veya
+  uc ayri gun destekli saat + iki kismi isaret. Bu 'coklu
+  kosul' etiketi olup bagimsiz istatistiksel kanit DEGILDIR.
+- Her aile icin hedef sadece son bilinen cekilisin HEMEN
+  SONRAKI kesin takvim slotudur; gecmiste kalmis saatlere
+  kupon uretilmez. Yeni veri gelmeden hedef otomatik uzatilmaz.
+- Canli kuponlar sadece yeterli saat desteginde verilir, sistemin
+  eski kuponlari ve V9 motoru etkilenmez.
+- Hedef tarih/saat/sira/no, aile, kismi sayi, saat ve gun
+  destegi, takip, CSV ve kupon kaydi getirildi.
+- Test bolumu, secilen gunun her slotunu saat saat tahmin
+  anina geri goturur; her adimda yalniz o ana kadar girilen
+  verileri kullanarak sonraki cekilisi tahmin eder ve sonradan
+  'tam isabet / yanlis alarm' olcer.
+- Testte mevcut 1131 aile havuzu eski sonuclardan secilmis
+  olabilir (secim yanliligi). Sonuclar tam kor bagimsiz veri
+  testi olarak gosterilmez.
+
+Olusturulan yeni kuponlar sonuc takibinde saklanir. Ana veri.txt,
+v10_canli_kayit.json, mevcut biletler, aile listesi ve V9 app.py
+bu surum degisikliginde degistirilmedi.
+
+GitHub CI: 38412047885 TUM test asamalarinda BASARILI.
