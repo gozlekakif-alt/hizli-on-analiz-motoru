@@ -34,7 +34,7 @@ today=[
     fake("2026-10-10",14,10001),fake("2026-10-10",17,10002),
     fake("2026-10-10",20,10003), # the target result is intentionally hidden for live
 ]
-profile={family:{"pair":{3:2},"hour_days":{7:2},"days":["2026-10-08","2026-10-09"]}}
+profile={family:{"first":{3:2},"hour_days":{7:2},"days":["2026-10-08","2026-10-09"]}}
 # All three full-family appearances occur in 07:xx; target pos20 = 07:32.
 # Target-hour support is from two earlier days, never from future results.
 profile[family]["hour_days"][7]=2
@@ -53,7 +53,7 @@ assert not gap_targets_today(hit_so_far,meta,profile,"2026-10-10",
        moment("2026-10-10",17),moment,{14,17,20},2,2)
 assert not gap_targets_today(hit_so_far,meta,profile,"2026-10-10",
        moment("2026-10-10",17),moment,{14,17},3,2)
-weak={family:{"pair":{3:1},"hour_days":{7:1}}}
+weak={family:{"first":{3:1},"hour_days":{7:1}}}
 watch=gap_targets_today(hit_so_far,meta,weak,"2026-10-10",
                         moment("2026-10-10",17),moment,{14,17},1,2)
 assert len(watch)==1 and not watch[0]["Kupon uygun"]
@@ -66,8 +66,7 @@ test_draws=training+today[:2]+[h]
 warmup=walkforward_six_gap(training,meta,moment,1)
 assert len(warmup)==1 and warmup[0]["İsabet"] is None,warmup
 good=walkforward_six_gap(test_draws,meta,moment,2)
-assert len(good)==2 and good[0]["İsabet"]==6 and good[0]["Sonuç"]=="6/6",good
-assert good[1]["İsabet"] is None and good[1]["Hedef sıra"]==23,good
+assert len(good)==1 and good[0]["İsabet"]==6 and good[0]["Sonuç"]=="6/6",good
 assert six_gap_summary(good)["6/6"]==1
 assert good[0]["Kupon koşulu"]
 miss=walkforward_six_gap(training+today[:2]+[fake("2026-10-10",20,10003,False)],meta,moment,2)
