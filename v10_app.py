@@ -2181,7 +2181,7 @@ with tabs[8]:
                  "20 sayıda var olan alt aile":v12_comb(20,k),
                  "Önceki 12'de tam görülmüş":v12_data["counts"][k],
                  "Kulede k'lı öncü aile doğru":
-                    f'{v12_row[f"{k}'+ "'li aile ortak" + f'"]}/{k}'}
+                    str(v12_row[str(k)+"'li aile ortak"])+"/"+str(k)}
                 for k in V12_SIZES
             ]
             st.dataframe(by_size,hide_index=True,use_container_width=True)
