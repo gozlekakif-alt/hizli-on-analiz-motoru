@@ -438,3 +438,40 @@ geçmiş tarihli hedefleri bilinçli olarak eliyor. Bu nedenle tüm aile boyutla
   canlı sistem bugüne yönelik hedef çıkaramaz. Güncel veri şarttır.
 
 V9 app.py, v10_aileler.csv ve ana veri.txt bu yama ile değiştirilmedi.
+
+
+====================================================================
+15 — V10 🔥 RITIMLI AILE ETIKETI / 13 EKIM 2026 16:00
+====================================================================
+Soru: V10'da farkli gunlerde ayni ritmi yapan aileler nerede? O aileden
+kupon cikarsa kupon yaninda ALEV 🔥 gorunmeli.
+Islem:
+- v10_app.py: "🔥 Farklı günlerde ritim yapan aileler" ana paneli eklendi.
+- 1) Aynı ailenin >=3 farklı günde eşit takvim-günü aralıklarıyla
+     TAM göründüğü zincirler; numara/boyut/aralık/gün sayısı ve
+     başlangıç-son günler, "devam etse tarih" ile CSV. "Devam etse"
+     otomatik kupon saati değildir.
+- 2) Aynı ailenin bir gün içinde iki/üç/dört görünüş ritim aralıklarının
+     >=2 farklı geçmiş günde tekrarlandığı örnekler ayrı açılabilir
+     tablo ve CSV olarak eklendi.
+- Ritim aileleri Hedef & Kupon ekranında 🔥 prefiksi alır.
+  Yeni kupon üretildiğinde görünür metinde 🔥 vardır; kaydedilen
+  kuponun "kind" sinyal etiketi de 🔥 taşır (aile sayıları değişmez).
+  Aileler arası sıra kuponları da aynı kurala tabidir.
+- Hesaplamalar yalnız incelenen günden ÖNCEKİ veri ile yapılır;
+  aynı gün girilen olaylar ritmi oluşturmuş gibi ileriye
+  yansıtılmaz. Ritim olmak tahmin başarısı kanıtı değildir.
+- Yeni CSV ve filtre; V9 app.py, ana veri.txt ve 1.131 ailelik CSV
+  değiştirilmedi.
+- Sarı yanlış "eksik kayıt" uyarısı için latest_main_history
+  doğrulamasının 60 saniyelik cache'i kaldırıldı: her şüpheli
+  eksik kayıt, güncel GitHub ana dalından tekrar doğrulanır.
+- Canlı JSON 337 kayıt ile ana veri.txt kayıtları 13.10.2026 15:57
+  itibarıyla tamamen eşleşiyordu: 337/337 kaydedilmiş, 0 eksik.
+- O andaki tüm verilere bakıldığında sabit takvim günü aralığı
+  örnekleri: 204 ayrı aday aile, 310 ayrı sabit aralık koşusu
+  (194 adet 5'li, 9 adet 6'lı, 1 adet 10'lu).
+  Ancak canlı ekranın geçmiş eğitim günü seçimi bugünü eğitimden
+  dışladığından ekranda sayaç farklı olabilir.
+- v10_selftest.py: günlük ritim ve geçmiş destek modellerine
+  kontrollü yapay veri testi eklendi.
