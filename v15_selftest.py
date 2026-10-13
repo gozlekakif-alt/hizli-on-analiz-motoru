@@ -77,6 +77,10 @@ assert meta["targets"]==37*102,meta
 assert meta["model_coupons"]==6*meta["targets"],meta
 assert meta["random_coupons"]==6*meta["targets"],meta
 assert meta["coupons"]==12*meta["targets"],meta
+assert 10<=meta["model_coverage"]<=60,meta
+assert 10<=meta["random_coverage"]<=60,meta
+assert all(10<=x["Model altı kupon farklı sayı"]<=60
+           for x in report["differences"])
 assert len(report["ledger"])==meta["coupons"]
 assert len(report["differences"])==meta["targets"]
 assert len(report["methods"])==7
