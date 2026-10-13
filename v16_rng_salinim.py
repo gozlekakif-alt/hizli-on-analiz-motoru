@@ -16,7 +16,7 @@ The distribution test of overlap counts is not a cryptanalytic attack and
 cannot reveal the underlying PRNG without additional implementation evidence.
 """
 from collections import Counter,defaultdict
-from math import comb,exp,log,erfc,sqrt
+from math import comb,exp,log,erfc,sqrt,gamma
 from v12_80_kule import make_ready
 
 PROBS={k:comb(20,k)*comb(60,20-k)/comb(80,20) for k in range(21)}
@@ -85,6 +85,23 @@ def normal_two_sided(mean,expected,n,variance):
     return erfc(abs(z)/sqrt(2))
 
 
+def chi2_pvalue_odd_df(chi2,df):
+    """Chi-square upper tail for odd integer df without scipy."""
+    if df<1 or df%2!=1:raise ValueError("odd positive df required")
+    a=.5
+    x=chi2/2
+    upper=sqrt(math_pi())*erfc(sqrt(x))
+    while a<df/2:
+        upper=a*upper+(x**a)*exp(-x)
+        a+=1
+    return upper/gamma(df/2)
+
+
+def math_pi():
+    from math import pi
+    return pi
+
+
 def benjamini_hochberg(rows,key="p",q=.05):
     clean=sorted((r for r in rows if r[key] is not None),key=lambda r:r[key])
     n=len(clean)
@@ -117,10 +134,11 @@ def summarize_hour(rows,training):
                 ((tm-5)*(avg-5)>0) if tm is not None else False)
         })
     benjamini_hochberg(byhour,key="Test p",q=.05)
-    return [{**r,
-             "Test p":round(r["Test p"],6) if r["Test p"] is not None else None,
-             "Çoklu testte anlamlı":r.pop("fdr_significant")}
-            for r in byhour]
+    return [{
+        **{k:v for k,v in r.items() if k!="fdr_significant"},
+        "Test p":round(r["Test p"],6) if r["Test p"] is not None else None,
+        "Çoklu testte anlamlı":r["fdr_significant"]}
+        for r in byhour]
 
 
 def analyze(draws,train_days=36):
@@ -158,8 +176,8 @@ def analyze(draws,train_days=36):
         groups.append({"Tekrar dilimi":f"{a}" if a==b else f"{a}–{b}",
                        "Gözlenen":obs,"Bağımsız beklenen":round(expected,2),
                        "Gözlem/teori":round(obs/expected,4)})
-    # Exact chi-square p requires incomplete gamma; report chi2 and degrees.
-    # Independent X_t has independent overlapping pair counts under iid sets,
+    p_chi=chi2_pvalue_odd_df(pearson,len(chunks)-1)
+    # Under fair iid draws, overlap counts are serially independent in law,
     # but full-day grouping is still retained for robust forward evaluation.
     pairs=[r for r in te if r["prev_x"] is not None]
     prior_rows=defaultdict(list)
@@ -239,7 +257,8 @@ def analyze(draws,train_days=36):
                 "expected_mean":5.,
                 "std_hypergeom":round(sqrt(20*.25*.75*60/79),6),
                 "chi_square":round(pearson,4),"degrees_freedom":len(chunks)-1,
-                "note":"Chi-square assumes predefined 11 bins. Does not identify generator or seed."},
+                "chi_square_p":round(p_chi,6),
+                "note":"Chi-square uses 10 predefined bins. Does not identify generator or seed."},
         "distribution":ptable,"pooled_distribution":groups,
         "hour":summarize_hour(te,tr),"halves":halfrows,
         "conditional":conditional,"forecast":predictions,
