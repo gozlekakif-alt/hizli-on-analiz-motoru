@@ -278,7 +278,8 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
     rows=[]
     method_stats=defaultdict(lambda:{"n":0,"sum":0,"max":0,"twenty":0,
                                     "hist":Counter(),"seven_to_twelve":0})
-    seat_ledger=defaultdict(lambda:[0,0,0,0])
+    seat_ledger=defaultdict(lambda:[0,0,0,0,0])
+    exact_seats=defaultdict(lambda:[0,0,0.0])
     stage_results=defaultdict(lambda:[0,0])
     family_stats=defaultdict(lambda:{"n":0,"complete":0,"sum":0,
                                      "any_full_at_target":0})
@@ -295,12 +296,22 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
             found=Counter(st["pool"] for st in states if st["n"] in actual)
             ph=phase(target["pos"])
             slot=hour_draw_index(target["pos"])
+            # Exact seat vector is a separate falsifiable forecast. Calculate
+            # its fair multivariate-hypergeometric chance BEFORE target result.
+            p_random=1.0
+            for pool in TYPES:
+                p_random*=math.comb(pools[pool],pred_seats.get(pool,0))
+            p_random/=math.comb(80,20)
+            exact=all(found[pool]==pred_seats.get(pool,0) for pool in TYPES)
+            ex=exact_seats[ph]
+            ex[0]+=1;ex[1]+=int(exact);ex[2]+=p_random
             for pool in TYPES:
                 v=seat_ledger[(ph,pool)]
                 v[0]+=1
                 v[1]+=pools[pool]
                 v[2]+=pred_seats.get(pool,0)
                 v[3]+=found[pool]
+                v[4]+=abs(found[pool]-pred_seats.get(pool,0))
             for st in states:
                 v=stage_results[(ph,st["label"])]
                 v[0]+=1;v[1]+=int(st["n"] in actual)
@@ -379,14 +390,15 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
             "Dağılım 0..20":"/".join(str(s["hist"][i]) for i in range(21))
         })
     byseat=[]
-    for (ph,pool),(n,total,guessed,hits) in sorted(seat_ledger.items()):
+    for (ph,pool),(n,total,guessed,hits,abs_diff) in sorted(seat_ledger.items()):
         byseat.append({
             "Gün bölümü":ph,"Grup":pool,"Çekiliş":n,
             "Havuzda ortalama sayı":round(total/n,4),
             "Öngörülen koltuk":round(guessed/n,4),
             "Gerçek 20'de koltuk":round(hits/n,4),
             "Rastgele beklenen":round(.25*total/n,4),
-            "Koltuk farkı":round((hits-guessed)/n,4)
+            "Koltuk farkı":round((hits-guessed)/n,4),
+            "Ortalama mutlak koltuk hatası":round(abs_diff/n,4)
         })
     bystate=[]
     for (ph,label),(n,hits) in sorted(stage_results.items()):
@@ -414,7 +426,13 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
                 "test_last":holdout[-1] if holdout else "",
                 "train_draws":model["train_draws"],"test_targets":len(rows),
                 "note":"Targets are unordered sets. 'Seats' mean cold/warm/hot categories, not ordered physical ball slots."},
-        "methods":by_method,"seats":byseat,"states":bystate,
+        "methods":by_method,"seats":byseat,
+        "seat_exact":[{"Gün bölümü":ph,"Hedef":v[0],
+                       "20 koltuk dağılımı tam tuttu":v[1],
+                       "Rastgele beklenen tam":round(v[2],3),
+                       "Tam oran %":round(100*v[1]/v[0],4)}
+                      for ph,v in sorted(exact_seats.items())],
+        "states":bystate,
         "family":familyrows,"ledger":rows,
         "examples":examples,"family_examples":allfamily,
         "train_model":model
