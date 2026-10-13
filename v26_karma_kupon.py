@@ -134,7 +134,7 @@ def mixed_ten(classification,quotas,score=None):
     return tuple(sorted(selected)),actual
 
 
-def snapshot(date,start,history,first6=None):
+def snapshot(date,start,history,first6=None,state=None):
     """Single pure cutoff snapshot for both historical and partial/live days."""
     if len(history)<start+5:
         raise ValueError("Not enough real first-six results")
@@ -145,9 +145,10 @@ def snapshot(date,start,history,first6=None):
     first=known[-6:] if first6 is None else first6
     if [d["pos"] for d in first]!=list(range(start,start+6)):
         raise ValueError("First six are not the selected real hourly window")
-    state=new_state()
-    for d in known:
-        update_history(state,d)
+    if state is None:
+        state=new_state()
+        for d in known:
+            update_history(state,d)
     panel,hot12,hot6=choose_family_panel(date,cutoff,state,known,first)
     klass=classify(known)
     fam_score=family_scores(panel,known)
@@ -179,9 +180,16 @@ def evaluate_day(date,draws):
         raise ValueError("217 complete ordered draws required")
     coupons_out=[]
     signal_rows=[]
+    state=new_state()
+    cursor=0
     for start in HOUR_STARTS:
-        # Does not inspect draws after start+5 when constructing coupons.
-        selected,signals=snapshot(date,start,draws[:start+5])
+        cutoff=start+5
+        while cursor<cutoff:
+            update_history(state,draws[cursor])
+            cursor+=1
+        # Only cutoff-registered state enters the decision; all future
+        # results remain inaccessible to the selection.
+        selected,signals=snapshot(date,start,draws[:cutoff],state=state)
         target=draws[start+5:start+11]
         assert [d["pos"] for d in target]==list(range(start+6,start+12))
         for mode,nums in selected.items():
