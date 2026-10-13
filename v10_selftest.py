@@ -198,7 +198,7 @@ assert env["gap_class"]([4,6,4])=="Değişken"
 
 # Historical 3x/4x 5-number family: two older independent days with +5.
 family="01-02-03-04-05"
-fmeta={family:{"k":5,"mask":sum(1<<(x-1) for x in range(1,6))}}
+fmeta={family:{"k":5,"nums":tuple(range(1,6)),"mask":sum(1<<(x-1) for x in range(1,6))}}
 historic=[]
 for day,first_id in [("2026-10-08",10000),("2026-10-10",10500)]:
     historic.extend(make(day,pos,first_id+j) for j,pos in enumerate((10,15,20,25)))
