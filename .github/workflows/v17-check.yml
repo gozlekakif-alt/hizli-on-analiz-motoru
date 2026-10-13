@@ -1,0 +1,20 @@
+name: V17 Cekilis Karakter Testi
+on:
+  push:
+    paths:
+      - 'v17_karakter_motoru.py'
+      - 'v17_selftest.py'
+      - '.github/workflows/v17-check.yml'
+  workflow_dispatch:
+jobs:
+  v17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V17 syntax
+        run: python -m py_compile v17_karakter_motoru.py v17_selftest.py
+      - name: V17 character dynamics 36/37 held-out
+        run: python v17_selftest.py
