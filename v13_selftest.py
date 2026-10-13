@@ -105,6 +105,9 @@ assert sum(x["Hedef"] for x in r["seat_exact"])==meta["test_targets"]
 assert all(0<=x["20 koltuk dağılımı tam tuttu"]<=x["Hedef"] for x in r["seat_exact"])
 assert len(r["states"])>=20
 assert len(r["family"])>=3*9
+assert len(r["nested"])==9
+assert all(row["Hedef"]==meta["test_targets"] for row in r["nested"])
+assert all(0<=row["Tam k/k"]<=row["Hedef"] for row in r["nested"])
 assert r["methods"]
 assert len(r["train_model"]["days"])==36
 assert sum(x["Sayı-hedef gözlemi"] for x in r["states"])==meta["test_targets"]*80
