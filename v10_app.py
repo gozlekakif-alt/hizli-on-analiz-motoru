@@ -272,7 +272,6 @@ def github_text(path):
     res.raise_for_status()
     return res.content.decode("utf-8-sig")
 
-@st.cache_data(ttl=60, show_spinner=False)
 def latest_main_history():
     """Fresh read from GitHub REST, bypassing cached raw CDN snapshot.
 
@@ -579,6 +578,55 @@ def active_signals(draws, families, profiles, target_day, current):
                           "trigger_pos":ps[-1],"moment":t.isoformat(timespec="minutes")})
     found.sort(key=lambda x:(x["pos"],-x["size"],-x["support"],x["label"]))
     return found, dayhits
+
+def cross_day_rhythm_report(profiles, families):
+    """Earlier-day-only equal calendar-day interval streaks.
+
+    A streak must contain >=3 distinct observed days (two identical gaps).
+    This is a descriptive flag, not evidence of predictive superiority.
+    """
+    rows = []
+    for label, profile in profiles.items():
+        if label not in families:
+            continue
+        dates = sorted({date.fromisoformat(d) for d in profile.get("days", [])})
+        if len(dates) < 3:
+            continue
+        gaps = [(b-a).days for a,b in zip(dates, dates[1:])]
+        i = 0
+        while i < len(gaps):
+            j = i+1
+            while j < len(gaps) and gaps[j] == gaps[i]:
+                j += 1
+            if j-i >= 2:
+                end = dates[j]
+                rows.append({
+                    "Aile":label, "Boyut":families[label]["k"],
+                    "Ritim":f"+{gaps[i]} gün",
+                    "Ritimli gün":j-i+1, "Aynı aralık":j-i,
+                    "Başlangıç":dates[i].isoformat(),
+                    "Son gün":end.isoformat(),
+                    "Devam etse tarih":(end+timedelta(days=gaps[i])).isoformat(),
+                    "Tarih örnekleri":", ".join(d.isoformat() for d in dates[i:j+1]),
+                })
+            i = j
+    rows.sort(key=lambda r:(-r["Aynı aralık"],-r["Ritimli gün"],
+                            -r["Boyut"],r["Son gün"],r["Aile"]))
+    return rows
+
+
+def cross_day_repeat_families(profiles, families, minimum_days=2):
+    """Families repeating their own intra-day first/3rd/4th pattern
+    on >=minimum_days distinct previous days."""
+    found=set()
+    for label,p in profiles.items():
+        if label not in families:
+            continue
+        if any(int(v)>=minimum_days for key in ("first","triple","quad")
+               for v in p.get(key,{}).values()):
+            found.add(label)
+    return found
+
 
 def daily_chains(profiles, families, target_day):
     today=date.fromisoformat(target_day)
@@ -996,6 +1044,12 @@ with tabs[1]:
     signals=repeat_gap_targets(hits,profiles,families,daystr,current,known_pos,
                                minimum_days=support_days,latest_known=latest)
     family_summaries,family_events=family_rhythm_report(draws,families,hits,daystr)
+    cross_day_runs=cross_day_rhythm_report(profiles,families)
+    calendar_fire={r["Aile"] for r in cross_day_runs}
+    session_fire=cross_day_repeat_families(profiles,families,minimum_days=2)
+    fire_families=calendar_fire | session_fire
+    st.caption("🔥 = geçmiş günlerde aynı aralık veya aynı aileye ait "
+               "gün içi tekrar ritmi gözlendi; kesin isabet anlamına gelmez.")
     if support_days==1:
         st.warning("Deneysel: tek geçmiş gün bir tekrarın öngörülebilir olduğunu göstermez. Kupon hedefleri istatistiksel olarak doğrulanmış değildir.")
     st.markdown("### 📊 Bu tarihte gerçekten neler var?")
@@ -1016,6 +1070,38 @@ with tabs[1]:
               "Bu gün tam çıkan":by_k[k],
               "Gelecek saat hedefi":sig_by_k[k]} for k in range(5,11)]
     st.dataframe(summary,hide_index=True,use_container_width=True)
+    st.markdown("### 🔥 Farklı günlerde ritim yapan aileler")
+    f1,f2,f3=st.columns(3)
+    f1.metric("Sabit gün ritmi",len(calendar_fire))
+    f2.metric("Aynı gün içi ritim, farklı günlerde",len(session_fire))
+    f3.metric("Bugün görülen alevli",len(set(hits)&fire_families))
+    st.caption("Sabit gün ritmi: aynı aile en az 3 farklı tarihte art arda "
+               "eşit gün aralıklarıyla tam çıktı. Diğer sayaç: "
+               "aynı ailenin gün içi tekrar aralığı en az 2 farklı günde görüldü. "
+               "İkisi ayrı ölçüdür; aynı aile iki grupta da olabilir.")
+    if cross_day_runs:
+        flame_sizes=["Hepsi"]+[str(k) for k in range(5,11)]
+        filter_size=st.selectbox("🔥 Ritimli aile boyutu",flame_sizes,
+                                 key="v10_fire_size")
+        visible_runs=[r for r in cross_day_runs if
+                      filter_size=="Hepsi" or r["Boyut"]==int(filter_size)]
+        st.dataframe(
+            [{**r, "Aile":"🔥 "+r["Aile"],
+              "Bugün":"✅ tam çıktı" if r["Aile"] in hits else "—"}
+             for r in visible_runs[:250]],
+            hide_index=True,use_container_width=True)
+        st.download_button("⬇️ Tüm farklı gün ritimleri CSV",
+            family_order_csv(cross_day_runs),
+            file_name=f"V10_GUNLER_ARASI_RITIM_{daystr}.csv",
+            mime="text/csv",key="v10_calendar_fire_csv")
+    else:
+        st.info("Seçilen günden ÖNCE en az 3 farklı günde aynı aralıkla "
+                "tekrarlanan sabit aile zinciri bulunamadı.")
+    st.caption("🔥 alev bu ailelerden verilen kuponun yanında da gösterilir. "
+               "Kayıtlı olmayan yeni günü eğitim verisine katmadan "
+               "ritimleri yeniden hesaplarız. Gün ritmi tek başına "
+               "kesin bir çekiliş saati vermez.")
+
     st.markdown("### 📜 Günlük Sinyal Defteri — geçmiş ve sonuçlar")
     replay=day_signal_replay(hits,profiles,families,daystr,day_draws,
                              minimum_days=support_days)
@@ -1032,7 +1118,7 @@ with tabs[1]:
                "Sonradan girilen çekiliş sonucu yalnızca isabet kontrolünde kullanılır. "
                "Sinyal oluşması, başarılı tahmin anlamına gelmez.")
     if replay:
-        st.dataframe(replay,hide_index=True,use_container_width=True)
+        st.dataframe([{**r,"Aile":("🔥 " if r["Aile"] in fire_families else "")+r["Aile"]} for r in replay],hide_index=True,use_container_width=True)
         st.download_button(
             "⬇️ Günün tüm sinyalleri ve sonuçları (CSV)",
             family_order_csv(replay),
@@ -1059,7 +1145,7 @@ with tabs[1]:
         a2.metric("Bugün 2+ görünen",repeat)
         a3.metric("Sabit/artan/azalan",rhythmic)
         st.dataframe(
-            [{"Aile":r["Aile"],"Boyut":r["Boyut"],"Durum":r["Durum"],
+            [{"Aile":("🔥 " if r["Aile"] in fire_families else "")+r["Aile"],"Boyut":r["Boyut"],"Durum":r["Durum"],
               "Bugün":r["Bugün kaç kez"],"Ritim":r["Bugün ritim"],
               "Çekilişler":r["Bugün çekilişler"],
               "Geçmiş gün":r["Geçmiş kaç gün"],"3+ gün":r["Geçmişte 3+ gün"],
@@ -1114,23 +1200,23 @@ with tabs[1]:
                 st.caption("Bu boyutta ileri hedef yok. Motor 0 kupon öneriyor.")
                 continue
             st.dataframe(
-                [{"Aile":x["label"],"Hedef":x["stage"],
+                [{"Aile":("🔥 " if x["label"] in fire_families else "")+x["label"],"Hedef":x["stage"],
                   "Saat":x["time"],"Sıra":x["pos"],
                   "Tahmini no":"#"+str(x["estimated_no"]) if x["estimated_no"] else "—",
                   "Ritim":x["pattern"],"Tür":x["kind"],
                   "Geçmiş destek (gün)":x["support"]} for x in options],
                 hide_index=True,use_container_width=True)
             pick=st.selectbox(f"{k}'li hedef seç",list(range(len(options))),
-                format_func=lambda i:options[i]["time"]+" | "+options[i]["label"],
+                format_func=lambda i:options[i]["time"]+" | "+("🔥 " if options[i]["label"] in fire_families else "")+options[i]["label"],
                 key=f"v10_select_{k}")
             x=options[pick]
             ticket_nums=make_ticket(x,draws,size=k)
-            st.markdown(f"**{k}'li kupon: "+", ".join(map(str,ticket_nums))+"**")
+            st.markdown(f"**{'🔥 ' if x['label'] in fire_families else ''}{k}'li kupon: "+", ".join(map(str,ticket_nums))+"**")
             st.caption(f"{x['day']} {x['time']} · {x['stage']} · {x['kind']} · "+                       f"{x['support']} geçmiş gün destekli · Çekiliş sıra {x['pos']}. "+                       ("Çekiliş numarası yalnız tahminidir." if x['estimated_no'] else "Numara henüz bilinmiyor."))
             if st.button(f"🎟️ {k}'li kuponu kaydet",key=f"v10_save_{k}"):
                 ticket={"day":x["day"],"pos":x["pos"],"time":x["time"],
                         "family":x["label"],"numbers":ticket_nums,
-                        "size":k,"kind":x["kind"],"trigger_no":x["trigger_no"],
+                        "size":k,"kind":("🔥 " if x["label"] in fire_families else "")+x["kind"],"trigger_no":x["trigger_no"],
                         "created_at":now_tr().isoformat(timespec="seconds")}
                 key=(ticket["day"],ticket["pos"],ticket["family"])
                 existing={(t["day"],t["pos"],t["family"]) for t in st.session_state.v10_tickets}
@@ -1151,7 +1237,7 @@ with tabs[1]:
         st.caption("Bu tarihten sonraya uzanan +2/+5/+7/+14 zincir hedefi yok.")
     st.markdown("#### Seçili günde tam görünen aileler — kısa tekrar")
     if hits:
-        top=[{"Aile":label,"Boyut":families[label]["k"],
+        top=[{"Aile":("🔥 " if label in fire_families else "")+label,"Boyut":families[label]["k"],
               "Bugunku gorunus":len(recs),
               "Cekilisler":", ".join("#"+str(d["no"])+" "+d["dt"][11:16] for d in recs)}
              for label,recs in hits.items()]
@@ -1285,7 +1371,7 @@ with tabs[2]:
                     "Kupon hedefi seç", range(len(candidates)),
                     format_func=lambda i:(
                         f'{candidates[i]["Hedef saat"]} • '
-                        f'{candidates[i]["Aşama"]} • {candidates[i]["Aile"]}'
+                        f'{candidates[i]["Aşama"]} • {"🔥 " if candidates[i]["Aile"] in fire_families else ""}{candidates[i]["Aile"]}'
                     ),key="v10_sira_ticket_pick"
                 )
                 chosen=candidates[picked]
@@ -1293,7 +1379,7 @@ with tabs[2]:
                     {"label":chosen["Aile"],"moment":chosen["moment"]},
                     draws, size=len(chosen["Aile"].split("-"))
                 )
-                st.write("**Deneysel aile kuponu:** " + ", ".join(map(str,coupon)))
+                st.write(("🔥 " if chosen["Aile"] in fire_families else "")+"**Deneysel aile kuponu:** " + ", ".join(map(str,coupon)))
                 st.caption(
                     f'{chosen["Aşama"]} • {chosen["Destek gün"]} geçmiş gün desteği. '
                     "Bu ritmin sonraki çekilişte süreceğine dair garanti yoktur."
@@ -1303,7 +1389,7 @@ with tabs[2]:
                         "day":daystr, "pos":chosen["Hedef sıra"],
                         "time":chosen["Hedef saat"], "family":chosen["Aile"],
                         "numbers":coupon,"size":len(coupon),
-                        "kind":"Aile sırası "+chosen["Aşama"],
+                        "kind":("🔥 " if chosen["Aile"] in fire_families else "")+"Aile sırası "+chosen["Aşama"],
                         "trigger_no":0,"created_at":now_tr().isoformat(timespec="seconds")
                     }
                     ticket_key=(ticket["day"],ticket["pos"],ticket["family"])
