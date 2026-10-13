@@ -43,6 +43,7 @@ assert m["train_transitions"]<=36*215,m
 assert m["n_transitions"]==m["train_transitions"]+m["test_transitions"]
 assert m["mean_overlap"]>=0 and m["mean_overlap"]<=20
 assert m["degrees_freedom"]==9
+assert .05<m["chi_square_p"]<.20,m
 assert len(report["distribution"])==21
 assert len(report["pooled_distribution"])==10
 assert len(report["hour"])==18
