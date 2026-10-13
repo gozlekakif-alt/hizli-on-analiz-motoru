@@ -2010,6 +2010,9 @@ with tabs[7]:
                    f"ortalaması {selected_k}/4 = {selected_k/4:.2f} sayıdır. "
                    "Katalog aileleri geçmiş sonuçlarla seçildiğinden tarafsız "
                    "bağımsız veri testi kabul edilmez.")
+        st.markdown("#### 7–12. çekilişlerin isabet karşılaştırması")
+        slot_rows=[x for x in r["slots"] if x["Boyut"]==selected_k]
+        st.dataframe(slot_rows,hide_index=True,use_container_width=True)
         st.markdown("#### 🕘 Saatlik 20 sayının davranışı")
         st.dataframe(r["hour_summary"],hide_index=True,
                      use_container_width=True)
@@ -2020,6 +2023,8 @@ with tabs[7]:
         st.markdown("#### 📥 Ayrı veri raporları")
         downloadable=(
             ("6–10 ailelerinin geliş yolları","arrival","V11_GELIS_YOLLARI.csv"),
+            ("73 gün bütün hedefler ve her yöntem isabeti","target_ledger","V11_7434_HEDEF_DEFTERI.csv"),
+            ("7, 8, 9, 10, 11, 12. çekiliş ayrı sonuçları","slots","V11_7_12_SIRA_RAPORU.csv"),
             ("Önceden hedeflenen kuponların isabeti","methods","V11_TUM_ISABETLER.csv"),
             ("12×20 sayı saat özeti","hour_summary","V11_20_SAYI_SAAT.csv"),
             ("Tam aile görünüş örnekleri","examples","V11_AILE_ORNEKLER.csv"),
