@@ -1,0 +1,31 @@
+name: V26 Karma Kupon 72 Gun Kor Test
+on:
+  push:
+    paths:
+      - 'v26_karma_kupon.py'
+      - 'v26_selftest.py'
+      - 'v26_family_app.py'
+      - '.github/workflows/v26-check.yml'
+  workflow_dispatch:
+jobs:
+  v26:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python source compile and Streamlit integration
+        run: python -m py_compile v26_karma_kupon.py v26_selftest.py v26_family_app.py v10_app.py
+      - name: Category quotas and first-six no-leak audit
+        run: python -u v26_selftest.py
+      - name: Exact 72-day hot cold new 10-ball coupon holdout
+        run: python -u v26_karma_kupon.py --output V26_KARMA_72_GUN_10LU_KUPON_KOR_TEST.zip
+      - name: Deliver 7 CSV-JSON reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: V26-Karma-72-Gun-Tum-10lu-Kupon-Raporu
+          path: V26_KARMA_72_GUN_10LU_KUPON_KOR_TEST.zip
+          retention-days: 30
+          if-no-files-found: error
