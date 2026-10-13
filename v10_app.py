@@ -581,7 +581,6 @@ with tabs[0]:
             if st.button("🔐 Otomatik kalıcı kaydı aç",key="v10_unlock_live"):
                 if hmac.compare_digest(pin_on_live,secret_admin_pin()):
                     st.session_state.v10_admin_unlocked=True
-                    st.session_state["v10_pin_live"]=""
                     if st.session_state.v10_live:
                         ok,_,m=persist_to_github_veri_txt(st.session_state.v10_live)
                         st.session_state.v10_last_paste={
