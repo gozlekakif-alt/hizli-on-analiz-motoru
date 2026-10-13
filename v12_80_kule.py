@@ -72,15 +72,18 @@ def forward_towers(prior,draw_no):
                                              -kv[0][0],-kv[0][1]))[0]
     graph=[anchor[0],anchor[1]]
     remaining=set(range(1,81))-set(graph)
+    # Incremental edge sums: same ordering as full re-scan but ~10x cheaper.
+    sums={n:pair[(min(n,anchor[0]),max(n,anchor[0]))]
+              +pair[(min(n,anchor[1]),max(n,anchor[1]))]
+          for n in remaining}
     while len(graph)<20:
-        # Edges to already-chosen members, scaled to prevent all terms growing
-        # simply because more numbers have been selected.
-        n=max(remaining,key=lambda n:(
-            3*sum(pair[(min(n,m),max(n,m))] for m in graph)/len(graph)
-            +fre[n]+(rec[n]-early[n])*.35,
-            fre[n],rec[n],-n))
+        n=max(remaining,key=lambda v:(
+            3*sums[v]/len(graph)+fre[v]+(rec[v]-early[v])*.35,
+            fre[v],rec[v],-v))
         graph.append(n)
         remaining.remove(n)
+        for v in remaining:
+            sums[v]+=pair[(min(n,v),max(n,v))]
     rnd=random.Random(9027+int(draw_no)*101)
     random20=rnd.sample(range(1,81),20)
     proposed=dict(zip(METHODS,(order_freq,order_momentum,order_last,graph,random20)))
@@ -162,12 +165,12 @@ def expected_repeat_per_target(k):
     return math.comb(20,k)*(1-(1-p)**12)
 
 
-def audit_target(actual_draw,prior):
+def audit_target(actual_draw,prior,features=None):
     """Explain families in actual 20 without manufacturing a physical order."""
     actual=actual_draw["nums"]
     r=all_recurrent_families(actual,prior)
     groups,missing=witnessed_coverage(actual,r)
-    gfreq=history_features(prior)
+    gfreq=features if features is not None else history_features(prior)
     forced=retrospective_partition(actual,gfreq)
     count={k:len(r[k]) for k in SIZES}
     lags=Counter()
@@ -190,7 +193,7 @@ def target_tower_row(target,prior,phase="Test",keep_detail=False):
     graph=proposals["Ağ-kule"]
     tier={k:len(set(graph[:k])&actual_set) for k in SIZES}
     # Partial stages 2..10 form NESTED families, not ten independent tickets.
-    audit=audit_target(target,prior)
+    audit=audit_target(target,prior,features)
     row={
         "Gün":target["day"],"Çekiliş":target["no"],
         "Saat":target["dt"][11:16],"Gün içi sıra":target["pos"],
