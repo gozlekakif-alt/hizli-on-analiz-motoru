@@ -12,6 +12,7 @@ ast.parse(src)
 names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_template",
        "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","filter_new_draws","parse_history",
        "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
+       "gap_rhythm","gap_class","family_rhythm_report","repeat_gap_targets",
        "active_signals","daily_chains","make_ticket","result_rows"}
 tree=ast.parse(src)
 nodes=[]
@@ -188,4 +189,70 @@ assert n_new==2 and n_rep==0
 repeat_again,n_new,n_rep=env["merge_draws_into_txt"](updated,[baseline,new])
 assert repeat_again==updated and n_new==0 and n_rep==2
 
-print("PASS: V10 paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
+
+# Rhythm classifications: same, increasing and decreasing precise observed gaps.
+assert env["gap_rhythm"]([3,3])=="SABİT +3"
+assert env["gap_class"]([4,5,7])=="Artan"
+assert env["gap_class"]([7,5,4])=="Azalan"
+assert env["gap_class"]([4,6,4])=="Değişken"
+
+# Historical 3x/4x 5-number family: two older independent days with +5.
+family="01-02-03-04-05"
+fmeta={family:{"k":5,"mask":sum(1<<(x-1) for x in range(1,6))}}
+historic=[]
+for day,first_id in [("2026-10-08",10000),("2026-10-10",10500)]:
+    historic.extend(make(day,pos,first_id+j) for j,pos in enumerate((10,15,20,25)))
+past_profiles=env["train_profiles"](json.dumps(historic),json.dumps([family]))
+assert past_profiles[family]["first"][5]==2
+assert past_profiles[family]["triple"][(5,5)]==2
+assert past_profiles[family]["quad"][(5,5,5)]==2
+today_day="2026-10-12"
+for n,pos,target,step in [(1,10,15,"1→2"),(2,15,20,"2→3"),(3,20,25,"3→4")]:
+    live=[make(today_day,p,61628+p) for p in (10,15,20)[:n]]
+    hits={family:live}
+    targets=env["repeat_gap_targets"](
+        hits,past_profiles,fmeta,today_day,env["moment"](today_day,pos),
+        {d["pos"] for d in live},minimum_days=2,latest_known=live[-1])
+    assert len(targets)==1 and targets[0]["stage"]==step and targets[0]["pos"]==target,targets
+    assert targets[0]["support"]==2
+    assert targets[0]["estimated_no"]==live[-1]["no"]+(target-pos),targets
+
+# On prior-day data only, a single historical supporting day is experimental.
+one_day=env["train_profiles"](json.dumps(historic[:4]),json.dumps([family]))
+live=[make(today_day,10,61700)]
+assert not env["repeat_gap_targets"]({family:live},one_day,fmeta,today_day,
+                                     env["moment"](today_day,10),{10},minimum_days=2)
+experimental=env["repeat_gap_targets"]({family:live},one_day,fmeta,today_day,
+                                       env["moment"](today_day,10),{10},minimum_days=1)
+assert experimental and experimental[0]["support"]==1
+assert not env["repeat_gap_targets"]({family:live},past_profiles,fmeta,today_day,
+                                     env["moment"](today_day,16),{10,15},minimum_days=2)
+
+# Increasing 2→3 then 3→4 gap patterns may not be constant.
+increase_history=[]
+for day,first_id in [("2026-10-08",20000),("2026-10-10",21000)]:
+    increase_history.extend(make(day,p,first_id+i) for i,p in enumerate((10,14,19,25)))
+increase_profile=env["train_profiles"](json.dumps(increase_history),json.dumps([family]))
+inc_live=[make(today_day,10,61000),make(today_day,14,61001)]
+inc=env["repeat_gap_targets"]({family:inc_live},increase_profile,fmeta,today_day,
+                              env["moment"](today_day,14),{10,14},minimum_days=2)
+assert len(inc)==1 and inc[0]["pos"]==19 and inc[0]["kind"].startswith("ARTAN"),inc
+inc_live.append(make(today_day,19,61002))
+inc4=env["repeat_gap_targets"]({family:inc_live},increase_profile,fmeta,today_day,
+                               env["moment"](today_day,19),{10,14,19},minimum_days=2)
+assert len(inc4)==1 and inc4[0]["pos"]==25 and inc4[0]["kind"].startswith("ARTAN"),inc4
+
+# Cross-day chronology, exact draw numbers, first time on selected day.
+fake_family_events=historic+[make(today_day,10,61651),make(today_day,15,61652)]
+rows,individual=env["family_rhythm_report"](
+    fake_family_events,fmeta,{family:fake_family_events[-2:]},today_day)
+assert len(rows)==1 and len(individual)==10, (rows,individual)
+assert rows[0]["Bugün ritim"]=="İKİLİ +5"
+assert rows[0]["Geçmişte 3+ gün"]==2 and rows[0]["Geçmişte 4+ gün"]==2
+assert rows[0]["Durum"]=="GEÇMİŞTEN GELDİ"
+assert rows[0]["Günler arası"]=="SABİT +2"
+assert rows[0]["+2 gün"]==2
+assert "#61651 10:??" not in rows[0]["Bugün çekilişler"]
+assert "#61651 00:??" not in rows[0]["Bugün çekilişler"]
+
+print("PASS: V10 rhythms, repeat stages, families, and paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
