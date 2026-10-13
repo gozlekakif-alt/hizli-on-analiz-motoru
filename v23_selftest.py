@@ -45,7 +45,7 @@ assert res["İlk→ikinci gerçek dakika"] == 360
 assert res["İki çevredeki farklı sayılar"] == 32
 assert res["İlk iki birlikte sabit çevre"] == ""
 assert query_family_day(mini,[1,2,3,4,5])["Durum"] == "Yalnız ilk"
-assert query_family_day(mini,[30,31])["Durum"] == "Görülmedi"
+assert query_family_day(mini,[79,80])["Durum"] == "Görülmedi"
 
 # Small strict brute oracle for ALL k=2..10 on first 8 random draws:
 sample=[mk(i+1,rng.sample(range(1,81),20)) for i in range(8)]
