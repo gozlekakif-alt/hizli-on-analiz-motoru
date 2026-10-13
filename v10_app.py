@@ -2185,6 +2185,13 @@ with tabs[8]:
                 for k in V12_SIZES
             ]
             st.dataframe(by_size,hide_index=True,use_container_width=True)
+            st.markdown("##### 🧬 Bugünkü 20 sayı geçmiş 12 çekilişte nasıl birikti?")
+            st.dataframe(v12_data["activation"],hide_index=True,
+                         use_container_width=True)
+            st.caption("Bu sıra, aynı 20 sayıyı geçmiş 12 çekilişte ilk "
+                       "ne zaman gördüğümüzü ve 2–10'lu ailelerin hangi "
+                       "önceki çekilişte ilk tam göründüğünü gösterir. "
+                       "Bugünkü topların fiziksel çıkış sırası değildir.")
             st.markdown("##### ⏱️ Geçmişte görünmüş ailelerin sırası")
             if v12_data["witnessed"]:
                 display_order=[
@@ -2272,6 +2279,12 @@ with tabs[8]:
             "karşılaştırılır. Sadece örüntü bulmak yetmez; "
             "tesadüften anlamlı biçimde ayrışmalıdır."
         )
+        st.markdown("##### 🏗️ Ailelerin 12 adımlık ilk aktivasyon sırası")
+        st.dataframe(report["number_first_order"],hide_index=True,
+                     use_container_width=True)
+        with st.expander("🔍 2–10 ailelerin hangi geçmiş adımda ilk tam göründüğü"):
+            st.dataframe(report["family_first_order"],hide_index=True,
+                         use_container_width=True)
         with st.expander("📍 Ailelerin önceki 12 çekilişteki son görünüş sırası"):
             st.dataframe(report["age_lags"],hide_index=True,
                          use_container_width=True)
@@ -2285,6 +2298,8 @@ with tabs[8]:
             ("20 sayılık tüm önceden hedefler","ledger","V12_20_SAYI_TUM_HEDEFLER.csv"),
             ("2–10 aile geçmiş tekrarları","recurrent","V12_2_10_AILE_TEKRARLARI.csv"),
             ("Aile aktivasyon sırası","age_lags","V12_AILE_ZAMAN_SIRASI.csv"),
+            ("2–10 ailelerin 12 adımda ilk görünüş sırası","family_first_order","V12_AILE_12_ADIM_OLUSUM.csv"),
+            ("20 sayının 12 adımda ilk hareketi","number_first_order","V12_20_SAYI_12_ADIM_AKTIVASYON.csv"),
             ("Kule ve rastgele 20 isabeti","methods","V12_20_LI_KULE_PERFORMANSI.csv"),
             ("7–12 hedef saat karşılaştırması","slot_methods","V12_7_12_HEDEF_PERFORMANSI.csv")
         )
