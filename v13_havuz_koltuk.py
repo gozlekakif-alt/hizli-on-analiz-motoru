@@ -328,11 +328,12 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
                 proposals["V12 ağ-kule"]=tuple(graph)
                 proposals["Koltuk+V12"]=pick_20(
                     states,model,target["pos"],"Koltuk+V12",graph)[0]
+            comparable=(previous12 is not None
+                        and slot in (7,8,9,10,11,12))
             for name,numbers in proposals.items():
                 matched=len(set(numbers)&actual)
                 out[name]=matched
-                st=method_stats[(name, "7–12" if slot in (7,8,9,10,11,12)
-                                                else "Diğer")]
+                st=method_stats[(name,"7–12" if comparable else "Diğer")]
                 st["n"]+=1;st["sum"]+=matched
                 st["max"]=max(st["max"],matched)
                 st["hist"][matched]+=1;st["twenty"]+=int(matched==20)
