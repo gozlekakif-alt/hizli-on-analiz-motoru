@@ -475,3 +475,29 @@ Islem:
   dışladığından ekranda sayaç farklı olabilir.
 - v10_selftest.py: günlük ritim ve geçmiş destek modellerine
   kontrollü yapay veri testi eklendi.
+
+
+====================================================================
+16 — GITHUB BASARILI KAYIT ONAYI / UYARI DUZELTMESI
+====================================================================
+13 Ekim 16:10 ekraninda "Canlı eklenen: 339" olmasına rağmen
+"1 çekiliş henüz ana veri.txt içinde görünmüyor" yanliş uyarisi
+oldu. GitHub main veri.txt ve cloud v10_canli_kayit.json birbirleriyle
+karsilastirildi: 339/339 kayit dogru, eksik 0, cakisma 0,
+en son #61968 (13.10.2026 16:07).
+
+Tek basina yeni GET yapmak yeterli olmadigi icin kod düzeltildi:
+- draw_confirmation_signature: no ile yetinmez, dt ve 20 sayıyı denetler.
+- remember_github_confirmation: basarili GitHub PUT / "zaten var"
+  cevabini bu Streamlit oturumuna eksiksiz cekilis imzasiyla yazar.
+- live_record_status: eski raw/CDN ana dosyasi 1 çekiliş geriden
+  geliyorsa, daha once GitHub tarafindan onaylanan cekilisi
+  KAYDEDILMEMIS diye gostermeyi durdurur.
+- Aynı numaralı ancak farkli saat/sayılı kayıtlari acikça HATA
+  olarak ayirir, sessizce basarili saymaz.
+- Kırmızı/sarı uyarı yalnızca doğrulanmamış kayıtta çıkar.
+  Başarılı kayıt onayında yeşil teyit görüntülenir.
+- Yalniz token/PIN açik olması KAYDEDILDI demek değildir;
+  yeşil yetki açıklaması bundan sonra bunu ayırt ediyor.
+- V9 app.py, veri.txt, aile CSV ve canlı JSON degistirilmedi.
+- GitHub Actions #38403442013 son test BAŞARILI.
