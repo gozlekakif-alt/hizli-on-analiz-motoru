@@ -95,7 +95,21 @@ Tam isabet sonuçları: Sayı temelli yöntemlerin hiçbirinde 7/7, 8/8, 9/9, 10
 
 Gelecek günler için kullanacağımız aile listesini bugün KİLİTLEYİP yalnız sonraki günlerde gelen yeni hedefleri saymamız gerekir.
 
-## 5. Denetim ve çıktılar
+## 5. 1–80 sayı aktivasyonunun gerçek ölçümü
+
+İzleyen 37 günlük bölümde, hedef öncesindeki 12 çekilişin TÜM 20 sayılarını kullanarak 1–80 sayısını ayrı ayrı incelediğimizde:
+
+| Önceki 12 çekilişteki durum | Sayı-hedef gözlemi | Sonraki çekilişte görülme |
+|---|---:|---:|
+| Hiç görünmeyen (0), dengeli | 9.520 | %25,315 |
+| 1–2 kez görünen, dengeli | 76.686 | %24,947 |
+| 3–4 kez görünen, dengeli | 90.240 | %24,909 |
+| 5–6 kez görünen, artışta | 7.277 | %24,090 |
+| 7+ kez görünen, dengeli | 3.049 | %26,763 |
+
+Bunlar aynı yöntemin yalnız bazı sıcaklık/ivme kesitleridir; bütün 80 sayı ve tüm kesitler V11_80_SAYI_AKTIVASYON.csv içinde yer alır. Adil bir 20/80 çekilişte tek sayının çıkış ihtimali %25'tir. Tekil kesitlerdeki küçük farklar çok sayıda alt grubun denenmesinden kaynaklanan rastlantısal değişkenlik olabilir. **Özellikle soğuk/sıcak sayı durumlarının bir sonraki çekiliş için kanıtlanmış üstünlüğü yoktur.**
+
+## 6. Denetim ve çıktılar
 
 Program:
 - Her boyutun tam görünüş yolunu ve her yöntem için 0/k...k/k dağılımını gösterir.
