@@ -501,3 +501,41 @@ Tek basina yeni GET yapmak yeterli olmadigi icin kod düzeltildi:
   yeşil yetki açıklaması bundan sonra bunu ayırt ediyor.
 - V9 app.py, veri.txt, aile CSV ve canlı JSON degistirilmedi.
 - GitHub Actions #38403442013 son test BAŞARILI.
+
+
+====================================================================
+17 — 🔥 AILELERDE HEDEF SAATIN GECMIS GUN DESTEGI
+====================================================================
+Kullanici "🔥 ritimli ailelerde tarih ritmini koruyalim ama kupon
+uretmeden once hedef saati de gecmis veriden desteklensin" planini
+onayladi ("Tamam yoldaş").
+
+UYGULANAN:
+- v10_app.py / train_profiles: hedef gununden ONCEKI tum gorunusler
+  uzerinden her aile icin saat basina AYRI TAKVIM GUNU gorunus sayisi
+  hour_days olarak egitilir. Ayni gun icindeki coklu gorunus bir
+  destek gunu sayilir.
+- historical_hour_support(profiles,label,pos,minimum_days): hedefin
+  saat diliminde (00:xx, 07:xx, 08:xx ... 23:xx) tarihsel tam aile
+  gorunusunun farkli gun destek sayisini hesaplar.
+- rhythm_ticket_gate(...): 🔥 olarak isaretlenmis adaylarda saatin
+  >= max(2, hedefin secilmis gecmis destek gunu ayari) kadar
+  AYRI GUNDE desteklenmesini ister. Sadece tarih-gun zinciri
+  guclu ise bile SAAT desteklenmiyorsa kupon URETILMEZ ve
+  "⏳ 🔥 saat desteği eksik" aciklamasi cikar.
+- Diger, 🔥 olmayan V10 mevcut kupon is akisina bu yeni filtre
+  uygulanmaz: onceki fonksiyonellik korunur.
+- Hem Hedef & Kupon hem "Aile Sırası" sekmesinde tabloya
+  "Hedef saat geçmiş gün", "Kupon durumu" sutunlari eklenir.
+- Saat filtresini gecenler listede once gelir.
+- Sinyal bulmak kupon verilmesi demek degildir. Hedef saatin
+  ritimli gorulmesi, isabet avantajini veya belirli cekilisi
+  matematiksel olarak garanti etmez.
+- Bir saat dilimi destekli sayilsa da, dakika/cekilis sirasi
+  ayni olmasi gerekmez; bu nedenle bu bir "saatlik destek" filtresidir,
+  kesin dakika tahmini degildir.
+- Daha once kaydedilmis kuponlar, veri.txt, v10_canli_kayit.json,
+  V9 app.py ve 1131 aile kaydi aynen korunur.
+- V10 selftest: 2 farkli gun, bir gunde birden fazla gorunus,
+  dis destek kalmasi, 3 gun sinir filtresi ve 🔥 / normal aile
+  ayrimini test eder.
