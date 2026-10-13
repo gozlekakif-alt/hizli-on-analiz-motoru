@@ -346,8 +346,9 @@ def csv_bytes(rows):
 
 def run_study(text, catalog_text, max_days=None, top=10):
     draws, errors = read_draws(text)
-    if errors:
-        raise ValueError(f"Hatalı veri.txt çekilişleri: {errors[:5]}")
+    # Invalid raw lines remain UNRESOLVED and are logged; never impute
+    # missing numbers, duplicate balls or undocumented draw outcomes.
+    # Their date therefore becomes incomplete and cannot enter full-day study.
     full, incomplete = group_full_days(draws)
     if max_days is not None:
         full = full[-max_days:]
@@ -365,6 +366,8 @@ def run_study(text, catalog_text, max_days=None, top=10):
         "Gün sayısı": len(full), "İlk gün": full[0][0], "Son gün": full[-1][0],
         "Çekiliş": len(full)*217, "Saatlik pencere": len(full)*18,
         "Katalog aile": len(catalog), "Kapsam boyutları": list(SIZES),
+        "Bozuk ham kayıt sayısı": len(errors),
+        "Bozuk kayıtların satır/hatasi": errors,
         "Gün içi tekrarlanan aileler": {
             str(k): sum(int(r["En az iki kez çıkan farklı aile"])
                         for r in dayrows if r["Boyut"] == k) for k in SIZES
