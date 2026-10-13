@@ -1,0 +1,365 @@
+HIZLI ON — TAM PROJE KÜTÜĞÜ / YENİ SOHBETE DEVİR
+Sürüm: 2026-10-13 / V9 DERİN AİLE-RİTİM ARAŞTIRMASI + V10 CANLI HEDEF-KUPON
+Güncelleme zamanı: 13 Ekim 2026, Türkiye
+Kapsam: Bu çalışma boyunca tasarlanan yöntemler, gerçek dosyalar, yapılan testler, yaşanan sorunlar, doğrulanmış sonuçlar, eksikler ve sonraki uygulama planı.
+NOT: Bu kütük şifre, token, PIN veya diğer gizli anahtarları İÇERMEZ.
+
+====================================================================
+01 — PROJENİN ANA AMACI VE KESİN İSTEK
+====================================================================
+Hızlı On oyununun 1–80 aralığından çekilen 20 sayılık gerçek sonuçlarını kullanarak 5’li, 6’lı, 7’li, 8’li, 9’lu ve 10’lu TAM AYNI SAYI ailesinin:
+- Gün içinde 1., 2., 3. ve 4. tam görünüşlerini;
+- Bunların çekiliş numaralarını, tarihlerini ve gerçek saatlerini;
+- İki görünüş arasındaki çekiliş-sırası farkını;
+- Sabit, artan, azalan, değişken/dönüşlü görünüş aralıklarını;
+- Farklı günlerde aynı tam aile ve aynı ritmin tekrarını;
+- Özellikle +2 ve +5 günlük aile zincirlerini;
+- Geçmişte 3 veya 4 defa görünen aileleri
+güvenilir ve derin biçimde raporlamak.
+
+Bu araştırmanın nihai uygulaması: Yeni çekilişi kullanıcı tek kutuya yapıştırdığında önce ana veri.txt dosyasına güvenli şekilde kaydetmek, sonra mevcut ve yeni aktive olan aileleri tanımak; geçmişte 1→2, 2→3, 3→4 geçişi tekrarlanan aileler için GEREKÇESİ ve GEÇMİŞ DESTEK SAYISI ile bir HEDEF TARİH/SAAT gösterip 5’li–10’lu boyutlara uygun DENEYSEL kupon üretmek. Sonuç gelince isabeti 0/k–k/k raporlamak.
+
+ÖNEMLİ BİLİMSEL İLKE: Çekilişler rastgele ise geçmişteki tekrar/ritim geleceği öngörmez. Geçmiş ritimlerin görülmesi başlı başına gerçek tahmin avantajı değildir; yalnız ileri zamanlı, sızıntısız testle sınanabilir. Kesin tutan kupon, garanti 5/5 veya 10/10 iddiasında bulunma.
+
+====================================================================
+02 — GERÇEK GITHUB VE STREAMLIT KONUMU
+====================================================================
+GitHub ana depo:
+https://github.com/gozlekakif-alt/hizli-on-analiz-motoru
+
+Aktif GitHub dalı: main
+Ana kaynak dosyası: veri.txt
+V9 derin araştırma: app.py
+V10 canlı motor: v10_app.py
+V10 aile havuzu: v10_aileler.csv
+V10 canlı durum/kupon yedeği: v10_canli_kayit.json
+Bağımlılıklar: requirements.txt
+Testler:
+- v10_selftest.py
+- v10_real_data_test.py
+- v10_streamlit_test.py
+- .github/workflows/v10-check.yml
+
+V10 Streamlit uygulama adresi:
+https://hz85tdmbmyim3a.streamlit.app
+
+V9'un çalışmakta olan ayrı Streamlit dağıtımı korunuyor. GitHub app.py V9'dur; V10 geliştirmesi v10_app.py üzerindedir. V9'u V10'a çevirmek amacıyla app.py'yi silme veya üzerine yazma.
+
+Repo içinde önceki aşamalardan motor.py, legacy_seeds.py ve deneme dosyaları bulunabilir. V9 app.py kendi tek-dosya uygulamasıdır, V10 da ayrı giriş dosyasıdır.
+
+GitHub üzerinden doğrudan düzenleme yapılabildiği doğrulandı. Kalıcı çalıştırma için V10 uygulamasının kendi Streamlit Secrets ekranındaki GITHUB_TOKEN ve V10_ADMIN_PIN ayarları gerekir; ChatGPT'nin bağlı GitHub hesabı Streamlit'e otomatik token sağlamaz.
+
+Gizli token/PIN kütüğe veya açık bir sohbete yapıştırılmamalı. Fine-grained token yalnız hedef depoya Contents: Read and write yetkisiyle oluşturuldu; oluşturulan tokenun ilk 30 günlük süresi Kasım 2026 civarında dolacaktır, gerekli olduğunda yenilenmeli. Tokenı hiçbir zaman GitHub kaynak dosyasına yazma.
+
+====================================================================
+03 — VERİ: TAKVİM, DOSYA FORMATI VE DURUM
+====================================================================
+Hızlı On: Bir çekilişte 1–80'den birbirinden farklı 20 sayı.
+
+Gerçek çekiliş saatleri:
+- 00:02, 00:07, 00:12, ..., 00:57 ve 01:02: ilk 13 çekiliş.
+- 07:02, 07:07, ..., 23:57: kalan 204 çekiliş.
+- Günde 217 çekiliş. 01:02 ile 07:02 arasında normal çekiliş yok.
+- Gün içi sıra: 1 = 00:02, 13 = 01:02, 14 = 07:02, 217 = 23:57.
+- Her ritimde gerçek duvar saati dakikası değil, çekiliş sıra farkı kullanılmalı. Hedef görünür gerçek saate çevrilir.
+
+veri.txt çekiliş satır biçimi:
+ÇEKİLİŞ_NO;GG.AA.YYYY SS:DD;N1,N2,...,N20
+Örnek:
+61629;12.10.2026 00:02;5,6,11,22,23,30,31,32,35,39,41,43,47,54,55,57,59,62,74,75
+
+Dosyada ayrıca ===== gün/saat blok başlığı ===== gibi metin satırları bulunabilir; parser çekiliş satırlarını ayırır.
+Geçerli çekiliş 20 benzersiz 1–80 sayısı içerir, kimlik ve tarihi geçerlidir.
+
+13.10.2026 sabah GitHub üzerinde doğrudan doğrulanan durum:
+- Ham veri.txt: 15.709 çekiliş biçimli satır; bazı eski satırlar parser tarafından dışlanabilir. Bu, kesin temiz/verifiable çekiliş sayısıyla aynı kavram değildir.
+- Kapsam: 01.08.2026–12.10.2026; 73 ayrı takvim günü.
+- 01.08–11.10 aralığında 72 tam gün, 12.10 kısmi.
+- GitHub'da son kontrol edilen satır:
+  #61713, 12.10.2026 12:57
+- 12.10 için 85 çekiliş biçimli satır gözlendi; günü hâlâ tamamlanmamış olabilir.
+- Özellikle #61629–#61640 (12.10 00:02–00:57) 12 çekilişin tamamının GitHub ana veri.txt içine kalıcı kaydedildiği doğrulandı.
+- Önceki kontrolde 15.624 ham satırdan iki geçersiz/ayıklanan satır görülmüştü. Güncel gerçek geçerli toplamını uygulama parser'ı ile doğrula.
+- Günlük 217 draw değilse tam gün gibi değerlendirme; kısmi gün, eksik saat ve kaynak boşlukları rapora yaz.
+
+Eski analiz evrelerinde gün/gün ve saat/saat TXT biriktirme kullanıldı. Saatlik yaklaşık 12 çekiliş tek günlük TXT'ye eklenir; gün tamamlanınca günlük kayıt, daha sonra ana veri.txt ile birleştirilir. V10 artık resmi sonuç metnini tek kutudan alıp kalıcı ana TXT'ye ekleyebilir.
+
+Canlı yedek formatı:
+{"live":[{"no":61629,"dt":"2026-10-12T00:02","day":"2026-10-12","pos":1,"nums":[20 tam sayı]}],"tickets":[...]}
+v10_canli_kayit.json bu oturumun canlı kayıtlarını ve deneysel kuponları saklamak için kullanılır. veri.txt asıl tarihi kayıt kaynağıdır; canlı JSON tek başına ana veri.txt yerine geçmez.
+
+====================================================================
+04 — AİLE VE RİTİM KAVRAMLARI
+====================================================================
+Aile: Sabit ve sıralı gösterilen aynı sayı kümesi. Örnek 6'lı:
+14-21-57-67-74-78. Aynı altı sayı bir çekilişin 20 sayısının TAMAMI içinde varsa aile o çekilişte tam görüldü sayılır. Farklı günlerde de bir tek sayı bile değişirse aynı aile DEĞİLDİR. Değişen sayılı 'şablon' aile değil, ayrı bir örüntü çalışmasıdır.
+
+Bir günün görünüş sıraları p1,p2,p3,p4 olsun:
+- İkili aralık: Δ1=p2-p1
+- Üçlü ritim: (Δ1,Δ2)
+- Dörtlü ritim: (Δ1,Δ2,Δ3)
+- SABİT: +5,+5 veya +5,+5,+5.
+- ARTAN: +3,+5 veya +3,+5,+8.
+- AZALAN: +9,+6 veya +9,+6,+3.
+- DEĞİŞKEN: +3,+8,+5.
+- İki görünüş varsa 'İKİLİ +g'; tek görünüş varsa 'TEK GÖRÜNÜŞ'.
+- +2 gün ve +5 gün: aynı tam sayılı ailenin görüldüğü tarihler arasındaki takvim günü farkı. Saat ritminden ayrı değerlendirilir.
+- İki veya üç görünüşten oluşan ritim için ayrı tarihi destek günlerini raporla.
+- Olayların saat/numara dökümü, yalnız oranları yazmaktan daha değerlidir.
+
+"Aile yeni mi?" İki ayrı tanım:
+1) Bu tarih için V10 havuzundan tam görünen farklı aile (günlük sayaç).
+2) Yüklenmiş tarihî çekiliş verisinde BUGÜNE kadar hiç görülmemiş tam aile (İLK KEZ [veride]).
+V10 aday havuzu tüm matematiksel kombinasyonları kapsamaz; ilk kez (veride) tüm loto tarihindeki ilk kez anlamına gelmez.
+
+====================================================================
+05 — AİLE HAVUZU: BAŞLANGIÇ 1.131 AİLE
+====================================================================
+Kaynak: GitHub v10_aileler.csv, V9 analizlerinden derlenen seçilmiş aday indeks.
+Kesin boyutlar:
+- 5'li: 300
+- 6'lı: 198
+- 7'li: 151
+- 8'li: 279
+- 9'lu: 9
+- 10'lu: 194
+TOPLAM: 1.131 farklı sabit sayı ailesi.
+
+Bu 1.131 aile oyunun bütün aileleri DEĞİLDİR. Özellikle 9'lular az temsil edilir. Canlı tarama yeni olası aileleri keşfetmez; sadece mevcut havuzdakilerin tam görünüşlerini tarar. Dinamik yeni aile keşfi/geçerli aday genişlemesi halen ayrı geliştirme ihtiyacıdır.
+
+Naif çözüm olarak her çekilişte her 5–10 altkümeyi çıkarmak aşırı pahalıdır:
+C(20,5)+...+C(20,10) = 610.470 altküme / çekiliş; 15 bin üzeri çekilişte milyarlarca altküme.
+Öneri: V9'un kesişim tabanlı aday madenciliğini, SQLite/önbellek ve artımlı checkpoint kullanarak yalnız yeterince güçlü adayları aile listesine eklemek. Seçim süreci sızıntısız teste ayrıca dikkat etmeli.
+
+Önceden özel dikkat çekilen 10'lu aday örnekleri (eski analizden; canlı üstünlük gösterdikleri kabul edilemez):
+25-28-34-38-42-44-48-54-60-68 : 08,10,12 Eylül tarihlerinde +2 gün tartışıldı.
+01-05-07-19-34-47-59-70-74-76 : 07,12,14 Eylül tarihlerinde +5/+2 gün tartışıldı.
+02-06-08-11-23-25-28-45-51-66 : 20,22,27 Ağustos tarihlerinde +2/+5 gün tartışıldı.
+Bunları güncel veri.txt üzerinden tekrar doğrulamak ve geleceğe dönük tahmin başarısını ayrı ölçmek gerek.
+
+====================================================================
+06 — ESKİ AŞAMALAR VE MİMARİ KARARLAR
+====================================================================
+V6/V7: GitHub/Streamlit tabanlı motor, geçmiş çekilişlerdeki tekrar, aile, ritim ve kupon denemeleri. Önceki sorunlar:
+- Fazla büyük dosya yüklemede hata veya telefonun donması;
+- V7.2'de motor.py import uyumsuzluğu (ImportError);
+- SQLite progress/checkpoint tablolarında şema uyuşmazlığı (OperationalError);
+- Telefon ekranında ağır analizde takılma ve yanıt alamama;
+- Bazı ara raporların gerçek hesap yerine erken iddia ile sunulması.
+
+V8: Tek dosya, derin 6–10'lu aile ve ritim arama. Üçlü kesişimler, alternatif derinlik pencereleri, checkpoint, CSV raporları ve ZIP. Laboratuvar testleri yapıldı; bütün 72 günün gerçek Streamlit Cloud ortamında kesintisiz analizi ayrı doğrulanmalı. V8 amaç olarak kupon değil araştırma çıktılarını sağlamalıydı.
+
+V9 (repo app.py): Gerçek 20/80 çekilişlerine dayalı, SQLite/checkpoint kullanabilen DERİN AİLE-RİTİM araştırma uygulaması. Tam aile görünüşleri, 3+/4+ günler, değişik ritimler, farklı günlerde tekrar ve +2/+5 gibi gün zincirleri üzerine odaklandı. Büyük analizin yeniden yüklenmeden çıktılarla kullanılmasına yönelik kuruldu. V9'u değiştirmeden korumak isteniyor.
+
+V10 (repo v10_app.py): V9'un ağır aramasını telefonda her açılışta yeniden başlatmayan HAFİF CANLI katman:
+- GitHub veri.txt'yi okur;
+- v10_aileler.csv içindeki 1.131 adayı tarar;
+- Resmi çekiliş sonucunu "Çekiliş no:..." ve alt alta 20 sayı biçiminde alır;
+- Hatalı, yinelenen, çakışan kayıtları ayrıştırır;
+- PIN kilidi açılınca GitHub'a veri.txt şeklinde kalıcı yazar;
+- Tek kutu sonradan boşalır, üstte sıradaki kayıt no/tarih/saat gösterilir;
+- Seçilen günde gerçekten görünen tam aileleri ve geçmişini raporlar;
+- 5’li–10’lu canlı hedefleri/deneysel kuponları ve 0/k–k/k isabeti gösterir;
+- JSON yedek ve CSV raporu sunar.
+
+V10'un mevcut son sürümünde 1→2, 2→3, 3→4 hedefleme kodu ve tarihî ritim raporu VAR. Önceki sohbet turunda bunlar ayrıca kurulması planlanmıştı, ancak son GitHub main doğrulamasında uygulanmış durumdadır. Yeni sohbette bunları 'henüz yazılmadı' diye yeniden icat etme; önce mevcut dosyayı oku.
+
+====================================================================
+07 — GITHUB'DA KALICI KAYIT NASIL İŞLİYOR
+====================================================================
+Kod işlevleri:
+- parse_pasted_draws: Resmi çok satırlı kopya metni veya noktalı virgül satırı alır.
+- make_draw/normalize_numbers/pos_of: Tek çekilişte 20 benzersiz sayı ve geçerli saat kontrolü.
+- filter_new_draws: Var olan çekiliş no ve gün-sırası çiftleriyle karşılaştırır. Tam aynısıysa tekrar, no/saati/sayıları çelişiyorsa HATA.
+- merge_draws_into_txt: Orijinal veri.txt metnini korur; yalnız yeni geçerli satırları sonuna ekler; çelişkide dosyayı yazmaz.
+- persist_to_github_veri_txt: GitHub'dan son veri.txt SHA içeriğini alır; dosya 1 MB'tan büyükse Git Blob API'yi kullanır; yeni satırları SHA ile yazar, eşzamanlı düzenleme çakışmasında tekrar dener.
+- github_text.clear(): başarılı güncellemeden sonra Streamlit önbelleğini temizler.
+- api_state/auto_save: ek olarak v10_canli_kayit.json canlı/kupon durum yedeği.
+
+Kritik güvenlik:
+- Streamlit Secrets içindeki GITHUB_TOKEN ve V10_ADMIN_PIN gerekir.
+- Kullanıcı PIN'i oturum içinde açar. Her çekilişte yeniden istemez; Streamlit yeniden başlarsa/oturum değişirse yeniden açılabilir.
+- Uygulama herkese açık olduğu için PIN'i hiçbir şekilde tüm kullanıcılara otomatik açık bırakma.
+- PIN veya token yoksa sonuç oturuma eklenebilir ama 'kalıcı GitHub kaydedildi' denmemeli; açık uyarı ve JSON yedeği sunulmalı.
+- GitHub'daki 12 adet #61629–#61640 kaydı gerçekten doğrulandı.
+- Son kontrol veri.txt #61713'e kadar ilerledi; yeni kayıt geldikçe SHA/tarih değişebilir.
+
+İyileştirme ihtiyacı:
+- GitHub'a her çekilişte 1.3 MB veri.txt'yi tamamıyla yeniden yazmak masraflıdır; büyüdükçe performans sınırı doğar. Uzun vadede günlük/aylık ek dosyalar veya küçük tarihsel append segmentleri ve otomatik birleştirme düşünülebilir.
+- Kayıt yazma onayı, GitHub commit ve tekrar okuma ile doğrulanmalı. Yerel oturumun 'eklendi' demesi tek başına kalıcılık kanıtı değildir.
+- Hata durumunda geçerli kayıtlar kaybolmasın; mümkünse güvenli JSON yedeği.
+
+====================================================================
+08 — V10 RİTİM/TAM AİLE ANALİZİ VE HEDEF KUŞAĞI
+====================================================================
+ÖNEMLİ mevcut fonksiyonlar:
+- train_profiles(history_json, labels_json)
+- active_signals(...)
+- gap_rhythm(gaps)
+- gap_class(gaps)
+- family_rhythm_report(draws, families, dayhits, day)
+- repeat_gap_targets(dayhits, profiles, families, day, now, observed_positions, minimum_days, latest_known)
+- daily_chains(...), make_ticket(...), result_rows(...)
+
+train_profiles:
+- Yalnız İNCELENEN GÜNDEN ÖNCEKİ gerçek çekilişlerden ailelerin tam görünüşlerini bulur.
+- Gün başına görünüş sırasını belirler.
+- first: birinci→ikinci aralığı kaç farklı günde görüldü;
+- pair: o gündeki ikili aralıklar;
+- triple: birbirini izleyen 3 görünüşün aralık çifti kaç farklı günde görüldü;
+- quad: 4 görünüşün aralık üçlüsü kaç farklı günde görüldü.
+- Gün dışındaki çekilişler modele eklenmez; temel gelecek sızıntısı engeli budur.
+
+repeat_gap_targets:
+- Bir bugün görünüşü (n=1): tarihi 'first' aralıklarından 1→2 hedefi.
+- İki bugün görünüşü (n=2): ilk aralığı eşleşen tarihi 'triple' şablonundan 2→3 hedefi.
+- Üç bugün görünüşü (n=3): ilk iki aralığı eşleşen tarihi 'quad' şablonundan 3→4 hedefi.
+- Hedef çekiliş günü sıra numarası, 217 günlük slotu aşamaz; geçmiş saat veya zaten sonucu kayıtlı slot hedef olamaz.
+- Desteği sağlayan geçmiş gün sayısı seçilebilir: normal 2 gün; deneysel 1 gün; daha seçici 3 gün.
+- Hedef türü SABİT/ARTAN/AZALAN/DEĞİŞKEN ve ritim farklarını gösterir.
+- Son bilinen çekiliş numarası varsa hedef no yalnız TAHMİN olarak hesaplanır, resmi çekiliş numarası olduğu garanti edilmez.
+
+family_rhythm_report:
+- Seçilen günde tam görünen tüm seçilmiş havuz ailelerinin geçmişini tarar (seçili günden sonrasını hariç tutar).
+- 'İLK KEZ (veride)' ya da 'GEÇMİŞTEN GELDİ' ayrımı;
+- Gün içinde kaç görünüş, #çekiliş/saat listesi;
+- Gün içi sabit/artan/azalan/değişken ritim;
+- Önceki farklı aktif gün sayısı ve toplam görünüş;
+- 3+ ve 4+ görünüş olan geçmiş gün sayısı;
+- Gün farkı ritmi, +2 ve +5 gün bağ sayısı;
+- Geçmişte en son görünüşün #no/tarih/saati;
+- Tüm geçmiş olayların ayrıca CSV dökümü.
+
+Tüm görünüşlere eşlik eden sayılar da aynı TAM aileye ait olmalı; farklı sayılar 'aynı aile' diye birleştirilmemeli.
+
+Kupon:
+- Her 5–10'lu grupta ayrı hedef listesi ve aynı boyutta sayı kümesi.
+- İleri saat sinyali varsa kullanıcı adayı seçip 'kaydet' der.
+- Bir aile zaten hedef boyutundaysa kupon aynı sayılardır; üst tamamlama gerekirse hedef öncesi son 48 çekilişin sayı frekansları kullanılır.
+- Hedefin olması kazanma tahmini veya garanti değil; geçmiş tekrar varsayımıdır.
+- 10'lu ailelerde +2/+5/+7/+14 günlük özel zincirler gösterilir ama tek başına kesin saat sağlamadığı için otomatik kupon çıkarmaz.
+- Sonuç geldiğinde 'İsabet' raporunda kupon boyutuna uygun 0/5..5/5, ..., 0/10..10/10 ölçülür.
+
+Canlı uygulama görünümü:
+Sekme 1: CANLI GİRİŞ, PIN'i oturumda aç, tek kutuya toplu resmi metin, otomatik temizleme, yeni çekilişin saatini üstte gösterme, GitHub veri.txt kalıcı kayıt onayı.
+Sekme 2: HEDEF & KUPON, tarih seçimi, o gün kaç çekiliş, tam çıkan aile, ileri hedef, 5–10 boyutları, ritim geçmişi ve hedefler.
+Sekme 3: İSABET, kaydedilen kupon ve gerçek sonuç karşılaştırması, CSV.
+Sekme 4: YEDEK & KAYIT, GitHub kalıcılığı, PIN, veri.txt'ye ekleme, JSON indirme/geri yükleme.
+
+====================================================================
+09 — DOĞRULANMIŞ SAYISAL BULGULAR VE TESTLER
+====================================================================
+GitHub tarihsel 11 Ekim 2026: 217 çekiliş.
+1.131 aile havuzuyla TAM GÖRÜNEN FARKLI aile: 67.
+Aile boyutuna göre:
+5'li 51, 6'lı 9, 7'li 1, 8'li 3, 9'lu 0, 10'lu 3.
+Bazıları bir günde en az 3 kez göründü.
+GitHub v10_real_data_test.py de gerçek 11 Ekim veri üzerinde 67 sonucu assert eder.
+
+1 Ağustos–11 Ekim tarihli ilk 72 tam günlük başka bir kontrolde:
+- Günde tam görünen farklı aile ortalaması yaklaşık 78.
+- Ortanca yaklaşık 77.
+- Günde en az 55 ve bir günde en çok 120 farklı aday aile gözlendi.
+- Günün ilk 12 çekilişinde ortalama yaklaşık 6,7 farklı aday aile tam görüldü.
+Bunlar geçmişteki aile görünüş sayılarıdır; kupon başarısı DEĞİL.
+
+12 Ekim'in ilk #61629 çekilişi 20 sayı:
+5,6,11,22,23,30,31,32,35,39,41,43,47,54,55,57,59,62,74,75
+Bu TEK çekilişte o zamanki 1.131 seçilmiş aileden tam eşleşme yoktu. İlk 37 çekilişten sonraki uygulama ekranında 7 farklı tam aile görüldü (bu '7 yeni aile' demek değildir; tarih ve havuz kontrolü gerekir).
+
+V10 otomatik testleri:
+- Python sözdizimi ve 217 slot saat dönüşümü;
+- 00:02/01:02/07:02/23:57 sınırları;
+- Kullanıcı resmi metin formatından #61629 parse edilmesi;
+- 5,6,7,8,9,10 boyutlarında kupon uzunluğu ve isabet hesapları;
+- Aile 1→2 ritmi; kalıcı ekleme, tekrar ve çelişkili kayıt kontrolü;
+- 1MB üzerindeki GitHub veri.txt için Blob API simülasyonu;
+- Gerçek 11 Ekim data ile 67 aile, tarihsel görünüş raporu;
+- Streamlit AppTest ile ilk ekranın hata vermeden açılması.
+13 Ekim sabah ana dalın en son denetimlerinden biri:
+https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38370939886
+Bu koşuda başarı sonucu görüldü.
+Ayrıca geçmişte geçici başarısız koşular olmuş, sonraki düzeltmelerle başarıya ulaşılmıştır. Test başarıları gerçek tahmin avantajı veya 10/10 kazanma kanıtı değildir.
+
+====================================================================
+10 — GEÇMİŞ ARAŞTIRMADAKİ DİĞER MOTOR FİKİRLERİ
+====================================================================
+Yıllardır tartışılan ve gerektiğinde ayrı deney dalı olarak izlenmesi gereken fikirler:
+- 10'lu, 8'li, 7'li, 6'lı, 5'li, 4'lü, 3'lü ve 2'li kupon setleri.
+- Bir saatlik 12 çekilişi 1–6. ve 7–12. çekiliş olarak ikiye bölme.
+- İlk 3 veya ilk 6 çekilişte 2/3, 3/3 olan ailelerin sonraki 4–6 veya 7–12. çekilişlerde +4 ve üzeri görünüp görünmediği.
+- 2. ve 3. çekilişte aktive olanlarla geç aktive olanları ayırma.
+- 32,37,42,47,52,57 dakikalarına özel gün/saat hipotezleri.
+- Sıcak/ılımlı/soğuk sayı havuzları, 0→+10 saatlik ilerleme, nöbet değişimi, +4/+5/+6 tamamlanma sıraları.
+- İki/üç/dört/beş sayı birliktelikleri, komşu sayılar, ardışık bloklar, atlamalı blok, ayna/simetri, kilit/sıkıştırma, zıt yön sinyali, dinlenip gelenler, önceki saatten/günden taşıma.
+- 'M10 UDA', çoklu alt motor, 5/5 için ayrı yollar, motor karşılaştırması.
+- 10/10 ve 5/5 hedefleri için yürüyen test (walk-forward), 'kaç hedef/kaç isabet', en yüksek aynı kupondaki sayı ve 0/k..k/k frekansları.
+
+Bunların tamamı geçmişte konuşulan hipotezlerdir, HEPSİ aynı V10 canlı dosyasında uygulanmış veya kanıtlanmış değildir. Güncel V10'un fiilen çalışan çekirdeği SABİT TAM AİLE + ilk/üçlü/dörtlü ritim destekli hedeflemedir. Hipotezleri gerçek sinyal diye sunma; önce veri ve ileri test gerekir.
+
+====================================================================
+11 — ZORUNLU DÜRÜSTLÜK, YANILGI VE SINIRLAR
+====================================================================
+- "67 aile çıktı" = mevcut 1.131 aday içinden 67 farklı tam aile bulundu. "67 kupon sinyali" değildir.
+- "7 aile çıktı" = seçilen tarih/çekilişlerde 7 farklı aday aile görüldü. "7 yeni aile" veya "7 kazanacak kupon" değildir.
+- "İLERİ HEDEF 0" ekranı seçili gün geçmişte kaldığı, saat geçtiği, destek günleri az olduğu veya ritim eşleşmediği için 0 olabilir. Tek başına havuz boş demek değildir.
+- Yalnız gün zinciri bulundu diye kesin çekiliş saati icat edilemez.
+- Bugünün ailelerinin geçmişini analiz ederken bugünden SONRAKİ hiçbir satır kullanılmamalı.
+- Daha temel sorun: V9'dan seçilmiş 1.131 aile ilk seçim aşamasında daha sonraki tarihlerle ortaya çıkarılmış olabilir. Aday seçimi de hedef testinden önceki dönemde yapılmadıysa ileri tarihli sonuçlar nedeniyle SEÇİM SIZINTISI vardır; walk-forward'a aday discovery dahil edilerek yeniden test gereklidir.
+- Fazla aile taramak tesadüfi 3/4 tekrarları kolaylaştırır (çoklu karşılaştırma). Yalnız destek sayısı görmek gerçek edge kanıtı değildir. Rastgele temel model/baseline ile karşılaştır.
+- Uygulamaya PIN girilmesi yalnız o Streamlit session'u için; yeni browser/restart PIN'i sıfırlar. Bu güvenlik amaçlıdır.
+- Her yeni çekilişte ana 1.3 MB TXT'nin GitHub üzerinden yeniden yazılması belirli bir performans maliyetidir.
+- Güncelleme sırasında açık oturum sıfırlanabilir. Ana veri.txt kalıcı kaydedildiyse sorun yok; değilse JSON yedeği kullan.
+- Kullanıcının isteği: tekrarlı adımlar yaptırma, 10 kere app.py değiştirtme; mümkünse doğrudan GitHub dosyası düzenle; kısa, net sonuç, gereksiz kod gösterme.
+
+====================================================================
+12 — BUNDAN SONRAKİ ÇALIŞMA PROGRAMI / YENİ SOHBETE TALİMAT
+====================================================================
+ÖNCELİK A — Mevcut son GitHub main'i kaynak kabul et:
+1. GitHub'daki app.py, v10_app.py, veri.txt, v10_aileler.csv, v10_selftest.py, v10_real_data_test.py'yi oku.
+2. Bu kütük statik bir tarihte yazıldı; GitHub'ın daha yeni commit'i varsa onu esas al. Kullanıcıya son kaydedilen çekiliş numarasını doğrulayıp söyle.
+3. Hiçbir zaman V9 app.py veya ana veri.txt'yi yanlışlıkla sıfırlama.
+4. Kullanıcının verdiği ekran görüntüsü ve gerçek hata varsa ona göre en küçük düzeltmeyi yap.
+
+ÖNCELİK B — Canlı kupon motorunu 'işe yarayıp yaramadığı sınanabilir' kıl:
+1. Her yeni çekiliş eklendiğinde ailelerin görünüşlerini ve geçmiş ritim profillerini otomatik güncelle.
+2. Ayrı sayaç: aile tam görüldü / 1→2 hedefi / 2→3 hedefi / 3→4 hedefi / başarıyla sonuçlandı.
+3. 5,6,7,8,9,10 boyutları için ayrı hedef/kupon ve geçmiş destek günleri.
+4. Sinyalin nedeni (geçmiş hangi tarih, #no, saat, +kaç sıra) görünür olsun.
+5. Artan/azalan ritim için geçmişte gerçekten aynı tam aileyle görülen aralık şablonunu, sabit ritimden ayrı üret.
+6. Hedef saati geçmiş veya sonucu sisteme girilmişse yeni canlı kupon önermemeli.
+7. 10'lu aile +2/+5 günlük zincir için geçmiş saat dağılımını raporla; kanıt yoksa saat tahmini YOK yaz.
+
+ÖNCELİK C — Derin ve yeni aile keşfi:
+1. 1.131 aile havuzu başlangıçtır; yeni ve uygun tam aileleri hızla keşfetmek için artımlı/SQLite indeks sistemi kur.
+2. Bütün 610.470 alt kümeyi her draw için körlemesine üretme. Önce gerçek tekrar adaylarını ucuz kesişim/bitset mekanizmasıyla daralt.
+3. Aday ailenin görünüş günleri ve her olayın #no/saati raporlarına eklenmesi.
+4. Değişen sayılı ritim şablonlarını sabit tam aile listesinden AYRI bir test motoru olarak tasarla.
+
+ÖNCELİK D — Bilimsel test ve rapor:
+1. Zaman sıralı gerçek walk-forward: ilk N gün aday keşfi+ritim eğitimi, SONRA gelen günlerde önceden hedef verilmiş çekilişler üzerinde test.
+2. Her hedef için kuponu hedef çekilişten önce dondur; sonra gerçek sonucu kullan.
+3. 1 gün destekli, 2 gün destekli, 3 gün destekli, sabit/artan/azalan, 1→2/2→3/3→4 metriklerini ayrı raporla.
+4. Boyuta göre: kaç sinyal, kaç kupon, 0/k..k/k, hedef zamanı doğru mu, hedef edilen tam aile gerçekleşti mi.
+5. Aynı sayı adedi ve aynı harcama bütçesindeki rastgele kupon baseline ile karşılaştır, mümkünse güven aralığı.
+6. Büyük TXT/raporlar için iş ilerlemesi, SQLite checkpoint, CSV/ZIP; Streamlit Cloud telefonda donmamalı.
+7. Sonuçta kullanıcıya mümkünse tek dosya, çok kısa açıklama ve somut performans dökümü ver.
+
+====================================================================
+13 — YENİ SOHBETİ BAŞLATIRKEN KOPYALANACAK TALİMAT
+====================================================================
+"Yoldaş, GitHub depom gozlekakif-alt/hizli-on-analiz-motoru. Bu kütüğü ve deponun son main dosyalarını esas al. V9 app.py araştırma uygulamamı ve ana veri.txt dosyamı koru. V10 v10_app.py üzerinde devam et. 72+ gün verim ve 1.131 başlangıç ailem var. Bugün tam görünen 5–10'lu ailelerin eski tarih/çekiliş/saat kayıtlarını, 1→2 / 2→3 / 3→4 sabit/artan/azalan ritimlerini kullanarak geçmiş desteği açık olan hedef kuponlar üret; sonuçları ileride doğrula. Canlı yapıştırma boş kalsın, üstte sıradaki tarih/saat/no yazsın; GitHub'a PIN açılınca hatalı/tekrar kaydı önleyerek otomatik yazsın. Aday keşfi ve gerçek ileri zamanlı test benim ana hedefim. Önce mevcut kodun gerçekten ne yaptığını doğrula, sonra test edilmiş değişiklikleri doğrudan GitHub'a uygula. Uydurma isabet yüzdesi ve garanti verme. Gereksiz uzun Python anlatımı yerine tek dosya ve net sonuç ver."
+
+====================================================================
+14 — EN SON DOĞRULANAN NOKTA
+====================================================================
+- Ana repo: main
+- v10_app.py, v10_selftest.py, v10_real_data_test.py son ana dalda mevcut.
+- Son başarılı V10 GitHub Actions: 38370939886 (main), 13 Ekim 2026 civarı.
+- Gerçek 11 Ekim testinde 217 çekiliş/67 tam aile.
+- veri.txt: 01 Ağustos'tan 12 Ekim 12:57, son #61713; 73 tarih, son tarih kısmi, ham çizgi 15.709.
+- v10_aileler.csv: 1.131 sabit tam aile.
+- V10 canlı ritim: 1→2, 2→3, 3→4 hedef, destek günlerini seçme, sabit/artan/azalan rapor, tam geçmiş çekiliş numaraları/saatleri ve CSV indirme. Kodda mevcut, uzun dönem ileri tahmin üstünlüğü HENÜZ KANITLANMADI.
+- Son kullanıcı isteği: Bütün çalışmayı yeni bir kütükle, eksiksiz, güvenli ve tekrar kullanılabilir biçimde devretmek.
+
+SON.
