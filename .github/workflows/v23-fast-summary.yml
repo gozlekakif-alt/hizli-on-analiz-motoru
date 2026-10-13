@@ -1,0 +1,25 @@
+name: V23 Tum Aileler Hizli Ozet
+on:
+  push:
+    paths:
+      - '.github/workflows/v23-fast-summary.yml'
+  workflow_dispatch:
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V23 fixed exactness tests
+        run: python -u v23_selftest.py
+      - name: Full exact 72 days no costly individual examples
+        run: python -u v23_aile_ilk_iki_tamgun.py --top 0 --output V23_72_GUN_TUM_AILE_ILK_IKI_OZET.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: V23-72-Gun-Ilk-Iki-Hizli-Ozet
+          path: V23_72_GUN_TUM_AILE_ILK_IKI_OZET.zip
+          retention-days: 30
+          if-no-files-found: error
