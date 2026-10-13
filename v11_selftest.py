@@ -76,6 +76,12 @@ assert meta["çekiliş_sayısı"]==15839,meta
 assert meta["hedef_sayısı"]>7200,meta
 assert len(study["methods"])==2*5*(len(NUMBER_METHODS)+2)
 assert len(study["arrival"])==2*5*6
+assert study["ball_states"]
+assert sum(x["Sayı-hedef gözlemi"] for x in study["ball_states"])==meta["hedef_sayısı"]*80
+assert sum(x["Sonraki çekilişte çıktı"] for x in study["ball_states"])==meta["hedef_sayısı"]*20
+assert len(study["target_ledger"])==meta["hedef_sayısı"]*5
+assert all(x["Saat içi çekiliş"] in range(7,13) for x in study["target_ledger"])
+assert len(study["slots"])>400
 assert len(study["hour_summary"])>30
 assert study["signals"]
 for r in study["methods"]:
@@ -92,4 +98,5 @@ print("V11_REPORT_BEGIN")
 print(summary_text(study))
 print("V11_REPORT_END")
 print("V11_ARRIVALS",study["arrival"])
+print("V11_80_BALL_STATES",study["ball_states"])
 print("V11_HOURS_SAMPLE",study["hour_summary"][:4])
