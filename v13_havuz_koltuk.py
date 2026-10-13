@@ -227,9 +227,14 @@ def family_test(states,target,analysis_sizes=SIZES):
     """
     actual=set(target["nums"])
     grouped=defaultdict(list)
-    for st in states:grouped[st["pool"]].append(st)
+    for st in states:
+        grouped[st["pool"]].append(st)
+        grouped[st["label"]].append(st)
     results=[]
-    for pool in ("Soğuk","Ilık","Sıcak"):
+    cohorts=("Soğuk","Ilık","Sıcak",
+             "Soğuk-uyanıyor","Soğuk-dinleniyor",
+             "Sıcak-yükseliyor","Sıcak-tepe","Sıcak-soğuyor")
+    for pool in cohorts:
         allpool=grouped[pool]
         # Only ranking of previous state, never outcome or target number.
         ordered=sorted(allpool,key=lambda s:(
