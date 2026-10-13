@@ -321,6 +321,9 @@ def retrospective_test(draws,train_days=36):
                 })
             m=max(model_hits)
             c=max(random_hits)
+            model_union=len(set().union(*(set(p["numbers"]) for p in tickets)))
+            random_union=len(set().union(*(set(nums) for nums in
+                                            control_tickets(day,target["pos"]))))
             best["Model altı kupon"][m]+=1
             best["Rastgele altı kupon"][c]+=1
             differences.append({"Gün":day,"Hedef":target["no"],
@@ -328,6 +331,8 @@ def retrospective_test(draws,train_days=36):
                                 "Model altı kupon en iyi":m,
                                 "Rastgele altı kupon en iyi":c,
                                 "Fark":m-c,
+                                "Model altı kupon farklı sayı":model_union,
+                                "Rastgele altı kupon farklı sayı":random_union,
                                 "Model 6'lı tam":sum(
                                     len(set(p["family6"]).intersection(target["nums"]))==6
                                     for p in tickets),
@@ -357,6 +362,8 @@ def retrospective_test(draws,train_days=36):
         "random_coupons":6*len(differences),
         "model_6_full":sum(x["Model 6'lı tam"] for x in differences),
         "random_6_full":sum(x["Rastgele 6'lı tam"] for x in differences),
+        "model_coverage":round(sum(x["Model altı kupon farklı sayı"] for x in differences)/len(differences),3),
+        "random_coverage":round(sum(x["Rastgele altı kupon farklı sayı"] for x in differences)/len(differences),3),
         "test_note":"Exploratory chronological retrospective test, NOT prospectively registered live blind data.",
     }
     return {"summary":summary,"methods":_stats(results,"37 günlük test"),
