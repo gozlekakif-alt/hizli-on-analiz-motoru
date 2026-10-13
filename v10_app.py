@@ -21,6 +21,12 @@ from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summa
 from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
+from v13_havuz_koltuk import (trained_model as v13_train,
+                             run_study as v13_study,
+                             states_for_day as v13_states,
+                             next_day_preview as v13_preview,
+                             csv_export as v13_csv,
+                             TYPES as V13_TYPES)
 from v12_80_kule import (run_tower_study, audit_target as v12_audit_target,
                          target_tower_row as v12_target_row,
                          next_draw_tower as v12_next_tower,
@@ -955,7 +961,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -2354,3 +2360,202 @@ with tabs[8]:
                     "hedef saati geçti veya saatin 7–12 bölümünde değil.")
     else:
         st.caption("Canlı önizleme yalnız seçili gün bugünse çalışır.")
+
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def cached_v13_training(draws_json,train_days):
+    return v13_train(json.loads(draws_json),train_days=train_days)
+
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def cached_v13_full_replay(draws_json,train_days):
+    return v13_study(json.loads(draws_json),train_days=train_days)
+
+
+with tabs[9]:
+    st.subheader("🌡️ V13 — 217 çekilişlik hareketli sıcak / ılık / soğuk kule")
+    st.caption(
+        "Merkezde 1–80'in HER sayısı bulunur. Her günün 1. çekilişinden "
+        "217. çekilişine kadar toplam görünüş, son 12, son 6, önceki 6, "
+        "görünmeme aralığı, yükseliş, soğuma, tepe noktası hesaplanır. "
+        "Bu V12'nin 2–10 aile kulesine bağlanır."
+    )
+    st.warning(
+        "20 'koltuk' = sıcak / ılık / soğuk sayı sınıflarından çıkan kaç "
+        "gerçek sayı olduğu; fiziksel makine çekiliş sırası değildir. "
+        "Bağımsız çekilişte herhangi bir belirli sayının çıkış olasılığı "
+        "%25'tir. Geçmiş sıcaklık, bundan sonra çıkacağını veya "
+        "çıkmayacağını kanıtlamaz."
+    )
+    v13_train_days=st.slider(
+        "Geçmiş kaç gün öğrenme için ayrı tutulsun?",
+        min_value=20,max_value=50,value=36,step=1,
+        key="v13_train_days")
+    v13_count=Counter(d["day"] for d in draws)
+    v13_complete_dates=[
+        day for day in sorted(v13_count)
+        if v13_count[day]>=215
+    ]
+    v13_training_dates=set(v13_complete_dates[:v13_train_days])
+    v13_training_draws=[
+        d for d in draws if d["day"] in v13_training_dates
+    ]
+    v13_trainee=None
+    if len(v13_training_dates)==v13_train_days:
+        v13_trainee=cached_v13_training(
+            json.dumps(v13_training_draws,separators=(",",":")),
+            v13_train_days
+        )
+    st.caption(
+        f"İlk {v13_train_days} günün HEM sayıları hem sonuçları "
+        "ile sıcaklık/koltuk eşikleri öğrenilir. Daha sonraki günler "
+        "öğrenmeye katılmadan test edilir. Son 217 çekilişin hiçbir "
+        "hedef sonucu, o hedefin öncesindeki duruma eklenmez."
+    )
+    st.markdown("#### 🧭 Gün boyunca 80 sayının kimliği")
+    v13_day_known=[
+        d for d in day_draws
+        if analysis_date!=today or datetime.fromisoformat(d["dt"])<=now_tr()
+    ]
+    v13_day_known.sort(key=lambda r:r["pos"])
+    identity=v13_states(v13_day_known)
+    pool_counts=Counter(r["pool"] for r in identity)
+    c1,c2,c3,c4=st.columns(4)
+    c1.metric("Soğuk havuz",pool_counts["Soğuk"])
+    c2.metric("Ilık havuz",pool_counts["Ilık"])
+    c3.metric("Sıcak havuz",pool_counts["Sıcak"])
+    c4.metric("İşlenen çekiliş",len(v13_day_known))
+    st.caption("Kimlik tablosu incelenen günün son bilinen çekilişine "
+               "kadarki değerlerdir. Sonuçları görmeden oluşmuştur.")
+    v13_display=[
+        {"Sayı":r["n"],"Havuz":r["pool"],"Hareket":r["label"],
+         "Günde kaç kez":r["day"],"12'de":r["recent12"],
+         "Son 6":r["recent6"],"Önceki 6":r["prev6"],
+         "İvme":r["slope"],"Kaç çekiliştir yok":r["gap"],
+         "Standart sıcaklık":r["z"]}
+        for r in identity
+    ]
+    with st.expander("🌐 80 sayının ayrıntılı kimliklerini aç"):
+        st.dataframe(v13_display,hide_index=True,use_container_width=True)
+        st.download_button(
+            "⬇️ 1–80 sayı gün içi kimlikleri",
+            v13_csv(v13_display),file_name=f"V13_80_KIMLIK_{daystr}.csv",
+            mime="text/csv",key="v13_identity_csv")
+    st.markdown("#### 🔭 Gelecek çekilişin 20 koltuğu ve aile kulesi")
+    v13_live=None
+    if analysis_date==today and v13_day_known and v13_trainee:
+        maxpos=max(r["pos"] for r in v13_day_known)
+        next_pos=maxpos+1
+        due=moment(daystr,next_pos) if next_pos<=217 else None
+        future_key=next_pos not in {r["pos"] for r in day_draws}
+        if due and due>now_tr() and future_key:
+            v13_live=v13_preview(
+                v13_day_known,v13_trainee,next_pos,
+                max(v13_day_known,key=lambda r:r["pos"])["no"]+1
+            )
+    if v13_live:
+        st.write(f'**Hedef:** {due:%H:%M} — '
+                 f'{v13_live["pos"]}. çekiliş.')
+        st.write("**Koltuk dağılımı (öngörü):** "+
+                 " · ".join(f"{p}: {v13_live['seats'].get(p,0)}"
+                            for p in V13_TYPES))
+        st.caption(
+            "Koltuk dağılımı geçmiş eğitim dönemindeki görünüş oranlarıyla "
+            "kalibre edilir. Gerçek hedef 20'si bu seçimde kullanılmaz."
+        )
+        rows=[
+            {"Yöntem":name,"Seçilen 20 sayı":"-".join(f"{n:02d}" for n in nums)}
+            for name,nums in v13_live["coupons"].items()
+        ]
+        st.dataframe(rows,hide_index=True,use_container_width=True)
+        st.markdown("##### 🧱 V12 ile birleşen 2–10 aile merdiveni")
+        st.dataframe(v13_live["stairs"],hide_index=True,use_container_width=True)
+        st.markdown("##### 20 sayıyı dolduran ayrık aileler (2+3+4+5+6)")
+        st.dataframe(v13_live["groups"],hide_index=True,use_container_width=True)
+        st.download_button("⬇️ V13 canlı 80 sayı ve eğitim oranı",
+                           v13_csv(v13_live["states"]),
+                           file_name=f"V13_CANLI_{daystr}.csv",
+                           mime="text/csv",key="v13_live_csv")
+        st.info(
+            "Bu bir araştırma önerisidir; isabet üstünlüğü "
+            "kanıtlanmış otomatik bahis motoru değildir."
+        )
+    else:
+        st.info(
+            "Güncel hedef için 217 günlük sırada kayıtlı olmayan ve "
+            "saati geçmemiş yeni bir çekiliş gerekli. "
+            "Canlı veri güncellemesiyle yeniden kontrol et."
+        )
+    st.markdown("#### 🧪 İlk günlerden öğren → sonraki 37 günde sınama")
+    st.caption(
+        "Bütün 217 günlük slot izlenir. Ana koltuk motorları bütün hedeflerde, "
+        "V12 aile ağı ise kesintisiz önceki 12 çekilişi olan 7–12. "
+        "saat slotlarında ayrıca test edilir. "
+        "Tam isabet olmayan kuponlar da sonuç defterinde kalır."
+    )
+    if st.button("🚀 V13 — 217 çekilişli havuz ve aile motorunu test et",
+                 key="v13_start_backtest",type="primary"):
+        with st.spinner("217 slot × 80 sayı, 2–10 aile, koltuklar ve "
+                        "V12 ağ kulesi; geçmişi görmeden test ediliyor..."):
+            tested=cached_v13_full_replay(
+                json.dumps(draws,separators=(",",":")),
+                v13_train_days
+            )
+        st.session_state["v13_backtest"]={
+            "last_no":max((r["no"] for r in draws),default=0),
+            "train":v13_train_days,"result":tested
+        }
+    saved=st.session_state.get("v13_backtest",{})
+    if saved.get("train")==v13_train_days:
+        report=saved["result"]
+        meta=report["meta"]
+        if saved.get("last_no")!=max((r["no"] for r in draws),default=0):
+            st.warning("Yeni çekiliş eklendi. Yeni veri için testi tekrar çalıştır.")
+        a,b,c=st.columns(3)
+        a.metric("Eğitim günü",meta["train_days"])
+        b.metric("Ayrı test günü",meta["holdout_days"])
+        c.metric("Test hedefi",meta["test_targets"])
+        st.caption(
+            f'Test: {meta["test_first"]} – {meta["test_last"]}. '
+            "Kategorilerin öğrenildiği günlerin sonuçları test başarı "
+            "oranına eklenmedi. Bütün rapor keşif amaçlıdır; "
+            "gerçek ileri tarihli kör kayıt ayrıca gereklidir."
+        )
+        st.markdown("##### 🎯 Koltuk motoru ve rastgele 20 isabeti")
+        st.dataframe(report["methods"],hide_index=True,use_container_width=True)
+        st.markdown("##### 🪑 Hedef 20'nin sıcak / ılık / soğuk koltukları")
+        st.dataframe(report["seats"],hide_index=True,use_container_width=True)
+        st.markdown("##### 📈 Tepeye çıkan ve soğuktan uyanan sayılar")
+        st.dataframe(report["states"],hide_index=True,use_container_width=True)
+        st.markdown("##### 👨‍👩‍👧‍👦 Tamamen soğuk veya tamamen sıcak aileler")
+        st.caption(
+            "Aynı havuzdan seçilmiş bir ailenin önceden kurulmuş "
+            "tek k'lı adayının kaç hedefte TAM k/k göründüğü yazılır. "
+            "Her gruptaki bütün k'lı ailelerin SONRADAN sayılan "
+            "tamamlanmaları ayrıdır; kupon isabeti olarak gösterilmez."
+        )
+        st.dataframe(report["family"],hide_index=True,use_container_width=True)
+        cold6=next((r for r in report["family"]
+                    if r["Grup"]=="Soğuk" and r["Boyut"]==6),None)
+        if cold6:
+            x,y=st.columns(2)
+            x.metric("Soğuk 6'lı hedef",cold6["Tek aile hedefi"])
+            y.metric("Tam 6/6",cold6["Tam k/k"])
+        with st.expander("⏱️ Bütün gün boyunca hedef / koltuk / kupon isabeti"):
+            st.dataframe(report["ledger"][:200],hide_index=True,
+                         use_container_width=True)
+        downloadable=(
+            ("217 çekiliş boyunca tüm hedefler","ledger","V13_TUM_HEDEFLER.csv"),
+            ("Koltuk tahmini ve 20 sayılık isabet","methods","V13_KUPON_PERFORMANSI.csv"),
+            ("20 havuz koltuğu ve beklenen sayı","seats","V13_KOLTUK_DAGILIMI.csv"),
+            ("Sıcak tepe / soğuk uyanma sonuçları","states","V13_SICAKLIK_DURUMU.csv"),
+            ("2–10 tamamen soğuk/sıcak aile testleri","family","V13_AILE_SOĞUK_SICAK.csv"),
+            ("Örnek 20 sayı / aile dağılımı","examples","V13_KULE_ORNEKLER.csv"),
+            ("Örnek bireysel aile hedefleri","family_examples","V13_AILE_HEDEF_ORNEKLER.csv")
+        )
+        for title_name,field,file_name in downloadable:
+            st.download_button("⬇️ "+title_name,v13_csv(report[field]),
+                               file_name=file_name,mime="text/csv",
+                               key="v13_export_"+field)
+    else:
+        st.caption("Test henüz çalıştırılmadı. Yukarıdaki 🚀 düğmesine bas.")
