@@ -309,14 +309,147 @@ def train_profiles(history_json, labels_json):
             profiles[label] = {
                 "days":dates,
                 "total_hits":sum(map(len,byday.values())),
-                "pair":{gap:len(ds) for gap,ds in pair_days.items() if len(ds)>=2},
-                "first":{gap:len(ds) for gap,ds in first_days.items() if len(ds)>=2},
-                "triple":{pat:len(ds) for pat,ds in triple_days.items() if len(ds)>=2},
-                "quad":{pat:len(ds) for pat,ds in quad_days.items() if len(ds)>=2},
+                "pair":{gap:len(ds) for gap,ds in pair_days.items()},
+                "first":{gap:len(ds) for gap,ds in first_days.items()},
+                "triple":{pat:len(ds) for pat,ds in triple_days.items()},
+                "quad":{pat:len(ds) for pat,ds in quad_days.items()},
             }
         except (ValueError, IndexError):
             continue
     return profiles
+
+
+def gap_rhythm(gaps):
+    """Describe observed chronological appearance gaps, never a prediction."""
+    if not gaps:
+        return "TEK GÖRÜNÜŞ"
+    if len(gaps)==1:
+        return f"İKİLİ +{gaps[0]}"
+    if len(set(gaps))==1:
+        return f"SABİT +{gaps[0]}"
+    if all(a<b for a,b in zip(gaps,gaps[1:])):
+        return "ARTAN " + "/".join("+"+str(g) for g in gaps)
+    if all(a>b for a,b in zip(gaps,gaps[1:])):
+        return "AZALAN " + "/".join("+"+str(g) for g in gaps)
+    return "DEĞİŞKEN " + "/".join("+"+str(g) for g in gaps)
+
+def gap_class(gaps):
+    if not gaps:
+        return "Tek"
+    if len(gaps)==1:
+        return "İkili"
+    if len(set(gaps))==1:
+        return "Sabit"
+    if all(a<b for a,b in zip(gaps,gaps[1:])):
+        return "Artan"
+    if all(a>b for a,b in zip(gaps,gaps[1:])):
+        return "Azalan"
+    return "Değişken"
+
+def family_rhythm_report(draws, families, dayhits, target_day):
+    """Exact-family appearances in the loaded historical corpus; no future rows.
+    Return a per-family summary and all matching timestamped occurrences.
+    """
+    labels=sorted(dayhits)
+    selected={label:families[label]["mask"] for label in labels}
+    index=defaultdict(list)
+    details=[]
+    for d in draws:
+        if d["day"]>target_day:
+            continue
+        mask=sum(1 << (n-1) for n in d["nums"])
+        for label,subset in selected.items():
+            if mask & subset == subset:
+                index[label].append(d)
+                details.append({"Aile":label,"Boyut":families[label]["k"],
+                                "Tarih":d["day"],"Çekiliş":d["no"],
+                                "Saat":d["dt"][11:16],"Sıra":d["pos"],
+                                "Dönem":"Bugün" if d["day"]==target_day else "Geçmiş"})
+    summaries=[]
+    for label in labels:
+        events=index[label]
+        prior=[d for d in events if d["day"]<target_day]
+        today=sorted([d for d in events if d["day"]==target_day],key=lambda d:d["pos"])
+        prior_days=sorted({d["day"] for d in prior})
+        all_days=sorted({d["day"] for d in events})
+        positions=[d["pos"] for d in today]
+        intra=[b-a for a,b in zip(positions,positions[1:])]
+        day_diffs=[(date.fromisoformat(b)-date.fromisoformat(a)).days
+                   for a,b in zip(all_days,all_days[1:])]
+        prior_counts=Counter(d["day"] for d in prior)
+        summaries.append({
+            "Aile":label,"Boyut":families[label]["k"],
+            "Durum":"İLK KEZ (veride)" if not prior else "GEÇMİŞTEN GELDİ",
+            "Bugün kaç kez":len(today),
+            "Bugün çekilişler":", ".join(f"#{d['no']} {d['dt'][11:16]}" for d in today),
+            "Bugün ritim":gap_rhythm(intra),
+            "Ritim türü":gap_class(intra),
+            "Geçmiş kaç gün":len(prior_days),
+            "Geçmiş toplam":len(prior),
+            "Geçmişte 3+ gün":sum(v>=3 for v in prior_counts.values()),
+            "Geçmişte 4+ gün":sum(v>=4 for v in prior_counts.values()),
+            "Günler arası":gap_rhythm(day_diffs),
+            "+2 gün":sum(x==2 for x in day_diffs),
+            "+5 gün":sum(x==5 for x in day_diffs),
+            "En son önce":f"#{prior[-1]['no']} {prior[-1]['day']} {prior[-1]['dt'][11:16]}" if prior else "YOK",
+            "Geçmiş görünüşler":", ".join(
+                f"#{d['no']} {d['day']} {d['dt'][11:16]}" for d in prior[-30:]),
+            "Tüm tarih/gün":", ".join(all_days)})
+    summaries.sort(key=lambda x:(-x["Bugün kaç kez"],-x["Geçmişte 3+ gün"],
+                                 -x["Boyut"],x["Aile"]))
+    return summaries,details
+
+def repeat_gap_targets(dayhits, profiles, families, day, now, observed_positions,
+                       minimum_days=2, latest_known=None):
+    """Live targets based on *prior-day* first, triple or quad chronological gaps.
+    Stage 1->2: historical first gaps; 2->3: exact (gap1,gap2);
+    3->4: exact (gap1,gap2,gap3). Never use future day draws.
+    """
+    targets=[]
+    for label,recs in dayhits.items():
+        ps=sorted({d["pos"] for d in recs})
+        n=len(ps)
+        if n not in (1,2,3):
+            continue
+        profile=profiles.get(label,{})
+        if n==1:
+            patterns=[(int(g),int(cnt),"1→2") for g,cnt in profile.get("first",{}).items()]
+        elif n==2:
+            patterns=[(int(pat[1]),int(cnt),"2→3") for pat,cnt in profile.get("triple",{}).items()
+                      if pat[0]==ps[1]-ps[0]]
+        else:
+            patterns=[(int(pat[2]),int(cnt),"3→4") for pat,cnt in profile.get("quad",{}).items()
+                      if tuple(pat[:2])==(ps[1]-ps[0],ps[2]-ps[1])]
+        for delta,support,stage in patterns:
+            if support<minimum_days:
+                continue
+            target_pos=ps[-1]+delta
+            if delta<=0 or target_pos>217 or target_pos in observed_positions:
+                continue
+            when=moment(day,target_pos)
+            if when<=now:
+                continue
+            seq=[b-a for a,b in zip(ps,ps[1:])]+[delta]
+            kind=gap_rhythm(seq)
+            estimated_no=None
+            if latest_known and target_pos>latest_known["pos"]:
+                estimated_no=latest_known["no"]+(target_pos-latest_known["pos"])
+            targets.append({
+                "label":label,"size":families[label]["k"],"stage":stage,
+                "level":n+1,"gap":delta,"support":support,
+                "kind":kind,"pattern":"/".join("+"+str(g) for g in seq),
+                "pos":target_pos,"day":day,"time":when.strftime("%H:%M"),
+                "estimated_no":estimated_no,
+                "trigger_no":max(recs,key=lambda d:d["pos"])["no"],
+                "moment":when.isoformat(timespec="minutes")
+            })
+    targets.sort(key=lambda x:(x["pos"],-x["support"],-x["size"],x["label"]))
+    unique={}
+    for item in targets:
+        key=(item["label"],item["pos"],item["stage"])
+        if key not in unique:
+            unique[key]=item
+    return list(unique.values())
 
 def all_draws(history, live):
     by_no = {d["no"]:d for d in history}
@@ -738,8 +871,21 @@ with tabs[1]:
     else:
         profiles=train_profiles(json.dumps(cutoff,separators=(",",":")),
                                 json.dumps(sorted(families),separators=(",",":")))
-    signals,hits=active_signals(draws,families,profiles,daystr,current)
-    st.caption("Model yalniz secilen gunden ONCEKI kayitlarla kurulur. Gorulmemis hedef saatleri listelenir.")
+    st.caption("Model yalnız seçilen günden ÖNCEKİ kayıtlarla kurulur. Yeni çekiliş gelince ritim hedefleri tekrar değerlendirilir.")
+    support_days=st.selectbox("Ritim hedefi için geçmişte en az kaç ayrı gün destek olsun?",
+                              options=[2,1,3],
+                              format_func=lambda n:f"{n} gün (erken/deneysel)" if n==1 else
+                                                   f"{n} gün ({'temkinli' if n==2 else 'daha seçici'})",
+                              index=0,key="v10_repeat_support")
+    _,hits=active_signals(draws,families,profiles,daystr,current)
+    known_pos={d["pos"] for d in day_draws}
+    live_day=[d for d in day_draws if datetime.fromisoformat(d["dt"])<=current]
+    latest=max(live_day,key=lambda d:d["pos"]) if live_day else None
+    signals=repeat_gap_targets(hits,profiles,families,daystr,current,known_pos,
+                               minimum_days=support_days,latest_known=latest)
+    family_summaries,family_events=family_rhythm_report(draws,families,hits,daystr)
+    if support_days==1:
+        st.warning("Deneysel: tek geçmiş gün bir tekrarın öngörülebilir olduğunu göstermez. Kupon hedefleri istatistiksel olarak doğrulanmış değildir.")
     st.markdown("### 📊 Bu tarihte gerçekten neler var?")
     a,b,c=st.columns(3)
     a.metric("Seçili gün çekilişi",len(day_draws))
@@ -759,17 +905,55 @@ with tabs[1]:
               "Gelecek saat hedefi":sig_by_k[k]} for k in range(5,11)]
     st.dataframe(summary,hide_index=True,use_container_width=True)
     if hits:
-        st.markdown("**O gün çıkan aileler (gerçek çekiliş numarası ve saat)**")
-        observed=[{"Aile":label,"Boyut":families[label]["k"],
-                   "Günlük görünüş":len(recs),
-                   "Çekilişler":", ".join("#"+str(d["no"])+" "+d["dt"][11:16] for d in recs)}
-                  for label,recs in hits.items()]
-        observed.sort(key=lambda x:(-x["Günlük görünüş"],-x["Boyut"],x["Aile"]))
-        st.dataframe(observed[:150],hide_index=True,use_container_width=True)
-        if len(observed)>150:
-            st.caption(f"İlk 150 aile gösterildi; toplam {len(observed)}.")
+        st.markdown("### 🔍 İlk kez, geçmişten gelen ve ritimli aileler")
+        st.caption("İlk kez = yalnız yüklenmiş veri aralığında ilk tam görünüş; tüm tarih boyunca ilk kez demek değildir.")
+        one=sum(r["Durum"].startswith("İLK") for r in family_summaries)
+        repeat=sum(r["Bugün kaç kez"]>=2 for r in family_summaries)
+        rhythmic=sum(r["Ritim türü"] in ("Sabit","Artan","Azalan") for r in family_summaries)
+        a1,a2,a3=st.columns(3)
+        a1.metric("Bu veride ilk kez",one)
+        a2.metric("Bugün 2+ görünen",repeat)
+        a3.metric("Sabit/artan/azalan",rhythmic)
+        st.dataframe(
+            [{"Aile":r["Aile"],"Boyut":r["Boyut"],"Durum":r["Durum"],
+              "Bugün":r["Bugün kaç kez"],"Ritim":r["Bugün ritim"],
+              "Çekilişler":r["Bugün çekilişler"],
+              "Geçmiş gün":r["Geçmiş kaç gün"],"3+ gün":r["Geçmişte 3+ gün"],
+              "4+ gün":r["Geçmişte 4+ gün"],
+              "Gün aralığı":r["Günler arası"],
+              "+2 gün":r["+2 gün"],"+5 gün":r["+5 gün"]}
+             for r in family_summaries[:200]],
+            hide_index=True,use_container_width=True)
+        with st.expander("📚 Aynı ailelerin geçmiş çizgisi (saat ve çekiliş no)",expanded=False):
+            st.dataframe(
+                [{"Aile":r["Aile"],"Boyut":r["Boyut"],
+                  "Önceki son":r["En son önce"],
+                  "Geçmiş görünüşler":r["Geçmiş görünüşler"],
+                  "Tüm günler":r["Tüm tarih/gün"]}
+                 for r in family_summaries[:200]],
+                hide_index=True,use_container_width=True)
+        if family_summaries:
+            report_data=io.StringIO()
+            out_fields=list(family_summaries[0].keys())
+            writer=csv.DictWriter(report_data,fieldnames=out_fields,delimiter=";")
+            writer.writeheader()
+            writer.writerows(family_summaries)
+            st.download_button("⬇️ Aile ve tüm ritim özeti CSV",
+                               report_data.getvalue().encode("utf-8-sig"),
+                               file_name=f"V10_AILE_RITIM_{daystr}.csv",mime="text/csv",
+                               key="v10_family_summary_csv")
+        if family_events:
+            events_csv=io.StringIO()
+            event_fields=list(family_events[0].keys())
+            writer=csv.DictWriter(events_csv,fieldnames=event_fields,delimiter=";")
+            writer.writeheader()
+            writer.writerows(family_events)
+            st.download_button("⬇️ Ailelerin bütün geçmiş çekiliş/saat kayıtları",
+                               events_csv.getvalue().encode("utf-8-sig"),
+                               file_name=f"V10_AILE_CEKILIS_GECMISI_{daystr}.csv",
+                               mime="text/csv",key="v10_family_all_history")
     elif day_draws:
-        st.warning("Seçili günün çekilişleri var; ancak mevcut aday havuzundan henüz tam çıkan aile yok. Bu, bütün olası ailelerin çıkmadığı anlamına gelmez.")
+        st.warning("Bu gün çekilişler var, fakat aday havuzundan henüz tam görünen aile yok. Aile havuzu bütün olası kombinasyonlar değildir.")
     if analysis_date!=today:
         st.info("Geçmiş gün seçildi. Görünüşleri inceleyebilirsin; geçmişte kalmış saatler yeni hedef olarak önerilmez.")
     elif hits and not signals:
@@ -786,10 +970,11 @@ with tabs[1]:
                 st.caption("Bu boyutta ileri hedef yok. Motor 0 kupon öneriyor.")
                 continue
             st.dataframe(
-                [{"Aile":x["label"],"Hedef":str(x["level"])+". geliş",
-                  "Saat":x["time"],"Çekiliş sırası":x["pos"],
-                  "Aralık":"+"+str(x["gap"]),
-                  "Destek günü":x["support"],"Sinyal":x["kind"]} for x in options],
+                [{"Aile":x["label"],"Hedef":x["stage"],
+                  "Saat":x["time"],"Sıra":x["pos"],
+                  "Tahmini no":"#"+str(x["estimated_no"]) if x["estimated_no"] else "—",
+                  "Ritim":x["pattern"],"Tür":x["kind"],
+                  "Geçmiş destek (gün)":x["support"]} for x in options],
                 hide_index=True,use_container_width=True)
             pick=st.selectbox(f"{k}'li hedef seç",list(range(len(options))),
                 format_func=lambda i:options[i]["time"]+" | "+options[i]["label"],
@@ -797,7 +982,7 @@ with tabs[1]:
             x=options[pick]
             ticket_nums=make_ticket(x,draws,size=k)
             st.markdown(f"**{k}'li kupon: "+", ".join(map(str,ticket_nums))+"**")
-            st.caption(f"{x['day']} {x['time']} · {x['level']}. tam görünüş · {x['kind']}")
+            st.caption(f"{x['day']} {x['time']} · {x['stage']} · {x['kind']} · "+                       f"{x['support']} geçmiş gün destekli · Çekiliş sıra {x['pos']}. "+                       ("Çekiliş numarası yalnız tahminidir." if x['estimated_no'] else "Numara henüz bilinmiyor."))
             if st.button(f"🎟️ {k}'li kuponu kaydet",key=f"v10_save_{k}"):
                 ticket={"day":x["day"],"pos":x["pos"],"time":x["time"],
                         "family":x["label"],"numbers":ticket_nums,
@@ -811,7 +996,7 @@ with tabs[1]:
                     st.session_state.v10_tickets.append(ticket)
                     st.success(f"{k}'li kupon kaydedildi. "+auto_save())
     if not signals:
-        st.info("Şu an ileri saatli ritim hedefi yok. Yeni çekilişler eklendikçe güncellenir.")
+        st.info("Şu an bu destek düzeyinde 1→2, 2→3 veya 3→4 için ilerideki uygun saate denk gelen hedef yok. İstersen 1 geçmiş günle deneysel izleme yapabilirsin; ancak isabet güvencesi yok.")
 
     st.markdown("#### 10'lu ailelerin gün zinciri")
     watch=daily_chains(profiles,families,daystr)
