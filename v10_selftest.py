@@ -13,7 +13,7 @@ names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_temp
        "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","filter_new_draws","parse_history",
        "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
        "gap_rhythm","gap_class","family_rhythm_report","repeat_gap_targets",
-       "active_signals","daily_chains","make_ticket","result_rows"}
+       "active_signals","daily_chains","make_ticket","result_rows","day_signal_replay"}
 tree=ast.parse(src)
 nodes=[]
 for node in tree.body:
@@ -216,6 +216,26 @@ for n,pos,target,step in [(1,10,15,"1→2"),(2,15,20,"2→3"),(3,20,25,"3→4")]
     assert len(targets)==1 and targets[0]["stage"]==step and targets[0]["pos"]==target,targets
     assert targets[0]["support"]==2
     assert targets[0]["estimated_no"]==live[-1]["no"]+(target-pos),targets
+
+
+# Historical ledger: earlier-day support and time-frozen targets, evaluated later.
+hist_ledger=historic+[make(today_day,10,61651),make(today_day,15,61652)]
+ledger=env["day_signal_replay"](
+    {family:hist_ledger[-2:]},past_profiles,fmeta,today_day,
+    hist_ledger[-2:],minimum_days=2)
+assert len(ledger)==2,ledger
+l12=[r for r in ledger if r["Aşama"]=="1→2"]
+l23=[r for r in ledger if r["Aşama"]=="2→3"]
+assert len(l12)==len(l23)==1,ledger
+assert l12[0]["Hedef sıra"]==15 and l12[0]["Sonuç"]=="TAM" and l12[0]["İsabet"]=="5/5",ledger
+assert l23[0]["Hedef sıra"]==20 and l23[0]["Sonuç"].startswith("Bekliyor"),ledger
+assert not env["day_signal_replay"](
+    {family:hist_ledger[-2:]},env["train_profiles"](json.dumps(historic[:4]),json.dumps([family])),
+    fmeta,today_day,hist_ledger[-2:],minimum_days=2)
+ledger2=env["day_signal_replay"](
+    {family:hist_ledger[-2:]},past_profiles,fmeta,today_day,
+    hist_ledger[-2:]+[make(today_day,20,61653)],minimum_days=2)
+assert any(r["Aşama"]=="2→3" and r["Sonuç"]=="TAM" for r in ledger2)
 
 # On prior-day data only, a single historical supporting day is experimental.
 one_day=env["train_profiles"](json.dumps(historic[:4]),json.dumps([family]))
