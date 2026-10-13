@@ -121,6 +121,33 @@ def parse_pasted_draws(raw):
         problems.append("Çekiliş başlığı bulunamadı: 'Çekiliş no:61629' veya noktalı veri satırı bekleniyor.")
     return results, problems
 
+
+def filter_new_draws(records, existing):
+    """Validate a pasted batch and exclude exact repeats without hiding conflicts."""
+    by_id={d["no"]:d for d in existing}
+    by_slot={(d["day"],d["pos"]):d for d in existing}
+    accepted, repeats, errors=[],0,[]
+    for entry in records:
+        try:
+            d=make_draw(entry["no"],entry["dt"],entry["nums"])
+            prior_id=by_id.get(d["no"])
+            prior_slot=by_slot.get((d["day"],d["pos"]))
+            for prior in (prior_id,prior_slot):
+                if prior is None:
+                    continue
+                if prior["no"]==d["no"] and prior["dt"]==d["dt"] and prior["nums"]==d["nums"]:
+                    repeats+=1
+                else:
+                    errors.append(f"#{d['no']}: numara, tarih/saat veya 20 sayıda çakışma var. Kayıt reddedildi.")
+                break
+            else:
+                accepted.append(d)
+                by_id[d["no"]]=d
+                by_slot[(d["day"],d["pos"])]=d
+        except (ValueError,KeyError,TypeError) as exc:
+            errors.append("Geçersiz çekiliş: "+str(exc))
+    return accepted,repeats,errors
+
 def parse_history(raw):
     seen_no, seen_time, draws, errors = set(), set(), [], 0
     for line in raw.splitlines():
@@ -543,6 +570,31 @@ if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yedek & Kayıt"])
 
 with tabs[0]:
+    # PIN is required once per Streamlit session, not per submitted draw.
+    # A public Streamlit app must not allow unauthenticated visitors to use its GitHub write token.
+    if secret_token() and secret_admin_pin():
+        if st.session_state.get("v10_admin_unlocked", False):
+            st.success("🔓 Otomatik GitHub kayıt açık — yeni çekilişler anında veri.txt'ye yazılır.")
+        else:
+            st.warning("🔒 Kalıcı kayıt kilitli. Bu oturum için PIN'i bir kez aç; aksi halde çekiliş yalnız geçici eklenir.")
+            pin_on_live=st.text_input("V10 yönetici PIN (yalnız bu oturum için)",type="password",key="v10_pin_live")
+            if st.button("🔐 Otomatik kalıcı kaydı aç",key="v10_unlock_live"):
+                if hmac.compare_digest(pin_on_live,secret_admin_pin()):
+                    st.session_state.v10_admin_unlocked=True
+                    st.session_state["v10_pin_live"]=""
+                    if st.session_state.v10_live:
+                        ok,_,m=persist_to_github_veri_txt(st.session_state.v10_live)
+                        st.session_state.v10_last_paste={
+                            "added":0,"repeats":0,"issues":[],
+                            "saved":m if ok else "Kalıcı kayıt başarısız: "+m
+                        }
+                        if ok:
+                            auto_save()
+                    st.rerun()
+                else:
+                    st.error("PIN yanlış; GitHub'a yazma izni açılmadı.")
+    else:
+        st.error("GitHub otomatik kayıt etkin değil: Streamlit Secrets'te GITHUB_TOKEN ve V10_ADMIN_PIN gerekli.")
     st.subheader("📋 Çekiliş sonucunu aynen yapıştır")
     st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
     next_info=next_recorded_slot(draws)
@@ -566,29 +618,23 @@ with tabs[0]:
                         placeholder="")
     if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
         records, issues=parse_pasted_draws(pasted)
-        known_ids={d["no"] for d in draws}
-        known_slots={(d["day"],d["pos"]) for d in draws}
-        added, repeats = 0, 0
-        for d in records:
-            if d["no"] in known_ids or (d["day"],d["pos"]) in known_slots:
-                repeats+=1
-                continue
-            st.session_state.v10_live.append(d)
-            known_ids.add(d["no"])
-            known_slots.add((d["day"],d["pos"]))
-            added+=1
-        if added:
+        valid,repeats,conflicts=filter_new_draws(records,draws)
+        if valid:
+            st.session_state.v10_live.extend(valid)
             ok,pushed,push_message=persist_to_github_veri_txt(st.session_state.v10_live)
             if ok:
                 backup_msg=auto_save()
                 saved=push_message+" "+backup_msg
             else:
-                saved=push_message+" Veriler şimdilik bu oturumda; JSON yedeğini indir."
+                saved=push_message+" Veriler şimdilik oturumda; JSON yedeğini indir."
         else:
-            saved=""
-        st.session_state.v10_last_paste={"added":added,"repeats":repeats,"issues":issues[:5],"saved":saved}
-        if added:
-            st.session_state["v10_clear_paste"] = True
+            saved="Yeni çekiliş eklenmedi." if records else ""
+        st.session_state.v10_last_paste={
+            "added":len(valid),"repeats":repeats,
+            "issues":(issues+conflicts)[:12],"saved":saved
+        }
+        if valid and not (issues or conflicts):
+            st.session_state["v10_clear_paste"]=True
         st.rerun()
     if st.session_state.get("v10_last_paste"):
         p=st.session_state.v10_last_paste
@@ -597,7 +643,7 @@ with tabs[0]:
         else:
             st.info(f"Yeni kayıt eklenmedi; {p['repeats']} çekiliş zaten kayıtlı.")
         if p["issues"]:
-            st.warning("Kontrol: " + " | ".join(p["issues"]))
+            st.error("⚠️ Hatalı/çakışan kayıtlar kaydedilmedi: " + " | ".join(p["issues"]))
         if p["saved"]:
             if "GitHub veri.txt kalıcı kayıt:" in p["saved"] or "zaten veri.txt içinde" in p["saved"]:
                 st.success("✅ GitHub ana veri.txt güncellendi. "+p["saved"])
@@ -628,9 +674,11 @@ with tabs[0]:
                     raise ValueError("Ayni numara veya saatli cekilis zaten mevcut.")
                 st.session_state.v10_live.append(new)
                 ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
-                st.success(f"#{new['no']} eklendi. "+message)
                 if ok:
+                    st.success(f"✅ #{new['no']} GitHub veri.txt dosyasına kaydedildi. "+message)
                     st.caption(auto_save())
+                else:
+                    st.error(f"⚠️ #{new['no']} oturuma eklendi ancak GitHub'a kaydedilmedi. "+message)
             except Exception as exc:
                 st.error("Eklenemedi: "+str(exc))
 
@@ -642,24 +690,29 @@ with tabs[0]:
         idx_no={d["no"] for d in draws}
         idx_pos={(d["day"],d["pos"]) for d in draws}
         added=0;invalid=0;duplicates=0
+        records=[]
         for rawline in data.splitlines():
-            if not re.match(r"^\s*\d+\s*;",rawline):continue
+            if not re.match(r"^\s*\d+\s*;",rawline):
+                continue
             try:
-                d=parse_draw_line(rawline)
-                if d["no"] in idx_no or (d["day"],d["pos"]) in idx_pos:
-                    duplicates+=1;continue
-                st.session_state.v10_live.append(d)
-                idx_no.add(d["no"]);idx_pos.add((d["day"],d["pos"]))
-                added+=1
+                records.append(parse_draw_line(rawline))
             except Exception:
                 invalid+=1
+        valid,duplicates,conflicts=filter_new_draws(records,draws)
+        invalid+=len(conflicts)
+        st.session_state.v10_live.extend(valid)
+        added=len(valid)
         if added:
             ok,_,message=persist_to_github_veri_txt(st.session_state.v10_live)
         else:
             ok,message=False,"Yeni çekiliş yok."
-        st.success(f"{added} çekiliş eklendi; {duplicates} tekrar, {invalid} hatalı satır. "+message)
         if ok:
+            st.success(f"✅ {added} çekiliş GitHub veri.txt kaydına alındı; {duplicates} tekrar, {invalid} hatalı kayıt. "+message)
             st.caption(auto_save())
+        else:
+            st.error(f"⚠️ {added} çekiliş geçici oturumda; {duplicates} tekrar, {invalid} hatalı kayıt. "+message)
+        if conflicts:
+            st.warning("Çakışmalar: "+" | ".join(conflicts[:5]))
     if st.session_state.v10_live:
         st.write("**Son eklenen çekilişler**")
         st.dataframe([{"No":d["no"],"Tarih":d["day"],"Saat":d["dt"][11:16],
