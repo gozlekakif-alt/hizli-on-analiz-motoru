@@ -1,0 +1,1299 @@
+══════════════════════════════════════════════════════════════════════
+HIZLI ON — YENİ SOHBETE EKSİKSİZ DEVİR KÜTÜĞÜ
+V9 • V10 • V11 • V12 • V13 • V14 • V15 • V16 • V17 • V18
+Tarih: 13.10.2026 | Türkiye | TAM ANA KÜTÜK + SON DURUM
+══════════════════════════════════════════════════════════════════════
+
+YENİ SOHBETTE İLK OKUNACAK ÇALIŞMA TALİMATI
+Bu tek dosya, kullanıcının uzun soluklu Hızlı On analiz projesinin
+devamlılık kaydıdır. Önce bu özet ve arkasındaki TAM ANA KÜTÜK
+okunmalı. Kullanıcı V18'den devam etmek istiyor ve uzun kod yerine
+kısa sonuç/önemli bulgu/tek dosya bağlantısı tercih ediyor.
+V9–V17 geçmişte kurulmuş, V18 son kurulan modüldür.
+Kullanıcıya her seferinde eski uygulamayı baştan kurdurma.
+
+MERKEZDEKİ AMAÇ
+- 1–80 sayılık Hızlı On evreni, çekiliş başına 20 ayrı sayı,
+  günlük 217 çekiliş: 00:02–01:02 arası 13 çekiliş,
+  07:02–23:57 arası 17 saat × 12 çekiliş.
+- GEÇMİŞTEN GELECEĞE BAKILACAK ESAS ŞEY **TEK TEK RAKAM DEĞİL,
+  ÇEKİLİŞİN KARAKTERİDİR.** V17'nin ana yönü budur.
+- Sonrasında kullanıcı ana yeni mimariyi istedi:
+  her çekilişte çıkan 20 ile çıkmayan 60 sayıyı İKİ AYRI HAVUZDA
+  217 pozisyon boyunca biriktirmek, havuzlar arası geçişi görmek.
+- Bu havuzların gözlenen karakter geçişlerinden önceden ölçülebilir
+  bilgi çıkıp çıkmadığını, kendi gerçek karşılaştırmasıyla sınamak.
+- Kullanıcının istediği eventual motor 6'lı/10'lu aile ve kupon
+  üretimi; ancak kör test olmadan RNG'ye üstünlük iddia edilmez.
+
+BAĞLANTILAR / GERÇEK REPO
+Uygulama: https://hz85tdmbmyim3a.streamlit.app
+GitHub depo: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru
+Ana ham veri: veri.txt (GİTHUB'DA MEVCUT, DOKUNULMAYACAK)
+V10 uygulama giriş noktası: v10_app.py
+V18 motor: v18_cift_havuz.py
+V18 arayüz: v18_cift_havuz_app.py
+V18 test: v18_selftest.py
+V18 tam rapor: V18_217_CIKAN20_CIKMAYAN60_HAVUZ_RAPORU.md
+V17 motor: v17_karakter_motoru.py
+V17 arayüz: v17_karakter_app.py
+V17 rapor: V17_CEKILIS_KARAKTER_MOTORU_RAPORU.md
+V15 kupon motoru: v15_kupon_motoru.py
+V9 app.py, veri.txt, v10_aileler.csv, v10_canli_kayit.json,
+eski kupon ve bütün modüller KORUNACAK.
+
+EN SON DOĞRULANAN DURUM — 13.10.2026
+- V18 çift havuz bağımsız testi BAŞARILI:
+  https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38453019873
+- V9–V18 entegre tüm motorlar + Streamlit testi BAŞARILI:
+  https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38453198693
+- 01.08, 11.08, 05.09, 12.10 günleri: her biri 217 tam çekiliş;
+  ÇIKAN 20 toplam kayıt=4340, ÇIKMAYAN 60 toplam kayıt=13020.
+- 13.10 günü test anında 151 çekiliş kaydı; 66 eksik sıra.
+  Canlı gün değişebilir; güncelliği veri.txt'den kontrol et.
+- Her çekilişte çıkan 20 ve çıkmayan 60 tam-ayrık kümedir;
+  20+60=80, 217*80=17360 sayı-durum kaydı/tam gün.
+- 20→20 kalan, 20→60 ayrılan, 60→20 gelen,
+  60→60 bekleyen sayılar kaydediliyor.
+- Her sayı için o gün kaç defa çıktı/bekledi, ardışık seriler,
+  gün içi ilk/son çıkış ve havuz değişimleri tutuluyor.
+- Ayrı çıkan-20 ve çıkmayan-60 TXT/CSV, 217×80 Ç/B matrisi
+  ve 80 sayının özeti uygulamadaki 🌓 V18 Çift Havuz tabında.
+- İki havuzun kalıcı TEK veri kaynağı GitHub veri.txt;
+  dosya her açılışta deterministik yeniden oluşturuluyor.
+  Kullanıcı ayrıca GitHub'a iki kalıcı ayrı dosya istiyorsa,
+  mevcut sistem otomatik olarak ayrı kalıcı TXT commit atmıyor:
+  bunu ancak istenirse açıkça yeni iş olarak uygula.
+- Kayıtsız çekiliş "çıkmayan" sayılmıyor ve sahte bekleme
+  kaydı oluşturmuyor; altı saatlik gece arası ayrıca işaretli.
+
+İSTATİSTİKSEL DÜRÜSTLÜK
+- Adil bağımsız RNG için tek sayı her çekilişte %25; belirli
+  10 sayının ortalama isabeti 2.5/10; önceki 20'den
+  ortak sayıların beklenen miktarı 5.
+- V12–V17 araştırmalarında çeşitli aile, sıcaklık, geçiş,
+  salınım ve karakter örüntüleri tarandı; rastgele kontrol
+  karşısında güvenilir tahmin üstünlüğü gösterilemedi.
+- V17: 36 gün öğrenme + 37 gün test, 7511 karakter hedefi;
+  8 karakterden 7'sinde geçmiş karakter geçişi, gün bölümünün
+  sabit karakter sıklığından iyi değil. Aile izi çok küçük
+  olumlu sinyal olsa da güvenilir kanıt değildir.
+- V15: 3774 hedef, 6 model×10 ve 6 rastgele×10;
+  geniş kapsam seçeneği 47.4 farklı sayı ile rastgele
+  44.1'i kapsadı; en iyi kupon ort 4.147/10 vs 4.139/10,
+  fark kanıt değildir; canlı gerçek kör test henüz yok.
+- V16: 15691 5-dakikalık ardışık tekrar, ort 4.996,
+  12+ tekrar yalnız 2 olay (matematiksel beklenti ≈1.57),
+  salınım tahmini matematiksel RNG varsayımını geçemedi.
+- Çekilişin yayımlanan 20 sayısı SIRASIZ BİR KÜMEDİR;
+  "fiziksel topların hangi sırada çıktığı" veya RNG
+  algoritmasının gizli seed'i bu kayıtlardan belirlenemez.
+- Tarihsel keşif, gerçek geleceğe yönelik donmuş ve
+  sonuç ÖNCESİNDE kaydedilmiş kör testle karıştırılmamalı.
+
+YENİ SOHBETTE ÖNERİLEN SIRADAKİ ARAŞTIRMA
+1) 🌓 V18'de her saatin/217 slotun 20/60 havuz birikimini aç.
+2) Her çekilişte 20→20, 20→60, 60→20, 60→60 karakterini
+   ve 80 sayının bekleme/çıkış serilerini ölç.
+3) 217 adımı saat/ilk 6–son 6/gece uzun arası olarak ayır;
+   bu dört durumdan "sonraki çekilişin karakteri"ne
+   ileri zamanlı sinyal çıkıp çıkmadığını sınamak için
+   yalnız geçmişten öğrenen model tasarla.
+4) Bağımsız matematiksel %25 baz ve sabit karakter
+   sıklığına karşı aynı hedeflerde karşılaştır.
+5) Sadece ileride ayrı günlerde tekrarlanan sinyal varsa
+   V17 karakter kapısı → V12 aile → V13 havuz → V15
+   kupon katmanlarını tartış.
+6) Kullanıcının istediği zaman yeni canlı çekilişleri
+   mevcut kayıt akışına ekle; eski veri/kuponları silme.
+7) Kod değişikliğini GitHub'da yap, Actions testini doğrula,
+   kullanıcıya sadece kısa sonuç ve bağlantı ver.
+
+GİZLİLİK: Bu kütük token, kişisel PIN, şifre ve secrets
+içermez. Özel erişim bilgilerini istemeden asla dosyaya yazma.
+
+══════════════════════════════════════════════════════════════════════
+AŞAĞIDA 13.10.2026 TARİHLİ TAM ORİJİNAL ANA PROJE KÜTÜĞÜ
+(İÇERİK KESİLMEDEN AYNEN KORUNMUŞTUR)
+══════════════════════════════════════════════════════════════════════
+
+HIZLI ON — TAM PROJE KÜTÜĞÜ / YENİ SOHBETE DEVİR
+Sürüm: 2026-10-13 / V9 DERİN AİLE-RİTİM ARAŞTIRMASI + V10 CANLI HEDEF-KUPON
+Güncelleme zamanı: 13 Ekim 2026, Türkiye
+Kapsam: Bu çalışma boyunca tasarlanan yöntemler, gerçek dosyalar, yapılan testler, yaşanan sorunlar, doğrulanmış sonuçlar, eksikler ve sonraki uygulama planı.
+NOT: Bu kütük şifre, token, PIN veya diğer gizli anahtarları İÇERMEZ.
+
+====================================================================
+01 — PROJENİN ANA AMACI VE KESİN İSTEK
+====================================================================
+Hızlı On oyununun 1–80 aralığından çekilen 20 sayılık gerçek sonuçlarını kullanarak 5’li, 6’lı, 7’li, 8’li, 9’lu ve 10’lu TAM AYNI SAYI ailesinin:
+- Gün içinde 1., 2., 3. ve 4. tam görünüşlerini;
+- Bunların çekiliş numaralarını, tarihlerini ve gerçek saatlerini;
+- İki görünüş arasındaki çekiliş-sırası farkını;
+- Sabit, artan, azalan, değişken/dönüşlü görünüş aralıklarını;
+- Farklı günlerde aynı tam aile ve aynı ritmin tekrarını;
+- Özellikle +2 ve +5 günlük aile zincirlerini;
+- Geçmişte 3 veya 4 defa görünen aileleri
+güvenilir ve derin biçimde raporlamak.
+
+Bu araştırmanın nihai uygulaması: Yeni çekilişi kullanıcı tek kutuya yapıştırdığında önce ana veri.txt dosyasına güvenli şekilde kaydetmek, sonra mevcut ve yeni aktive olan aileleri tanımak; geçmişte 1→2, 2→3, 3→4 geçişi tekrarlanan aileler için GEREKÇESİ ve GEÇMİŞ DESTEK SAYISI ile bir HEDEF TARİH/SAAT gösterip 5’li–10’lu boyutlara uygun DENEYSEL kupon üretmek. Sonuç gelince isabeti 0/k–k/k raporlamak.
+
+ÖNEMLİ BİLİMSEL İLKE: Çekilişler rastgele ise geçmişteki tekrar/ritim geleceği öngörmez. Geçmiş ritimlerin görülmesi başlı başına gerçek tahmin avantajı değildir; yalnız ileri zamanlı, sızıntısız testle sınanabilir. Kesin tutan kupon, garanti 5/5 veya 10/10 iddiasında bulunma.
+
+====================================================================
+02 — GERÇEK GITHUB VE STREAMLIT KONUMU
+====================================================================
+GitHub ana depo:
+https://github.com/gozlekakif-alt/hizli-on-analiz-motoru
+
+Aktif GitHub dalı: main
+Ana kaynak dosyası: veri.txt
+V9 derin araştırma: app.py
+V10 canlı motor: v10_app.py
+V10 aile havuzu: v10_aileler.csv
+V10 canlı durum/kupon yedeği: v10_canli_kayit.json
+Bağımlılıklar: requirements.txt
+Testler:
+- v10_selftest.py
+- v10_real_data_test.py
+- v10_streamlit_test.py
+- .github/workflows/v10-check.yml
+
+V10 Streamlit uygulama adresi:
+https://hz85tdmbmyim3a.streamlit.app
+
+V9'un çalışmakta olan ayrı Streamlit dağıtımı korunuyor. GitHub app.py V9'dur; V10 geliştirmesi v10_app.py üzerindedir. V9'u V10'a çevirmek amacıyla app.py'yi silme veya üzerine yazma.
+
+Repo içinde önceki aşamalardan motor.py, legacy_seeds.py ve deneme dosyaları bulunabilir. V9 app.py kendi tek-dosya uygulamasıdır, V10 da ayrı giriş dosyasıdır.
+
+GitHub üzerinden doğrudan düzenleme yapılabildiği doğrulandı. Kalıcı çalıştırma için V10 uygulamasının kendi Streamlit Secrets ekranındaki GITHUB_TOKEN ve V10_ADMIN_PIN ayarları gerekir; ChatGPT'nin bağlı GitHub hesabı Streamlit'e otomatik token sağlamaz.
+
+Gizli token/PIN kütüğe veya açık bir sohbete yapıştırılmamalı. Fine-grained token yalnız hedef depoya Contents: Read and write yetkisiyle oluşturuldu; oluşturulan tokenun ilk 30 günlük süresi Kasım 2026 civarında dolacaktır, gerekli olduğunda yenilenmeli. Tokenı hiçbir zaman GitHub kaynak dosyasına yazma.
+
+====================================================================
+03 — VERİ: TAKVİM, DOSYA FORMATI VE DURUM
+====================================================================
+Hızlı On: Bir çekilişte 1–80'den birbirinden farklı 20 sayı.
+
+Gerçek çekiliş saatleri:
+- 00:02, 00:07, 00:12, ..., 00:57 ve 01:02: ilk 13 çekiliş.
+- 07:02, 07:07, ..., 23:57: kalan 204 çekiliş.
+- Günde 217 çekiliş. 01:02 ile 07:02 arasında normal çekiliş yok.
+- Gün içi sıra: 1 = 00:02, 13 = 01:02, 14 = 07:02, 217 = 23:57.
+- Her ritimde gerçek duvar saati dakikası değil, çekiliş sıra farkı kullanılmalı. Hedef görünür gerçek saate çevrilir.
+
+veri.txt çekiliş satır biçimi:
+ÇEKİLİŞ_NO;GG.AA.YYYY SS:DD;N1,N2,...,N20
+Örnek:
+61629;12.10.2026 00:02;5,6,11,22,23,30,31,32,35,39,41,43,47,54,55,57,59,62,74,75
+
+Dosyada ayrıca ===== gün/saat blok başlığı ===== gibi metin satırları bulunabilir; parser çekiliş satırlarını ayırır.
+Geçerli çekiliş 20 benzersiz 1–80 sayısı içerir, kimlik ve tarihi geçerlidir.
+
+13.10.2026 sabah GitHub üzerinde doğrudan doğrulanan durum:
+- Ham veri.txt: 15.709 çekiliş biçimli satır; bazı eski satırlar parser tarafından dışlanabilir. Bu, kesin temiz/verifiable çekiliş sayısıyla aynı kavram değildir.
+- Kapsam: 01.08.2026–12.10.2026; 73 ayrı takvim günü.
+- 01.08–11.10 aralığında 72 tam gün, 12.10 kısmi.
+- GitHub'da son kontrol edilen satır:
+  #61713, 12.10.2026 12:57
+- 12.10 için 85 çekiliş biçimli satır gözlendi; günü hâlâ tamamlanmamış olabilir.
+- Özellikle #61629–#61640 (12.10 00:02–00:57) 12 çekilişin tamamının GitHub ana veri.txt içine kalıcı kaydedildiği doğrulandı.
+- Önceki kontrolde 15.624 ham satırdan iki geçersiz/ayıklanan satır görülmüştü. Güncel gerçek geçerli toplamını uygulama parser'ı ile doğrula.
+- Günlük 217 draw değilse tam gün gibi değerlendirme; kısmi gün, eksik saat ve kaynak boşlukları rapora yaz.
+
+Eski analiz evrelerinde gün/gün ve saat/saat TXT biriktirme kullanıldı. Saatlik yaklaşık 12 çekiliş tek günlük TXT'ye eklenir; gün tamamlanınca günlük kayıt, daha sonra ana veri.txt ile birleştirilir. V10 artık resmi sonuç metnini tek kutudan alıp kalıcı ana TXT'ye ekleyebilir.
+
+Canlı yedek formatı:
+{"live":[{"no":61629,"dt":"2026-10-12T00:02","day":"2026-10-12","pos":1,"nums":[20 tam sayı]}],"tickets":[...]}
+v10_canli_kayit.json bu oturumun canlı kayıtlarını ve deneysel kuponları saklamak için kullanılır. veri.txt asıl tarihi kayıt kaynağıdır; canlı JSON tek başına ana veri.txt yerine geçmez.
+
+====================================================================
+04 — AİLE VE RİTİM KAVRAMLARI
+====================================================================
+Aile: Sabit ve sıralı gösterilen aynı sayı kümesi. Örnek 6'lı:
+14-21-57-67-74-78. Aynı altı sayı bir çekilişin 20 sayısının TAMAMI içinde varsa aile o çekilişte tam görüldü sayılır. Farklı günlerde de bir tek sayı bile değişirse aynı aile DEĞİLDİR. Değişen sayılı 'şablon' aile değil, ayrı bir örüntü çalışmasıdır.
+
+Bir günün görünüş sıraları p1,p2,p3,p4 olsun:
+- İkili aralık: Δ1=p2-p1
+- Üçlü ritim: (Δ1,Δ2)
+- Dörtlü ritim: (Δ1,Δ2,Δ3)
+- SABİT: +5,+5 veya +5,+5,+5.
+- ARTAN: +3,+5 veya +3,+5,+8.
+- AZALAN: +9,+6 veya +9,+6,+3.
+- DEĞİŞKEN: +3,+8,+5.
+- İki görünüş varsa 'İKİLİ +g'; tek görünüş varsa 'TEK GÖRÜNÜŞ'.
+- +2 gün ve +5 gün: aynı tam sayılı ailenin görüldüğü tarihler arasındaki takvim günü farkı. Saat ritminden ayrı değerlendirilir.
+- İki veya üç görünüşten oluşan ritim için ayrı tarihi destek günlerini raporla.
+- Olayların saat/numara dökümü, yalnız oranları yazmaktan daha değerlidir.
+
+"Aile yeni mi?" İki ayrı tanım:
+1) Bu tarih için V10 havuzundan tam görünen farklı aile (günlük sayaç).
+2) Yüklenmiş tarihî çekiliş verisinde BUGÜNE kadar hiç görülmemiş tam aile (İLK KEZ [veride]).
+V10 aday havuzu tüm matematiksel kombinasyonları kapsamaz; ilk kez (veride) tüm loto tarihindeki ilk kez anlamına gelmez.
+
+====================================================================
+05 — AİLE HAVUZU: BAŞLANGIÇ 1.131 AİLE
+====================================================================
+Kaynak: GitHub v10_aileler.csv, V9 analizlerinden derlenen seçilmiş aday indeks.
+Kesin boyutlar:
+- 5'li: 300
+- 6'lı: 198
+- 7'li: 151
+- 8'li: 279
+- 9'lu: 9
+- 10'lu: 194
+TOPLAM: 1.131 farklı sabit sayı ailesi.
+
+Bu 1.131 aile oyunun bütün aileleri DEĞİLDİR. Özellikle 9'lular az temsil edilir. Canlı tarama yeni olası aileleri keşfetmez; sadece mevcut havuzdakilerin tam görünüşlerini tarar. Dinamik yeni aile keşfi/geçerli aday genişlemesi halen ayrı geliştirme ihtiyacıdır.
+
+Naif çözüm olarak her çekilişte her 5–10 altkümeyi çıkarmak aşırı pahalıdır:
+C(20,5)+...+C(20,10) = 610.470 altküme / çekiliş; 15 bin üzeri çekilişte milyarlarca altküme.
+Öneri: V9'un kesişim tabanlı aday madenciliğini, SQLite/önbellek ve artımlı checkpoint kullanarak yalnız yeterince güçlü adayları aile listesine eklemek. Seçim süreci sızıntısız teste ayrıca dikkat etmeli.
+
+Önceden özel dikkat çekilen 10'lu aday örnekleri (eski analizden; canlı üstünlük gösterdikleri kabul edilemez):
+25-28-34-38-42-44-48-54-60-68 : 08,10,12 Eylül tarihlerinde +2 gün tartışıldı.
+01-05-07-19-34-47-59-70-74-76 : 07,12,14 Eylül tarihlerinde +5/+2 gün tartışıldı.
+02-06-08-11-23-25-28-45-51-66 : 20,22,27 Ağustos tarihlerinde +2/+5 gün tartışıldı.
+Bunları güncel veri.txt üzerinden tekrar doğrulamak ve geleceğe dönük tahmin başarısını ayrı ölçmek gerek.
+
+====================================================================
+06 — ESKİ AŞAMALAR VE MİMARİ KARARLAR
+====================================================================
+V6/V7: GitHub/Streamlit tabanlı motor, geçmiş çekilişlerdeki tekrar, aile, ritim ve kupon denemeleri. Önceki sorunlar:
+- Fazla büyük dosya yüklemede hata veya telefonun donması;
+- V7.2'de motor.py import uyumsuzluğu (ImportError);
+- SQLite progress/checkpoint tablolarında şema uyuşmazlığı (OperationalError);
+- Telefon ekranında ağır analizde takılma ve yanıt alamama;
+- Bazı ara raporların gerçek hesap yerine erken iddia ile sunulması.
+
+V8: Tek dosya, derin 6–10'lu aile ve ritim arama. Üçlü kesişimler, alternatif derinlik pencereleri, checkpoint, CSV raporları ve ZIP. Laboratuvar testleri yapıldı; bütün 72 günün gerçek Streamlit Cloud ortamında kesintisiz analizi ayrı doğrulanmalı. V8 amaç olarak kupon değil araştırma çıktılarını sağlamalıydı.
+
+V9 (repo app.py): Gerçek 20/80 çekilişlerine dayalı, SQLite/checkpoint kullanabilen DERİN AİLE-RİTİM araştırma uygulaması. Tam aile görünüşleri, 3+/4+ günler, değişik ritimler, farklı günlerde tekrar ve +2/+5 gibi gün zincirleri üzerine odaklandı. Büyük analizin yeniden yüklenmeden çıktılarla kullanılmasına yönelik kuruldu. V9'u değiştirmeden korumak isteniyor.
+
+V10 (repo v10_app.py): V9'un ağır aramasını telefonda her açılışta yeniden başlatmayan HAFİF CANLI katman:
+- GitHub veri.txt'yi okur;
+- v10_aileler.csv içindeki 1.131 adayı tarar;
+- Resmi çekiliş sonucunu "Çekiliş no:..." ve alt alta 20 sayı biçiminde alır;
+- Hatalı, yinelenen, çakışan kayıtları ayrıştırır;
+- PIN kilidi açılınca GitHub'a veri.txt şeklinde kalıcı yazar;
+- Tek kutu sonradan boşalır, üstte sıradaki kayıt no/tarih/saat gösterilir;
+- Seçilen günde gerçekten görünen tam aileleri ve geçmişini raporlar;
+- 5’li–10’lu canlı hedefleri/deneysel kuponları ve 0/k–k/k isabeti gösterir;
+- JSON yedek ve CSV raporu sunar.
+
+V10'un mevcut son sürümünde 1→2, 2→3, 3→4 hedefleme kodu ve tarihî ritim raporu VAR. Önceki sohbet turunda bunlar ayrıca kurulması planlanmıştı, ancak son GitHub main doğrulamasında uygulanmış durumdadır. Yeni sohbette bunları 'henüz yazılmadı' diye yeniden icat etme; önce mevcut dosyayı oku.
+
+====================================================================
+07 — GITHUB'DA KALICI KAYIT NASIL İŞLİYOR
+====================================================================
+Kod işlevleri:
+- parse_pasted_draws: Resmi çok satırlı kopya metni veya noktalı virgül satırı alır.
+- make_draw/normalize_numbers/pos_of: Tek çekilişte 20 benzersiz sayı ve geçerli saat kontrolü.
+- filter_new_draws: Var olan çekiliş no ve gün-sırası çiftleriyle karşılaştırır. Tam aynısıysa tekrar, no/saati/sayıları çelişiyorsa HATA.
+- merge_draws_into_txt: Orijinal veri.txt metnini korur; yalnız yeni geçerli satırları sonuna ekler; çelişkide dosyayı yazmaz.
+- persist_to_github_veri_txt: GitHub'dan son veri.txt SHA içeriğini alır; dosya 1 MB'tan büyükse Git Blob API'yi kullanır; yeni satırları SHA ile yazar, eşzamanlı düzenleme çakışmasında tekrar dener.
+- github_text.clear(): başarılı güncellemeden sonra Streamlit önbelleğini temizler.
+- api_state/auto_save: ek olarak v10_canli_kayit.json canlı/kupon durum yedeği.
+
+Kritik güvenlik:
+- Streamlit Secrets içindeki GITHUB_TOKEN ve V10_ADMIN_PIN gerekir.
+- Kullanıcı PIN'i oturum içinde açar. Her çekilişte yeniden istemez; Streamlit yeniden başlarsa/oturum değişirse yeniden açılabilir.
+- Uygulama herkese açık olduğu için PIN'i hiçbir şekilde tüm kullanıcılara otomatik açık bırakma.
+- PIN veya token yoksa sonuç oturuma eklenebilir ama 'kalıcı GitHub kaydedildi' denmemeli; açık uyarı ve JSON yedeği sunulmalı.
+- GitHub'daki 12 adet #61629–#61640 kaydı gerçekten doğrulandı.
+- Son kontrol veri.txt #61713'e kadar ilerledi; yeni kayıt geldikçe SHA/tarih değişebilir.
+
+İyileştirme ihtiyacı:
+- GitHub'a her çekilişte 1.3 MB veri.txt'yi tamamıyla yeniden yazmak masraflıdır; büyüdükçe performans sınırı doğar. Uzun vadede günlük/aylık ek dosyalar veya küçük tarihsel append segmentleri ve otomatik birleştirme düşünülebilir.
+- Kayıt yazma onayı, GitHub commit ve tekrar okuma ile doğrulanmalı. Yerel oturumun 'eklendi' demesi tek başına kalıcılık kanıtı değildir.
+- Hata durumunda geçerli kayıtlar kaybolmasın; mümkünse güvenli JSON yedeği.
+
+====================================================================
+08 — V10 RİTİM/TAM AİLE ANALİZİ VE HEDEF KUŞAĞI
+====================================================================
+ÖNEMLİ mevcut fonksiyonlar:
+- train_profiles(history_json, labels_json)
+- active_signals(...)
+- gap_rhythm(gaps)
+- gap_class(gaps)
+- family_rhythm_report(draws, families, dayhits, day)
+- repeat_gap_targets(dayhits, profiles, families, day, now, observed_positions, minimum_days, latest_known)
+- daily_chains(...), make_ticket(...), result_rows(...)
+
+train_profiles:
+- Yalnız İNCELENEN GÜNDEN ÖNCEKİ gerçek çekilişlerden ailelerin tam görünüşlerini bulur.
+- Gün başına görünüş sırasını belirler.
+- first: birinci→ikinci aralığı kaç farklı günde görüldü;
+- pair: o gündeki ikili aralıklar;
+- triple: birbirini izleyen 3 görünüşün aralık çifti kaç farklı günde görüldü;
+- quad: 4 görünüşün aralık üçlüsü kaç farklı günde görüldü.
+- Gün dışındaki çekilişler modele eklenmez; temel gelecek sızıntısı engeli budur.
+
+repeat_gap_targets:
+- Bir bugün görünüşü (n=1): tarihi 'first' aralıklarından 1→2 hedefi.
+- İki bugün görünüşü (n=2): ilk aralığı eşleşen tarihi 'triple' şablonundan 2→3 hedefi.
+- Üç bugün görünüşü (n=3): ilk iki aralığı eşleşen tarihi 'quad' şablonundan 3→4 hedefi.
+- Hedef çekiliş günü sıra numarası, 217 günlük slotu aşamaz; geçmiş saat veya zaten sonucu kayıtlı slot hedef olamaz.
+- Desteği sağlayan geçmiş gün sayısı seçilebilir: normal 2 gün; deneysel 1 gün; daha seçici 3 gün.
+- Hedef türü SABİT/ARTAN/AZALAN/DEĞİŞKEN ve ritim farklarını gösterir.
+- Son bilinen çekiliş numarası varsa hedef no yalnız TAHMİN olarak hesaplanır, resmi çekiliş numarası olduğu garanti edilmez.
+
+family_rhythm_report:
+- Seçilen günde tam görünen tüm seçilmiş havuz ailelerinin geçmişini tarar (seçili günden sonrasını hariç tutar).
+- 'İLK KEZ (veride)' ya da 'GEÇMİŞTEN GELDİ' ayrımı;
+- Gün içinde kaç görünüş, #çekiliş/saat listesi;
+- Gün içi sabit/artan/azalan/değişken ritim;
+- Önceki farklı aktif gün sayısı ve toplam görünüş;
+- 3+ ve 4+ görünüş olan geçmiş gün sayısı;
+- Gün farkı ritmi, +2 ve +5 gün bağ sayısı;
+- Geçmişte en son görünüşün #no/tarih/saati;
+- Tüm geçmiş olayların ayrıca CSV dökümü.
+
+Tüm görünüşlere eşlik eden sayılar da aynı TAM aileye ait olmalı; farklı sayılar 'aynı aile' diye birleştirilmemeli.
+
+Kupon:
+- Her 5–10'lu grupta ayrı hedef listesi ve aynı boyutta sayı kümesi.
+- İleri saat sinyali varsa kullanıcı adayı seçip 'kaydet' der.
+- Bir aile zaten hedef boyutundaysa kupon aynı sayılardır; üst tamamlama gerekirse hedef öncesi son 48 çekilişin sayı frekansları kullanılır.
+- Hedefin olması kazanma tahmini veya garanti değil; geçmiş tekrar varsayımıdır.
+- 10'lu ailelerde +2/+5/+7/+14 günlük özel zincirler gösterilir ama tek başına kesin saat sağlamadığı için otomatik kupon çıkarmaz.
+- Sonuç geldiğinde 'İsabet' raporunda kupon boyutuna uygun 0/5..5/5, ..., 0/10..10/10 ölçülür.
+
+Canlı uygulama görünümü:
+Sekme 1: CANLI GİRİŞ, PIN'i oturumda aç, tek kutuya toplu resmi metin, otomatik temizleme, yeni çekilişin saatini üstte gösterme, GitHub veri.txt kalıcı kayıt onayı.
+Sekme 2: HEDEF & KUPON, tarih seçimi, o gün kaç çekiliş, tam çıkan aile, ileri hedef, 5–10 boyutları, ritim geçmişi ve hedefler.
+Sekme 3: İSABET, kaydedilen kupon ve gerçek sonuç karşılaştırması, CSV.
+Sekme 4: YEDEK & KAYIT, GitHub kalıcılığı, PIN, veri.txt'ye ekleme, JSON indirme/geri yükleme.
+
+====================================================================
+09 — DOĞRULANMIŞ SAYISAL BULGULAR VE TESTLER
+====================================================================
+GitHub tarihsel 11 Ekim 2026: 217 çekiliş.
+1.131 aile havuzuyla TAM GÖRÜNEN FARKLI aile: 67.
+Aile boyutuna göre:
+5'li 51, 6'lı 9, 7'li 1, 8'li 3, 9'lu 0, 10'lu 3.
+Bazıları bir günde en az 3 kez göründü.
+GitHub v10_real_data_test.py de gerçek 11 Ekim veri üzerinde 67 sonucu assert eder.
+
+1 Ağustos–11 Ekim tarihli ilk 72 tam günlük başka bir kontrolde:
+- Günde tam görünen farklı aile ortalaması yaklaşık 78.
+- Ortanca yaklaşık 77.
+- Günde en az 55 ve bir günde en çok 120 farklı aday aile gözlendi.
+- Günün ilk 12 çekilişinde ortalama yaklaşık 6,7 farklı aday aile tam görüldü.
+Bunlar geçmişteki aile görünüş sayılarıdır; kupon başarısı DEĞİL.
+
+12 Ekim'in ilk #61629 çekilişi 20 sayı:
+5,6,11,22,23,30,31,32,35,39,41,43,47,54,55,57,59,62,74,75
+Bu TEK çekilişte o zamanki 1.131 seçilmiş aileden tam eşleşme yoktu. İlk 37 çekilişten sonraki uygulama ekranında 7 farklı tam aile görüldü (bu '7 yeni aile' demek değildir; tarih ve havuz kontrolü gerekir).
+
+V10 otomatik testleri:
+- Python sözdizimi ve 217 slot saat dönüşümü;
+- 00:02/01:02/07:02/23:57 sınırları;
+- Kullanıcı resmi metin formatından #61629 parse edilmesi;
+- 5,6,7,8,9,10 boyutlarında kupon uzunluğu ve isabet hesapları;
+- Aile 1→2 ritmi; kalıcı ekleme, tekrar ve çelişkili kayıt kontrolü;
+- 1MB üzerindeki GitHub veri.txt için Blob API simülasyonu;
+- Gerçek 11 Ekim data ile 67 aile, tarihsel görünüş raporu;
+- Streamlit AppTest ile ilk ekranın hata vermeden açılması.
+13 Ekim sabah ana dalın en son denetimlerinden biri:
+https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38370939886
+Bu koşuda başarı sonucu görüldü.
+Ayrıca geçmişte geçici başarısız koşular olmuş, sonraki düzeltmelerle başarıya ulaşılmıştır. Test başarıları gerçek tahmin avantajı veya 10/10 kazanma kanıtı değildir.
+
+====================================================================
+10 — GEÇMİŞ ARAŞTIRMADAKİ DİĞER MOTOR FİKİRLERİ
+====================================================================
+Yıllardır tartışılan ve gerektiğinde ayrı deney dalı olarak izlenmesi gereken fikirler:
+- 10'lu, 8'li, 7'li, 6'lı, 5'li, 4'lü, 3'lü ve 2'li kupon setleri.
+- Bir saatlik 12 çekilişi 1–6. ve 7–12. çekiliş olarak ikiye bölme.
+- İlk 3 veya ilk 6 çekilişte 2/3, 3/3 olan ailelerin sonraki 4–6 veya 7–12. çekilişlerde +4 ve üzeri görünüp görünmediği.
+- 2. ve 3. çekilişte aktive olanlarla geç aktive olanları ayırma.
+- 32,37,42,47,52,57 dakikalarına özel gün/saat hipotezleri.
+- Sıcak/ılımlı/soğuk sayı havuzları, 0→+10 saatlik ilerleme, nöbet değişimi, +4/+5/+6 tamamlanma sıraları.
+- İki/üç/dört/beş sayı birliktelikleri, komşu sayılar, ardışık bloklar, atlamalı blok, ayna/simetri, kilit/sıkıştırma, zıt yön sinyali, dinlenip gelenler, önceki saatten/günden taşıma.
+- 'M10 UDA', çoklu alt motor, 5/5 için ayrı yollar, motor karşılaştırması.
+- 10/10 ve 5/5 hedefleri için yürüyen test (walk-forward), 'kaç hedef/kaç isabet', en yüksek aynı kupondaki sayı ve 0/k..k/k frekansları.
+
+Bunların tamamı geçmişte konuşulan hipotezlerdir, HEPSİ aynı V10 canlı dosyasında uygulanmış veya kanıtlanmış değildir. Güncel V10'un fiilen çalışan çekirdeği SABİT TAM AİLE + ilk/üçlü/dörtlü ritim destekli hedeflemedir. Hipotezleri gerçek sinyal diye sunma; önce veri ve ileri test gerekir.
+
+====================================================================
+11 — ZORUNLU DÜRÜSTLÜK, YANILGI VE SINIRLAR
+====================================================================
+- "67 aile çıktı" = mevcut 1.131 aday içinden 67 farklı tam aile bulundu. "67 kupon sinyali" değildir.
+- "7 aile çıktı" = seçilen tarih/çekilişlerde 7 farklı aday aile görüldü. "7 yeni aile" veya "7 kazanacak kupon" değildir.
+- "İLERİ HEDEF 0" ekranı seçili gün geçmişte kaldığı, saat geçtiği, destek günleri az olduğu veya ritim eşleşmediği için 0 olabilir. Tek başına havuz boş demek değildir.
+- Yalnız gün zinciri bulundu diye kesin çekiliş saati icat edilemez.
+- Bugünün ailelerinin geçmişini analiz ederken bugünden SONRAKİ hiçbir satır kullanılmamalı.
+- Daha temel sorun: V9'dan seçilmiş 1.131 aile ilk seçim aşamasında daha sonraki tarihlerle ortaya çıkarılmış olabilir. Aday seçimi de hedef testinden önceki dönemde yapılmadıysa ileri tarihli sonuçlar nedeniyle SEÇİM SIZINTISI vardır; walk-forward'a aday discovery dahil edilerek yeniden test gereklidir.
+- Fazla aile taramak tesadüfi 3/4 tekrarları kolaylaştırır (çoklu karşılaştırma). Yalnız destek sayısı görmek gerçek edge kanıtı değildir. Rastgele temel model/baseline ile karşılaştır.
+- Uygulamaya PIN girilmesi yalnız o Streamlit session'u için; yeni browser/restart PIN'i sıfırlar. Bu güvenlik amaçlıdır.
+- Her yeni çekilişte ana 1.3 MB TXT'nin GitHub üzerinden yeniden yazılması belirli bir performans maliyetidir.
+- Güncelleme sırasında açık oturum sıfırlanabilir. Ana veri.txt kalıcı kaydedildiyse sorun yok; değilse JSON yedeği kullan.
+- Kullanıcının isteği: tekrarlı adımlar yaptırma, 10 kere app.py değiştirtme; mümkünse doğrudan GitHub dosyası düzenle; kısa, net sonuç, gereksiz kod gösterme.
+
+====================================================================
+12 — BUNDAN SONRAKİ ÇALIŞMA PROGRAMI / YENİ SOHBETE TALİMAT
+====================================================================
+ÖNCELİK A — Mevcut son GitHub main'i kaynak kabul et:
+1. GitHub'daki app.py, v10_app.py, veri.txt, v10_aileler.csv, v10_selftest.py, v10_real_data_test.py'yi oku.
+2. Bu kütük statik bir tarihte yazıldı; GitHub'ın daha yeni commit'i varsa onu esas al. Kullanıcıya son kaydedilen çekiliş numarasını doğrulayıp söyle.
+3. Hiçbir zaman V9 app.py veya ana veri.txt'yi yanlışlıkla sıfırlama.
+4. Kullanıcının verdiği ekran görüntüsü ve gerçek hata varsa ona göre en küçük düzeltmeyi yap.
+
+ÖNCELİK B — Canlı kupon motorunu 'işe yarayıp yaramadığı sınanabilir' kıl:
+1. Her yeni çekiliş eklendiğinde ailelerin görünüşlerini ve geçmiş ritim profillerini otomatik güncelle.
+2. Ayrı sayaç: aile tam görüldü / 1→2 hedefi / 2→3 hedefi / 3→4 hedefi / başarıyla sonuçlandı.
+3. 5,6,7,8,9,10 boyutları için ayrı hedef/kupon ve geçmiş destek günleri.
+4. Sinyalin nedeni (geçmiş hangi tarih, #no, saat, +kaç sıra) görünür olsun.
+5. Artan/azalan ritim için geçmişte gerçekten aynı tam aileyle görülen aralık şablonunu, sabit ritimden ayrı üret.
+6. Hedef saati geçmiş veya sonucu sisteme girilmişse yeni canlı kupon önermemeli.
+7. 10'lu aile +2/+5 günlük zincir için geçmiş saat dağılımını raporla; kanıt yoksa saat tahmini YOK yaz.
+
+ÖNCELİK C — Derin ve yeni aile keşfi:
+1. 1.131 aile havuzu başlangıçtır; yeni ve uygun tam aileleri hızla keşfetmek için artımlı/SQLite indeks sistemi kur.
+2. Bütün 610.470 alt kümeyi her draw için körlemesine üretme. Önce gerçek tekrar adaylarını ucuz kesişim/bitset mekanizmasıyla daralt.
+3. Aday ailenin görünüş günleri ve her olayın #no/saati raporlarına eklenmesi.
+4. Değişen sayılı ritim şablonlarını sabit tam aile listesinden AYRI bir test motoru olarak tasarla.
+
+ÖNCELİK D — Bilimsel test ve rapor:
+1. Zaman sıralı gerçek walk-forward: ilk N gün aday keşfi+ritim eğitimi, SONRA gelen günlerde önceden hedef verilmiş çekilişler üzerinde test.
+2. Her hedef için kuponu hedef çekilişten önce dondur; sonra gerçek sonucu kullan.
+3. 1 gün destekli, 2 gün destekli, 3 gün destekli, sabit/artan/azalan, 1→2/2→3/3→4 metriklerini ayrı raporla.
+4. Boyuta göre: kaç sinyal, kaç kupon, 0/k..k/k, hedef zamanı doğru mu, hedef edilen tam aile gerçekleşti mi.
+5. Aynı sayı adedi ve aynı harcama bütçesindeki rastgele kupon baseline ile karşılaştır, mümkünse güven aralığı.
+6. Büyük TXT/raporlar için iş ilerlemesi, SQLite checkpoint, CSV/ZIP; Streamlit Cloud telefonda donmamalı.
+7. Sonuçta kullanıcıya mümkünse tek dosya, çok kısa açıklama ve somut performans dökümü ver.
+
+====================================================================
+13 — YENİ SOHBETİ BAŞLATIRKEN KOPYALANACAK TALİMAT
+====================================================================
+"Yoldaş, GitHub depom gozlekakif-alt/hizli-on-analiz-motoru. Bu kütüğü ve deponun son main dosyalarını esas al. V9 app.py araştırma uygulamamı ve ana veri.txt dosyamı koru. V10 v10_app.py üzerinde devam et. 72+ gün verim ve 1.131 başlangıç ailem var. Bugün tam görünen 5–10'lu ailelerin eski tarih/çekiliş/saat kayıtlarını, 1→2 / 2→3 / 3→4 sabit/artan/azalan ritimlerini kullanarak geçmiş desteği açık olan hedef kuponlar üret; sonuçları ileride doğrula. Canlı yapıştırma boş kalsın, üstte sıradaki tarih/saat/no yazsın; GitHub'a PIN açılınca hatalı/tekrar kaydı önleyerek otomatik yazsın. Aday keşfi ve gerçek ileri zamanlı test benim ana hedefim. Önce mevcut kodun gerçekten ne yaptığını doğrula, sonra test edilmiş değişiklikleri doğrudan GitHub'a uygula. Uydurma isabet yüzdesi ve garanti verme. Gereksiz uzun Python anlatımı yerine tek dosya ve net sonuç ver."
+
+====================================================================
+14 — EN SON DOĞRULANAN NOKTA
+====================================================================
+- Ana repo: main
+- v10_app.py, v10_selftest.py, v10_real_data_test.py son ana dalda mevcut.
+- Son başarılı V10 GitHub Actions: 38370939886 (main), 13 Ekim 2026 civarı.
+- Gerçek 11 Ekim testinde 217 çekiliş/67 tam aile.
+- veri.txt: 01 Ağustos'tan 12 Ekim 12:57, son #61713; 73 tarih, son tarih kısmi, ham çizgi 15.709.
+- v10_aileler.csv: 1.131 sabit tam aile.
+- V10 canlı ritim: 1→2, 2→3, 3→4 hedef, destek günlerini seçme, sabit/artan/azalan rapor, tam geçmiş çekiliş numaraları/saatleri ve CSV indirme. Kodda mevcut, uzun dönem ileri tahmin üstünlüğü HENÜZ KANITLANMADI.
+- Son kullanıcı isteği: Bütün çalışmayı yeni bir kütükle, eksiksiz, güvenli ve tekrar kullanılabilir biçimde devretmek.
+
+SON.
+
+
+====================================================================
+13 — V10 YENI EK: AILELER ARASI SIRA / NOBET DEGISIMI (13.10.2026)
+====================================================================
+Kullanicinin talebi uzerine V10'a "🔁 Aile Sırası" besinci sekme eklendi.
+GitHub main:
+- v10_sira.py: Bagimsiz, yalniz okuyan A→B ve A→B→C desen motoru.
+- v10_app.py: Yeni sekme, aile-zincir tabloları, tarih/gun/cekilis no
+  kanitlari, CSV disari aktarma, gelecekteki uygun cekilisler icin
+  deneysel aile kuponu ve kaydetme.
+- v10_selftest.py: Gercek tarih siralamasi, dis gun destegi, sızma
+  engelleme, gelecekteki hedef, sonuclanmis slotu atlama testleri.
+- .github/workflows/v10-check.yml: Yeni modulun CI kontrolu.
+
+KURAL:
+1) A ve B ayni cekiliste birlikte ciktiysa A→B sırası sayilmaz.
+2) A→B (ve A→B→C) icin aralarindaki Cekilis-sirasi farkı tam
+   olmalıdır. Varsayılan aralık en fazla 12, secilebilir 1–36.
+3) Ritmin tekrar destegi farkli tarih sayisidir: 1/2/3 gun;
+   V10 ana hedefte varsayilan 2 gun temkinli kalir.
+4) Egitim, yalnizca SECILEN GUNDEN ONCEKI gunlerdedir. Secili gune
+   ait gorunusler hedefi tetiklemek icin kullanilir, gecmis destegine
+   eklenmez. Tarih sonrasi bilgilere bakarak tahmin URETILMEZ.
+5) Canli hedef, gecmis saatli veya sonucu girilmis slot icin cikmaz.
+   Gecmis gun secilirse yalnizca gozlenen dizilim raporlanir.
+6) Ailelerin kendi tekrar ritmi, ritimli sayi aileleri ve V9 arastirma
+   uygulamasi degistirilmedi. Ana veri.txt degistirilmedi.
+7) Kutu isaretlenene kadar agir sira analizi baslamaz; Streamlit'in
+   telefonda yavaslamamasi icin sonuc cache'lenir.
+8) Bu analiz hem arastirma hem kupon motorudur ama gercek tahmin
+   basarisi ispatlanmis DEGILDIR. Aday havuzundaki secim yanliligi,
+   tesadufi coklu karsilastirma ve ileri tarihli kor test gereksinimi
+   devam etmektedir.
+
+Ilk yeni GitHub Actions kontrolleri: V10 uygulama ve yeni sira testleri
+basarili (38377368321, 38377467674). Yeni CI tetikleyicisi v10_sira.py'yi
+de kapsar.
+
+
+====================================================================
+14 — 13 EKIM 2026 / GUNLUK SINYAL DEFTERI DUZELTMESI
+====================================================================
+Sorun: Geçmiş bir tarih seçildiğinde "Hedef & Kupon" canlı sinyal fonksiyonu
+geçmiş tarihli hedefleri bilinçli olarak eliyor. Bu nedenle tüm aile boyutlarında
+"Sinyal yok" yazması, o gün hiç hedef oluşmadığı anlamına GELMIYORDU.
+
+Çözüm:
+- v10_app.py içine day_signal_replay(...) salt-okunur simülasyonu eklendi.
+- "Günlük Sinyal Defteri — geçmiş ve sonuçlar" tablosu seçim ekranında:
+  o anda görülen ilk, ikinci veya üçüncü aile görünüşünden hemen sonra
+  önceki gün ritimleriyle hangi hedefin doğduğunu ve sonradan girilen gerçek
+  çekilişte tam ailenin tutup tutmadığını ayrı raporlar.
+- Gün içinde doğan / sonucu kayıtlı / tam tutan / sonucu bekleyen sayaçları,
+  aile, boyut, 1→2/2→3/3→4 aşaması, önceki destek günleri, tetikleyen çekiliş,
+  hedef saat/sıra/no ve sonuç/İsabet ile CSV indirme eklendi.
+- Eski "İleri hedef sinyali" metriği "Şu an gelecek hedef" olarak düzeltildi.
+- Geçmiş hedefler yeni canlı kupon gibi kaydedilmez; yalnız geriye dönük ölçülür.
+- v10_selftest.py'ye geçmişe dönük sırayla hedef oluşturma, tam başarı ve
+  henüz kaydı olmayan hedefin "bekliyor" kalması testleri eklendi.
+- CI 38386625147 bütün kontrollerde BAŞARILI (sentaks, V10 fonksiyonları,
+  gerçek veri, Streamlit ekran açılışı).
+
+12 Ekim 2026 incelenen GitHub veri.txt anlık kapsam:
+- 121 çekiliş, #61629 (00:02) - #61749 (15:57)
+- 1.131 aday ailede o gün tam görünen 20 ayrı aile
+- Önceki en az 2 ayrı gün ritim desteği koşulunda 4 adet tarihsel 1→2 hedef
+- Hedefi kayıtlı 2 çekilişte 0 tam aile başarısı, diğer 2 hedefin sonucu
+  veri.txt'de henüz yok. Bu 121 çekilişlik kısmî güne aittir.
+- 1 günlük deneysel destekte 38 tarihsel hedef; 3 günlük destekte sıfır.
+- Geriye dönük destek ve görünüşler tahmin başarısı kanıtı değildir.
+- 13 Ekim 2026 tarihinde henüz veri.txt içine 13 Ekim çekilişleri gelmediyse
+  canlı sistem bugüne yönelik hedef çıkaramaz. Güncel veri şarttır.
+
+V9 app.py, v10_aileler.csv ve ana veri.txt bu yama ile değiştirilmedi.
+
+
+====================================================================
+15 — V10 🔥 RITIMLI AILE ETIKETI / 13 EKIM 2026 16:00
+====================================================================
+Soru: V10'da farkli gunlerde ayni ritmi yapan aileler nerede? O aileden
+kupon cikarsa kupon yaninda ALEV 🔥 gorunmeli.
+Islem:
+- v10_app.py: "🔥 Farklı günlerde ritim yapan aileler" ana paneli eklendi.
+- 1) Aynı ailenin >=3 farklı günde eşit takvim-günü aralıklarıyla
+     TAM göründüğü zincirler; numara/boyut/aralık/gün sayısı ve
+     başlangıç-son günler, "devam etse tarih" ile CSV. "Devam etse"
+     otomatik kupon saati değildir.
+- 2) Aynı ailenin bir gün içinde iki/üç/dört görünüş ritim aralıklarının
+     >=2 farklı geçmiş günde tekrarlandığı örnekler ayrı açılabilir
+     tablo ve CSV olarak eklendi.
+- Ritim aileleri Hedef & Kupon ekranında 🔥 prefiksi alır.
+  Yeni kupon üretildiğinde görünür metinde 🔥 vardır; kaydedilen
+  kuponun "kind" sinyal etiketi de 🔥 taşır (aile sayıları değişmez).
+  Aileler arası sıra kuponları da aynı kurala tabidir.
+- Hesaplamalar yalnız incelenen günden ÖNCEKİ veri ile yapılır;
+  aynı gün girilen olaylar ritmi oluşturmuş gibi ileriye
+  yansıtılmaz. Ritim olmak tahmin başarısı kanıtı değildir.
+- Yeni CSV ve filtre; V9 app.py, ana veri.txt ve 1.131 ailelik CSV
+  değiştirilmedi.
+- Sarı yanlış "eksik kayıt" uyarısı için latest_main_history
+  doğrulamasının 60 saniyelik cache'i kaldırıldı: her şüpheli
+  eksik kayıt, güncel GitHub ana dalından tekrar doğrulanır.
+- Canlı JSON 337 kayıt ile ana veri.txt kayıtları 13.10.2026 15:57
+  itibarıyla tamamen eşleşiyordu: 337/337 kaydedilmiş, 0 eksik.
+- O andaki tüm verilere bakıldığında sabit takvim günü aralığı
+  örnekleri: 204 ayrı aday aile, 310 ayrı sabit aralık koşusu
+  (194 adet 5'li, 9 adet 6'lı, 1 adet 10'lu).
+  Ancak canlı ekranın geçmiş eğitim günü seçimi bugünü eğitimden
+  dışladığından ekranda sayaç farklı olabilir.
+- v10_selftest.py: günlük ritim ve geçmiş destek modellerine
+  kontrollü yapay veri testi eklendi.
+
+
+====================================================================
+16 — GITHUB BASARILI KAYIT ONAYI / UYARI DUZELTMESI
+====================================================================
+13 Ekim 16:10 ekraninda "Canlı eklenen: 339" olmasına rağmen
+"1 çekiliş henüz ana veri.txt içinde görünmüyor" yanliş uyarisi
+oldu. GitHub main veri.txt ve cloud v10_canli_kayit.json birbirleriyle
+karsilastirildi: 339/339 kayit dogru, eksik 0, cakisma 0,
+en son #61968 (13.10.2026 16:07).
+
+Tek basina yeni GET yapmak yeterli olmadigi icin kod düzeltildi:
+- draw_confirmation_signature: no ile yetinmez, dt ve 20 sayıyı denetler.
+- remember_github_confirmation: basarili GitHub PUT / "zaten var"
+  cevabini bu Streamlit oturumuna eksiksiz cekilis imzasiyla yazar.
+- live_record_status: eski raw/CDN ana dosyasi 1 çekiliş geriden
+  geliyorsa, daha once GitHub tarafindan onaylanan cekilisi
+  KAYDEDILMEMIS diye gostermeyi durdurur.
+- Aynı numaralı ancak farkli saat/sayılı kayıtlari acikça HATA
+  olarak ayirir, sessizce basarili saymaz.
+- Kırmızı/sarı uyarı yalnızca doğrulanmamış kayıtta çıkar.
+  Başarılı kayıt onayında yeşil teyit görüntülenir.
+- Yalniz token/PIN açik olması KAYDEDILDI demek değildir;
+  yeşil yetki açıklaması bundan sonra bunu ayırt ediyor.
+- V9 app.py, veri.txt, aile CSV ve canlı JSON degistirilmedi.
+- GitHub Actions #38403442013 son test BAŞARILI.
+
+
+====================================================================
+17 — 🔥 AILELERDE HEDEF SAATIN GECMIS GUN DESTEGI
+====================================================================
+Kullanici "🔥 ritimli ailelerde tarih ritmini koruyalim ama kupon
+uretmeden once hedef saati de gecmis veriden desteklensin" planini
+onayladi ("Tamam yoldaş").
+
+UYGULANAN:
+- v10_app.py / train_profiles: hedef gununden ONCEKI tum gorunusler
+  uzerinden her aile icin saat basina AYRI TAKVIM GUNU gorunus sayisi
+  hour_days olarak egitilir. Ayni gun icindeki coklu gorunus bir
+  destek gunu sayilir.
+- historical_hour_support(profiles,label,pos,minimum_days): hedefin
+  saat diliminde (00:xx, 07:xx, 08:xx ... 23:xx) tarihsel tam aile
+  gorunusunun farkli gun destek sayisini hesaplar.
+- rhythm_ticket_gate(...): 🔥 olarak isaretlenmis adaylarda saatin
+  >= max(2, hedefin secilmis gecmis destek gunu ayari) kadar
+  AYRI GUNDE desteklenmesini ister. Sadece tarih-gun zinciri
+  guclu ise bile SAAT desteklenmiyorsa kupon URETILMEZ ve
+  "⏳ 🔥 saat desteği eksik" aciklamasi cikar.
+- Diger, 🔥 olmayan V10 mevcut kupon is akisina bu yeni filtre
+  uygulanmaz: onceki fonksiyonellik korunur.
+- Hem Hedef & Kupon hem "Aile Sırası" sekmesinde tabloya
+  "Hedef saat geçmiş gün", "Kupon durumu" sutunlari eklenir.
+- Saat filtresini gecenler listede once gelir.
+- Sinyal bulmak kupon verilmesi demek degildir. Hedef saatin
+  ritimli gorulmesi, isabet avantajini veya belirli cekilisi
+  matematiksel olarak garanti etmez.
+- Bir saat dilimi destekli sayilsa da, dakika/cekilis sirasi
+  ayni olmasi gerekmez; bu nedenle bu bir "saatlik destek" filtresidir,
+  kesin dakika tahmini degildir.
+- Daha once kaydedilmis kuponlar, veri.txt, v10_canli_kayit.json,
+  V9 app.py ve 1131 aile kaydi aynen korunur.
+- V10 selftest: 2 farkli gun, bir gunde birden fazla gorunus,
+  dis destek kalmasi, 3 gun sinir filtresi ve 🔥 / normal aile
+  ayrimini test eder.
+
+
+====================================================================
+18 — V10 GELIYORUM ERKEN UYARI MOTORU (13.10.2026)
+====================================================================
+Kullanici, tum 1.131 aile icin aile TAMAMLANMADAN ONCE
+"Geliyorum" erken uyari motoru gelistirilmesini ONAYLADI.
+
+Eklendi:
+- v10_geliyorum.py: saf, standart kutuphane ile Aile Geliyorum Motoru
+- v10_app.py: altta "🔮 Geliyorum" V10 sekmesi (altinci sekme).
+- .github/workflows/v10-check.yml: yeni modulu test eder.
+- v10_selftest.py: zaman ve veri sizmasi, kismi eşleşme, gecmis
+  saat destegi, sari/alevli sinyal ve adim adim geriye donuk testler.
+
+Kapsam: 5, 6, 7, 8, 9, 10 sayilik TUM mevcut aile havuzu taranir.
+Kismi gorunus alt limitleri sirayla 4/5, 4/6, 5/7, 6/8, 6/9, 7/10.
+Son uc gercek gorulmus cekilisten tam-kismi eslesme aranir.
+
+Siniflama:
+- Sari erken uyari: kismi belirti var, fakat kupon icin gereken
+  tarihsel hedef saat gun destegi yeterli degil; kupon YOK.
+- Alev Geliyorum: hedef saat diliminde en az 2 (secim 3 ise 3)
+  AYRI GUNDE o aile TAM gorunmus ve bugun son uc cekiliste
+  kismi belirti mevcut; daha onceki gunlerin verisiyle
+  gorece kuvvetli betimsel bir isaret (tahmin olasiligi degil).
+- Cift Alev: hedef gune uyan bir sabit aralik zinciri veya
+  uc ayri gun destekli saat + iki kismi isaret. Bu 'coklu
+  kosul' etiketi olup bagimsiz istatistiksel kanit DEGILDIR.
+- Her aile icin hedef sadece son bilinen cekilisin HEMEN
+  SONRAKI kesin takvim slotudur; gecmiste kalmis saatlere
+  kupon uretilmez. Yeni veri gelmeden hedef otomatik uzatilmaz.
+- Canli kuponlar sadece yeterli saat desteginde verilir, sistemin
+  eski kuponlari ve V9 motoru etkilenmez.
+- Hedef tarih/saat/sira/no, aile, kismi sayi, saat ve gun
+  destegi, takip, CSV ve kupon kaydi getirildi.
+- Test bolumu, secilen gunun her slotunu saat saat tahmin
+  anina geri goturur; her adimda yalniz o ana kadar girilen
+  verileri kullanarak sonraki cekilisi tahmin eder ve sonradan
+  'tam isabet / yanlis alarm' olcer.
+- Testte mevcut 1131 aile havuzu eski sonuclardan secilmis
+  olabilir (secim yanliligi). Sonuclar tam kor bagimsiz veri
+  testi olarak gosterilmez.
+
+Olusturulan yeni kuponlar sonuc takibinde saklanir. Ana veri.txt,
+v10_canli_kayit.json, mevcut biletler, aile listesi ve V9 app.py
+bu surum degisikliginde degistirilmedi.
+
+GitHub CI: 38412047885 TUM test asamalarinda BASARILI.
+
+
+====================================================================
+19 — V11 73 GUN AILE DAVRANISI VE 12X20 SAYI YOLCULUGU
+====================================================================
+Tarih: 13.10.2026. Kullanici kapsamli analiz istedi:
+- 6,7,8,9,10 numarali ailelerin ayri davranislari,
+- "sessiz gelen", tamamlayarak gelen, dalgali gelen, tekrar,
+- 12 cekiliste 20 sayinin tumunun yolculugu,
+- ilk 6'dan 7–12. hedef cekilislerine onceden kupon,
+- tarihsel veri sizmasina dikkat ederek gercek test,
+- kodlari GitHub'a yazma ve tum raporlari indirilebilir verme.
+
+Yapilan:
+- v11_arastirma.py: saf Python, 12 ardışık gercek cekilis
+  ve 20 topun her biri uzerinden siklik, ivme, sicak-soguk,
+  ikili birliktelik, saat, bant, komsu, kismi aile
+  gorunuslerini uretir. 1..80 sayinin tumunun aktivasyon
+  yuzdesini sonradan gercek hedefle kiyaslar.
+- Aile gelis yolu: SESSIZ / TAMAMLAYARAK / YUKSELEREK /
+  DALGALANARAK / TAM TEKRAR / DIGER.
+- 6 farkli deneysel kupon yolu: sicak12, son6ivme,
+  soguk12, birliktelik, son cekilis ve katalog aile
+  oncu sinyali. AYNI cekilis ve boyutta rastgele kontrol.
+- Gercek 7,8,9,10,11,12 saat hedeflerinde numaralar
+  hedef cekilis bilinmeden secilir. Her hedef tam
+  12 adet gecmis cekilis gerektirir. Eksik veri atlanir.
+- v11_selftest.py: testin hedefini kendisi girdi olarak
+  kullanmadigini, 80 sayinin her birini inceledigini,
+  aile sayilarini ve veri tamligini dogrular.
+- V10 arayuzune 8. sekme "🧠 V11 Araştırma" eklendi.
+  Veri uzerine agir analiz SADECE kullanici dugmeyle
+  baslatinca calisir; normal V10 zarar gormez.
+- CSV dosyalari: BUTUN 7434 HEDEF defteri, 7–12
+  cekilis bazinda isabet, 80 sayi aktivasyon, saatlerin
+  12x20 ozeti, 6–10 aile gelis yolu, yonetilen hedef
+  sinyali ve ornekler. TXT tum analiz ozeti.
+- Yeni V11 raporu:
+  V11_73_GUN_TUM_ARASTIRMA_RAPORU.md
+
+Veri: 1 Agustos–12 Ekim 2026 = 73 takvim gunu, 15839
+cekilis (23 Agustosta 2 eksik), 7434 onceden test
+edilebilen hedef slot. 13 Ekim kismen geldigi icin
+tam gun testine dahil edilmedi.
+Katalog havuzu: 6li 198, 7li 151, 8li 279,
+9lu 9, 10lu 194 = toplam 831 aile.
+
+Son 37 gun: sessiz gelen tam gorunusler:
+6li 177, 7li 46, 8li 114, 9lu 1, 10lu 118.
+Bu rakamlar GERIYE DONUK SINIFLANDIRMA, gelecegi
+tahmin eden sinyal degildir.
+
+Son 37 gun sayi temelli sabit kupon yontemleri her
+boyutta 3774 hedef denemesi yapti. Tam 7,8,9,10
+hic cikmadi. 6/6 yalniz son cekilis yonteminde 1,
+rastgele kontrolde de 1. Isabet ortalamalari rastgele
+beklenen degerlere cok yakindi (k/4).
+
+DIKKAT: Katalog aileler eski cekilis sonuclarina gore
+secildiginden eski tarihlerdeki aile kuponu isabetleri
+GERCEK BIR KOR TAHMIN BASARISI DEGILDIR. V11
+bu uyarilari tabloda ve raporda acar. Asil kanit
+icin sabit katalog ve yalniz bundan sonraki yeni
+cekilisler gereklidir.
+
+Ana veri.txt, V9 app.py, mevcut v10 aile CSV,
+v10_canli_kayit.json ve kayitli kuponlara dokunulmadi.
+GitHub V11 Python testleri ve Streamlit UI smoke testi
+CI #38419076441: BASARILI.
+
+20 — V12 80 SAYI KULESI VE 2–10 AILELERIN GECMIS SIRASI
+
+====================================================================
+20 — V12 80 SAYI KULESI VE 2–10 AILELERIN GECMIS SIRASI
+====================================================================
+13.10.2026; kullanici aileleri 2-3-4-5-6-7-8-9-10
+boyutlarina genisletmeyi ve her cekilisteki 20 sayinin
+"hangi ailelerin sirayla birlesmesiyle" olustugunu,
+sadece aileden degil 80 sayinin tamamindan baslayan
+mimariyle olcmeyi istedi.
+
+KRITIK ANLAM: Mevcut TXT'lerin 20 sayisi KUME olarak
+verilmektedir. Kucukten buyuge yazilan sayilar gercek
+makineden cikis SIRASI DEGIL. V12 yalnız gercek gecmis
+cekilislerdeki aile gorunme sirasi ve gelecek cekilis icin
+onceden kurulan aile-tahmin kulesi sirasi tanimlar.
+
+DOSYALAR:
+- v12_80_kule.py: stdlib aile ve 80 sayi kulesi.
+- v12_selftest.py: yapay + gercek 73 gun testi.
+- v10_app.py: 9. sekme "🗼 80 Sayı Kulesi".
+- V12_80_SAYI_KULE_73_GUN_RAPOR.md: tam aciklama.
+- .github/workflows/v10-check.yml yeni motoru da test eder.
+
+MIMARI:
+- Her gercek 20 sayi icinde teorik C(20,k) kadar
+  k=2..10 farkli tam aile vardir.
+- Gercek 20 ile oncesindeki 12 cekiliste tam gorulmus
+  alt aileler, gecmis/gercek 20 kesismelerinden TAM
+  ve hesapli bicimde bulunur.
+- Her aile icin ilk/son gecmis gorunus adimi, tekrar
+  sayisi ve bugunku 20'yi ayrik ailelerle ne kadar
+  KAPSADIGI kaydedilir; kapsanmayan sayilar ayri.
+- Bugunku 20'nin 2+3+4+5+6 parcalara ayrilmasi
+  her zaman matematiksel olarak mumkundur. Bu
+  RETROSPEKTIF tur sinyal diye kullanilmaz.
+- Onceki 12 cekilis sirayla taranir; gercek 20'ye
+  ait sayi ve 2–10 ailelerin hangi onceki adimda
+  ilk aktif oldugu, birikim ve rastgele beklentisi
+  ayri tablolara yazilir.
+- Ayri olarak ONCEDEN 80 sayi agindan 20 sayi
+  secilir: 2li → 3lu → ... → 10lu aile merdiveni;
+  sonra geri kalan sayilarla 20 tamamlanir.
+- Siklik, ivme, son20 tasima, ag-kule ve rastgele20
+  ayni hedef cekilislerde olculur.
+- Yalniz 7-12 hedef slotlari; bugunun ilk 6'si ve
+  onceki 12 gercek kayit; eksik 12'lik pencere atlanir.
+- Gelecek canli slot varsa 80 dugum, aile merdiveni,
+  2+3+4+5+6 onceden kurulmus ayrik katlar gosterilir.
+- Aile 2–10 gecmis istatistigi, ilk aktif olma
+  sirasi, 12 cekilislik sayi yolculugu, 20li isabet
+  defteri ve 7–12 ayri hedefler CSV indirilebilir.
+
+VERI: 01.08–12.10, 73 gun, 15.839 cekilis,
+7.434 ileri hedef; son 37 gun 3774 hedef.
+Son 37 gun 20li kupon ortalama isabet:
+- Ag-kule 4.9645/20
+- Siklik 4.9748/20
+- Ivme 5.027/20
+- Son20 tasima 4.9846/20
+- Rastgele 5.0056/20
+Tam 20/20 HICBIRINDE yok. Rastgele beklenti
+20 sayi kuponda 5/20.
+Ortak aile sayilari k2..10 icin matematiksal
+bagimsiz cekilis beklenenine cok yakin.
+Bu sonuclar "sira var" betimlemesini dogrular,
+gelecege yonelik anlamli ustunluk VERMEZ.
+
+Dosyalar V9 app.py, veri.txt, mevcut V10 aile
+CSV, v10_canli_kayit.json, eski kuponlar KORUNDU.
+21 — V13 217 CEKILIS HAREKETLI HAVUZ VE KOLTUK MOTORU
+
+
+====================================================================
+21 — V13 217 CEKILIS HAREKETLI HAVUZ VE KOLTUK MOTORU
+====================================================================
+13 Ekim 2026. Kullanici V12'nin ustune HER 1-80
+sayisinin gunun 1–217. cekilis boyunca sicak/ilik/
+soguk ve hareketli aile durumlariyla merkezi kuleyi
+tamamlamayi istedi.
+
+YAPILANLAR:
+- v13_havuz_koltuk.py ayri, saf Python motoru.
+- V10 Streamlit uygulamasina 10. sekme:
+  "🌡️ V13 Hareketli Havuz".
+- v13_selftest.py sentetik test + 36 egitim gunu
+  ve sonraki 37 ayri gunun cekilis testini yapar.
+- .github/workflows/v10-check.yml CI V13'i de
+  derler, sinar, Streamlit UI smoke testi yapar.
+- V13_217_CEKILIS_HAVUZ_KOLTUK_RAPORU.md tam
+  mimari, test ve uyari raporu.
+
+80 SAYI KIMLIKLERI:
+- Gunun basindan toplam gorunus n/217
+- Son 12, son 6, onceki 6 siklik ve artma/azalma
+- Bir sayinin kac cekilistir cikmadigi
+- Sicak/ilik/soguk (+ erken veri) havuzlari
+- Soguk-uyaniyor / soguk-dinleniyor / durgun
+- Ilik-yukseliyor / ilik-soguyor / dengeli
+- Sicak-yukseliyor / sicak-tepe / sicak-soguyor
+- Hedef 20'nin bu havuzlardan kac "KOLTUK"
+  aldigi, hedefi gormeden tahmin edilen kota.
+- Koltuklar fiziksel top sirasi DEGILDIR.
+
+MEKANIZMA:
+- Ilk 36 gun sadece modelin kosullu duruma gore
+  cikis oranlari ve koltuk dagilimini ogrenir.
+- Son 37 gun 217 cekilisin tamaminda zaman
+  ilerledikce 80 sayinin hali anlik guncellenir.
+- Sicak-tepedekileri puanla AZALT / KORU iki
+  deneysel ayri kupon secici yapildi.
+- 20 koltuk motoru, ayni 20'li uzerinden V12
+  aile agi ve rastgele20 ile karsilastirilir.
+- Hareket puanina gore 20 sayi SIRALANIR.
+  Ilk 2..10 sayi "ic ice aile merdiveni";
+  ayri 2+3+4+5+6 aileler 20 sayiyi doldurur.
+- 2..10 ic ice aileler tam k/k sonucuna ve
+  tum 0/k..k/k dagilimina gore test edilir.
+- Sicak, soguk, ilik ve spesifik soguk uyaniyor,
+  sicak tepe, sicak yukseliyor, sicak soguyor
+  gruplarindan ONCEDEN sabit aileler uretip
+  her k=2..10 icin tam k/k ve isabet yazilir.
+- 20 SICAKLIK KOLTUGUNUN TAM TUTMASI ayrica
+  rastgele hipergeometrik beklenenle olculur.
+- Gelecek hedefe dair 6..10'lu kuponu kullanici
+  isterse dugmeye basarak kaydeder; otomatik
+  ucretli oynama yok.
+- CSV: 217 tum hedef, 20 sayilik kupon isabeti,
+  aile merdiveni, sicak/ilik/soguk tam koltuk
+  tahmin testi, 80 sayi hareketi, soguk/sicak
+  aileler ve kupon ornekleri.
+
+VERI:
+01.08–05.09 egitim 36 gun, 7810 cekilis;
+06.09–12.10 test 37 gun, 8029 cekilis.
+V12 ile karsilastirilabilir 7–12 hedef 3774.
+
+SON 37 GUN AYNI HEDEFLERDE 20 ORTALAMA:
+- V13 koltuk: 5.0384/20
+- V13 tepe azalt: 5.0450/20
+- V13 tepe koru: 5.0379/20
+- Koltuk + V12: 5.0125/20
+- Sadece V12 ag-kule: 4.9645/20
+- Rastgele20: 5.0400/20
+- Matematik beklentisi: 5/20.
+Kazandirici ustunluk kanitlanmadi.
+
+YENI KRITIK VERI:
+- AILE TAMAMI SOGUK OLAN ONCEDEN SECILMIS 6LI:
+  7755 hedefte 1 kez TAM 6/6.
+- TUMU SICAK 6LI:
+  7797 hedefte 4 kez TAM 6/6.
+- SICAK-TEPE 6LI:
+  sadece 106 denemede 0.
+- SOGUK-UYANIYOR 6LI:
+  40 denemede 0.
+Tepe 6li 0 sonuc, oradan sayi gelmez anlamina
+gelmez; az orneklemli ve coklu kategori var.
+Sicak soguk olasiliklari adil cekiliste %25'tir.
+
+HATA VE SINIR:
+36/37 test kronolojik olarak ayrilmistir,
+ancak 13 Ekim'de butun tarihsel veriye
+bakilarak tasarlanan motor GERCEK ileri tarihli
+kor test DEGIL. Gelecek gunlerde kod ve aile
+secimini kilitlemek gerekiyor.
+
+KORUNANLAR: app.py (V9), veri.txt, v10_aileler.csv,
+v10_canli_kayit.json ve onceki kuponlar.
+
+V13 final CI #38432571382: tum Python/syntax, V9/V10/V11/V12/V13
+73 gun gercek veri smoke testleri ve Streamlit UI: BASARILI.
+
+
+====================================================================
+V14 — 217 CEKILIS ZAMAN HARITASI VE 80x80 GECIS AGI
+====================================================================
+13.10.2026: Kullanici, bir sayi bir sonraki cekiliste hangi sayiya
+"yerini birakiyor" sorusu ve 217 cekilis boyunca zaman segmentlerini
+test ederek RNG'den ayrisabilen olasi siralarin arastirilmasini istedi.
+"Evet yoldasim" onayi ile GitHub'da kuruldu ve gercek veride test edildi.
+
+DOSYALAR:
+- v14_gecis_agi.py: 80x80 sayi gecis motoru (+1,+2,+3,+6,+12),
+  A kaynagi/B yeni gelen kosullari; 217 saat pozisyonlari,
+  gece, sabah, oglen, aksam; saat ilk6/son6 ozetleri.
+- v14_selftest.py: sentetik onceden tahmin ve 36/37 gunlu gercek
+  ileri-zaman ayrimli test; veri.txt yeni kayit alinca bozulmaz.
+- v10_app.py: 11. sekme "🔄 V14 Geçiş Ağı"; tek cekilis
+  ayrilan-yeni gelen, saat/217 tablo, onceden kupon
+  ve CSV raporlari, canli gelecek slot.
+- V14_217_ZAMAN_GECIS_RAPORU.md: istatistiksel mimari ve bulgular.
+- .github/workflows/v14-fast-check.yml: V14 bagimsiz hizli test.
+- .github/workflows/v10-check.yml: tum onceki motorlar + V14 + UI.
+
+KAVRAM: 20 sayi fiziksel cikis sirasi DEGIL, kume.
+A onceki cekiliste varken B yoksa B'nin sonraki cekiliste
+bulunmasi olasiligi adil bagimsiz RNG'de %25.
+A'nin hedefte AYRILDIGINI SONRADAN bildigimizde B giris
+kosullu olasiligi 20/79 = %25.316.
+Ayrilan 15 rakam ile giren 15 rakam bire bir
+hangi rakama yer verdi diye KESIN eslenemez.
+Sonuc oncesi kestirim ile sonuc sonrasi betimleme ayri tutuldu.
+
+EGITIM: 01.08–05.09.2026 = 36 gun, 7772 iki-cekilis iliskisi.
+TEST: 06.09–12.10.2026 = 37 gun, 7992 iki-cekilis iliskisi.
+13.10 veri.txt yeni cekilislerle kismen büyudugunden
+final gun kapsam disi. 217 pozisyon: ilk gun cekilisi
+icin onceki ayni-gun cekiis yok, bu nedenle 216 gecis/gun.
+
+PERFORMANS, RASTGELE20'YE AYNI HEDEFTE ORTALAMA FARK:
+- V14 tek-adim ag: -0.0258/20 (37 gun, %95 yakl
+  aralik -0.0766 .. +0.0250).
+- V14 cok-adim ag: -0.0006/20 (aralik -0.0491 .. +0.0479).
+- V13 sicaklik: +0.0213/20 (aralik -0.0320 .. +0.0745).
+- V12 ag kule: -0.0302/20 (yalniz uygun 7–12 hedefleri).
+20/20 HIC olmadı. Gercek anlamda RNG ustunlugu kanitlanmadi.
+
+ILK 36 GUNDE GUCLU GORUNEN SAYI CIFTLERI:
+- 37->43, egitim %29.556, test %24.187.
+- 40->79, egitim %29.424, test %22.954.
+- 10->52, egitim %29.143, test %26.090.
+Farkli gunlerde sabit iliski kanitlanamadi. 80x80 cift
+aramasi (6,320 aday A!=B) coklu test yanilmasina aciktir.
+Saatte onceki cekilisten kalan 20 sayinin ortalama 5
+olmasi adil 20/80 matematiginin dogal sonucudur.
+
+KORUNAN: V9 app.py, ana veri.txt, aile CSV, canli
+kayit JSON, eski kuponlar, V10/V11/V12/V13 motorlari.
+CI: V14 hizli #38443251102 BASARILI;
+tum V9–V14/Streamlit #38443104291 BASARILI.
+
+SONRAKI ADIM: kodu ve tahmin kurallarini sabitleyip
+14 Ekim ve sonraki HENUZ GORULMEMIS cekilislerde
+her tahmini once kaydet, sonucu sonradan eslestir.
+Gecmisi test etmek ileri zaman simülasyonudur;
+tam bagimsiz "canli kör test" degildir.
+
+
+====================================================================
+V15 — ALTI KUPON VE 2-10 AILE MOTORU
+====================================================================
+13.10.2026 kullanici artik gercek KUpon MOTORU istedi.
+GitHub'a v15_kupon_motoru.py, v15_selftest.py,
+v15_coverage_test.py, .github/workflows/v15-fast-check.yml
+eklendi. V10 Streamlit uygulamasina 12. sekme
+"🎟️ V15 Kupon Motoru" eklendi.
+
+HER HEDEF: Saatin 7–12 cekilisleri icin o andaki
+onceki tum gun cekilisleri ve son 12 adet kesintisiz
+20-sayili cekilis kullanilir. Onceki 36 gunde V13 sicaklik
+ve V14 gecis modelleri egitilir, sonraki 37 gun
+DONMUS modelle test edilir. Her hedefe 6 tane 10'lu
+kupon + 6 adet rastgele onlu kontrol. 10'lularin
+ilk 2,3,4,5,6,7,8,9,10 sayisi aile olarak
+HEDEFTEN ONCE belirlenir. Gercek sonuc sonrasi
+10'ludan tutan altili ayiklama YASAK (yanli test).
+
+ALTI KUPON YOLU:
+1 V12 aile omurgasi; 2 V13 sicaklik koltuklari;
+3 V14 +1 gecis; 4 V14 +1/+2/+3/+6/+12;
+5 birlesik V12/V13/V14 aile kulesi;
+6 daha az ortak sayili dagitilmis kule.
+
+ILK "AILE ODAKLI" 37 GUN TESTI:
+3774 hedef, 22644 model onlu + 22644 rastgele onlu.
+Alti motor kupondan EN IYI ortalama 3.933/10;
+alti rastgeleden EN IYI ortalama 4.1388/10.
+Model once sabit 6li ailelerde 6/6 sayisi 4,
+rastgele kontrol 6/6 sayisi 5.
+10/10 iki yontemde de 0.
+6 model kupon ortalama 33.223 farkli sayi
+kapsiyordu, 6 rastgele 44.099. Motorlar
+yuksek ortak sayi yuzunden verimsiz kapsama yapiyor.
+
+IKINCI "GENIS KAPSAMA" V15-B (KEŞIF):
+Aile odakli test SONUCLARI GORULDUKTEN SONRA
+tasarlandi. Ilk kupon disinda sonraki her onlu
+en az 7 YENI sayi kapsar. 37 gunluk yeniden testte
+alti motor onlu ortalama 47.408 farkli sayi kapsadi;
+en iyi kupon isabeti 4.1471/10; rastgele 4.1388/10.
+Ancak 6/6 aile sayisi yalniz 2; rastgele 5.
+10/10 yok. 0.0083 sayilik fark GERCEK RNG USTUNLUGU
+KANITI DEGIL. Bu versiyon AYNI test sonuclarindan
+sonra yapildigi icin 37 gunu kor test kabul ETME.
+
+UYGULAMA:
+V15 Aile odakli / Genis kapsama secimi.
+Ayrica eski 36/37 gun testini butonla calistirir.
+Gelecek 7–12 slotunda 12 gecmis cekilis varsa
+onceden 6 kupon uret ve 2–10 aile merdiveni goster.
+Hedef saati GECMEDEN kullanici "Kalici Kaydet" derse,
+mevcut V10 Yonetici PIN kilidi aciksa,
+GitHub v10_canli_kayit.json dosyasina 6 kupon ekler.
+GitHub gercekten kaydetmeden "kalici kaydedildi"
+iddia etmez. Isabetler mevcut 📊 İsabet sekmesinde.
+CSV rapor: tum 45,288 kupon ve 2–10 aile k/k,
+her hedefte 6 model/6 rastgele en iyi sonuc, 
+6'li tam, 10'lu tam, farkli sayi kapsama.
+
+RAPOR: V15_6_KUPON_AILE_MOTORU_RAPOR.md.
+CI V15 hizli #38446076355: iki stil test basarili.
+V9 app.py, veri.txt, aile csv, onceki kayitlar,
+V10–V14 motorlari korunmustur.
+
+SONRA: Genis kapsama modelini ve her hedefin 6 kuponunu
+GUNCEL VE SONUCU GELMEMIS cekilislerde onceden
+kaydet, sonra test et. Yeni gunde agir V15 analizi
+dugmeye basilinca calisir; rastgele biletle gercek
+ileri tarih farklarini izle.
+
+
+====================================================================
+V16 — RNG SALINIM ANALIZI / 217 CEKILIS GERCEK UYUM TESTI
+====================================================================
+13.10.2026: Kullanici "20/80=1/4; ortalama 5 tekrar
+ama 2–12 sayi arasinda salinim gosterebiliyor;
+RNG algoritmasini cozelim" dedi.
+
+V16 MOTORU eklendi:
+v16_rng_salinim.py, v16_selftest.py,
+.github/workflows/v16-check.yml ve V10 Streamlit
+13. sekme "🎲 V16 RNG Salınımı".
+V16_RNG_217_SALINIM_ARASTIRMA.md tam rapor.
+
+RESMI KURAL: HIZLI ON 80 sayidan 20 farkli sayiyi
+RNG ile uretir (Milli Piyango Hızlı On oyun kurallari
+Madde 2.5 ve 6.2). Gizli PRNG kodu/tohumu resmi
+kurallarda yayimlanmiyor. Sadece 20 sayilik listeden
+bilinemez.
+
+MATEMATIK:
+X = iki bagimsiz 20/80 cekilisinin ortak sayi adedi.
+P(X=k)=C(20,k)C(60,20-k)/C(80,20).
+E(X)=5, std dev=1.687632.
+P(X>=12)≈0.00010021, ortalama her 9979 geciste 1.
+
+TARAMA:
+01.08–12.10.2026 73 gun; 15,691 gercek 5 dakikalik
+gecis. 01:02->07:02 alti saat ve eksik cekilisler
+5dk varsayilmadi. Gozlenen tekrar ort=4.99643.
+Tam 2 tekrarda 837 olayi (beklenen 780);
+tam 5'te 3624 (beklenen 3660);
+12+ tekrar 2 olay (beklenen 1.572).
+10 onceden secilmis Pearson uygunluk diliminde
+chi2=14.341, df9, p=0.1107; RNG hipotezine aykiri
+guclu sapma gosterilmedi.
+
+GERIYE DONUK KRONOLOJIK TEST:
+Ilk 36 gun 7736 gecis (egitim);
+son 37 gun 7955 gecis (test);
+bir onceki tekrar dilimi de olan 7881 hedef.
+Onceki X=0–2 ise sonraki ort=5.0532;
+3–4:4.9848;5–6:4.9896;7–8:4.9187;9+:5.0435.
+Ilk 36 gun X_prev'ye gore egitilen olasilik modeli
+testte SALT matematiksel RNG'yi gecemedi:
+RNG logloss=1.941646, salinim model=1.946500;
+RNG Brier=0.835339, salinim model=0.836112;
+RNG MAE=1.326735, salinim=1.333780.
+Tam sayi tahmini ikisinde de %22.3322.
+
+18 saat ayrimi ve BH coklu test uygulandi:
+37 gunluk saatte ANLAMLI SABIT SAPMA YOK.
+Ilk 6 ort 4.9786, son 6 4.9802, 01:02 ek 5.0811.
+Bu gozlem RNG sisteminin gizli algoritmasini bulmus
+olmaz ve kupon avantajini da kanitlamaz.
+
+ONEMLI SONRAKI ADIM: Gelecekte gecerliligi
+tekrarlanan, cogu false-positive'in ayiklandigi
+istatistiksel sapma varsa bunu ileriye yonelik
+test et; yoksa salinimdan sonraki hedef 20'liyi
+"kesin" tahmin iddiasina donusturme.
+Korunan: V9 app.py, ana veri.txt, tum eski aile
+ve kupon kayitlari ve V10–V15.
+
+
+====================================================================
+V17 — RAKAMLAR DEGIL CEKILIS KARAKTERI
+====================================================================
+KULLANICI TALIMATI:
+"Sana bırakıyorum ... gecmişten geleceğe bakacağımız şey
+karakter rakam değil."
+V17, tek tek 1–80 rakamlarin kimligini tahmin etmek yerine,
+her 20'lik sonucun YAPISINI, karakterini ve ertesi cekiliste
+karakterin devam edip etmedigini denetler.
+
+13.10.2026; GitHub yeni:
+- v17_karakter_motoru.py (stdlib + V13 sicaklik/2–10 aile izi)
+- v17_selftest.py (73 gun, 36/37 gun kronolojik test)
+- v17_karakter_app.py (Streamlit sekmesinin ayri modulu)
+- .github/workflows/v17-check.yml (hizli test)
+- V17_CEKILIS_KARAKTER_MOTORU_RAPORU.md
+- v10_app.py 14. sekme "🧬 V17 Karakter Motoru".
+- .github/workflows/v10-check.yml: V9–V17 + UI tum kontrol.
+
+SEKIZ KARAKTER:
+1 Onceki 20'den tekrar 0–3/4–6/7+ (kopus/denge/tasima);
+2 tek/cift dengesi;
+3 1–40/41–80 alt/ust dengesi;
+4 dort adet 20'lik bant baskinligi;
+5 komsu ardisik kumelenme;
+6 son 12 cekiliste ayni tam 2–10 aile alt gruplarinin
+  gorunus olaylari (BENZERSIZ aile sayisi DEGIL);
+7 hedef gelmeden tanimli 80 sayilik sicak/ilik/soguk
+  havuzundan hedefe gercekte dolan koltuklar;
+8 tekrarla komsuluk kuvvetinin bilesik karakteri.
+
+GUNDEKI 217 CEKILISIN GECISLERI OZEL SAATLER
+VE ILK6/SON6 olarak incelenir. 01:02–07:02
+arasi 6 saatlik bosluk 5dk varsayilmaz.
+
+KRONOLOJIK TEST:
+Egitim: 01.08–05.09.2026 = 36 gun 7302 hedef.
+Test: 06.09–12.10.2026 = 37 gun 7511 hedef.
+Toplam 15691 gercek karakter gozlemi.
+Her bir sonraki karakter icin 2 rakip:
+A gun-donemi gecmisteki sabit karakter dagilimi,
+B onceki cekilisin karakterinden gecis olasiligi
+(ilk 36 gun egitilmis ve testte dondurulmus).
+Gercek hedef sayilari onceden hic bilinmez.
+LOG-KAYIP (B minus A; negatif B daha iyi):
+- tekrar +0.000741 (kotu)
+- tek/cift +0.002931 (kotu)
+- alt/ust +0.001533 (kotu)
+- dort bant +0.003562 (kotu)
+- komsuluk +0.000133 (ayni)
+- 2-10 aile izi -0.000377 (COK KUCUK olumlu,
+  sekiz secenekten arama, istatistik kaniti DEGIL)
+- sicaklik koltuk +0.000586 (ayni)
+- bilesik karakter +0.004905 (kotu).
+Sekiz karakterden 7'si rakip sabit dagilimi
+gecemedi. Karakterin gercek RNG algoritmasini
+buldugu veya ileri çekilisin tam rakamlarini
+tahmin ettigi iddia EDILMEZ.
+
+V17 ileri hedef onizlemesi sadece son gercek
+cekilislerin karakterini kullanarak SONUCU
+HENUZ GELMEMIS hedefin beklenen karakter
+olasiliklarini gosterir ve CSV indirir.
+V15 kuponlari bu zayif karakter sinyalleriyle
+otamatik degistirilmedi. Herhangi bir yeni
+kural ancak bagimsiz ileri veriyle random ve
+sabit karakter modellerini gecerse etkin.
+Onceki V9–V16 motorlari ve tum cekiis, aile,
+kupon kayitlari KORUNDU.
+
+
+====================================================================
+V18 — 217 CEKILISTE CIKAN 20 / CIKMAYAN 60 CIFT HAVUZ
+====================================================================
+Kullanici 13.10.2026 "80 sayi hedef cekiliste cikan 20
+sayi ve cikmayan 60 sayi 2 ayri havuz yapip 217 cekilis
+boyunca ayri havuzlarda biriktir" istedi.
+V18 gercek 20/60 kapsama ve iki AYRI gunluk TXT/CSV
+havuza kaydetme motoru yapildi.
+
+DOSYALAR:
+- v18_cift_havuz.py: saf Python 20/60 ayrimi, tum
+  gunde gorunus/kayip/giris/bekleme, cekilis bazinda
+  80 sayilik tam kimlik, 217x80 C/B matrisi.
+- v18_cift_havuz_app.py: Streamlit 15. sekme.
+- v18_selftest.py: yapay ve 74 gunluk gercek dosyada
+  normal/kismi/gun icinde aralikli veri kontrolu.
+- .github/workflows/v18-check.yml: ayri hizli test.
+- V18_217_CIKAN20_CIKMAYAN60_HAVUZ_RAPORU.md.
+
+HER CEKILISTE:
+A: CIKAN 20 = gercek 20 farkli sayi.
+B: CIKMAYAN 60 = 1..80-A, tam 60 farkli sayi.
+A ve B ayrik, birlesimi tum 80'i kapsar.
+Bir sayi tum 217 slot boyunca 20/60 gecici
+statulerinden birindedir; kalici sabit iki takim yok.
+Tam 217 cekilis: 4.340 aktif gorunus,
+13.020 aktif olmayan gorunus kaydi,
+80*217=17.360 toplam durum kaydi.
+Bunlar benzersiz sayi degil sayi×cekilis olayidir.
+
+HER RAKAM:
+20 havuzunda gorundugu cekilis adedi,
+60 havuzunda bekledigi cekilis adedi;
+20 havuzuna 60'tan giris ve 20'den cikis;
+20->20 tekrar ve 60->60 bekleme;
+ilk ve son 20 gorunusu;
+20'de ve 60'ta en uzun ardisik seri;
+80 sayinin cekilis cekilis C/B matrisi.
+
+HAVUZ GECISI:
+20->20,20->60,60->20,60->60 her geciste
+toplam 80. Bir cikan sayi bire bir baska
+sayiya "yer verdi" diye gercek olmayan es
+uretilmiyor. 01:02->07:02 alti saatlik ara
+ayri isaretlenir. KAYITSIZ CEKILISLER
+60 havuzuna SAYILMAZ, ? olarak belirsizdir.
+
+KALICI KAYIT:
+Tek gercek kaynak eski GitHub veri.txt'dir.
+Uygulama her acilista ve yeni veri geldikce ondan
+deterministik iki HAVUZ AYRI yeniden insa eder.
+Her havuzun ayri TXT/CSV indirimi var; eski
+verileri degistirmez, Github'a gereksiz ham veri
+cogaltmaz. Tum gun 217 geldiyse tam kayit
+olur; kayitli olmayanlar eksik kalir.
+V17 karakter motoruna 20/60 durum gecislerini
+incelemek icin gecmis olusum defteri saglar;
+kupon veya RNG ustunlugu iddiası YOK.
+
+GERCEK TEST: 74 takvim gunu.
+01.08,11.08,05.09,12.10: 217/217 dogru:
+4340/13020.
+13.10 test aninda 151 kayit:
+3020/9060, kayitsiz 66 slot.
+V18 bagimsiz GitHub CI: #38453019873 BASARILI.
+
+ANA veri.txt, V9 app.py, V10–V17 motorlar,
+eski aile CSV/kuponlar korundu.
+
+
+════════════════════════════════════════════════════════════
+TAM DEVİR DOSYASI SONU — KAYNAK: GITHUB ANA PROJE KÜTÜĞÜ
+════════════════════════════════════════════════════════════
