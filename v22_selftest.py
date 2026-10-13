@@ -23,10 +23,10 @@ day="2026-10-01"
 rows={p:mk(day,p,rng.sample(range(1,81),20)) for p in range(1,218)}
 rows[14]=mk(day,14,range(1,21))
 rows[15]=mk(day,15,range(21,41))
-rows[16]=mk(day,16,range(1,21))
+rows[16]=mk(day,16,list(range(1,11))+list(range(21,31)))
 rows[17]=mk(day,17,range(41,61))
-rows[18]=mk(day,18,range(21,41))
-rows[19]=mk(day,19,range(41,61))
+rows[18]=mk(day,18,list(range(21,31))+list(range(41,51)))
+rows[19]=mk(day,19,list(range(41,51))+list(range(61,71)))
 # 01/02 core first at 07:02 (p14) and 07:12 (p16); do not select k that appears 3x.
 family=candidate_first_two([rows[p] for p in range(14,20)],2)
 assert any(x["fam"]==(1,2) and x["first"]==14 and x["second"]==16 for x in family)
