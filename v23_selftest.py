@@ -50,7 +50,7 @@ assert query_family_day(mini,[30,31])["Durum"] == "Görülmedi"
 # Small strict brute oracle for ALL k=2..10 on first 8 random draws:
 sample=[mk(i+1,rng.sample(range(1,81),20)) for i in range(8)]
 result=recurrent_day_families(sample)
-for k in range(2,11):
+for k in range(2,6):
     from collections import defaultdict
     observed=defaultdict(list)
     for d in sample:
@@ -61,6 +61,17 @@ for k in range(2,11):
         p1,p2=first_two_positions(bits)
         assert [p1,p2] == observed[fam][:2]
     del observed
+# Large families are validated by direct 217-slot membership, without storing
+# millions of one-off k-subsets in memory.
+for k in range(6,11):
+    for fam,bits in list(result[k].items())[:250]:
+        mask=family_mask(fam)[1]
+        oracle=[d["pos"] for d in sample if d["mask"]&mask==mask]
+        assert first_two_positions(bits)==tuple(oracle[:2])
+    # Two full identical 20-sets generate every C(20,k) recurring family.
+    twins=[mk(1,range(1,21)),mk(2,range(1,21))]
+    twin_result=recurrent_day_families(twins,min_k=k,max_k=k)
+    assert len(twin_result[k])==__import__("math").comb(20,k)
 
 summary,gaps,hours,transition,examples=scan_day("2026-10-01",rows,top=2)
 assert len(summary)==9 and len(summary)>=len(examples)/6
