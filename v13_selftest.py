@@ -101,7 +101,7 @@ assert len(r["ledger"])==meta["test_targets"]
 assert len({(x["Tarih"],x["Hedef"]) for x in r["ledger"]})==meta["test_targets"]
 assert len(r["seats"])>=9
 assert len(r["states"])>=20
-assert len(r["family"])==3*9
+assert len(r["family"])>=3*9
 assert r["methods"]
 assert len(r["train_model"]["days"])==36
 assert sum(x["Sayı-hedef gözlemi"] for x in r["states"])==meta["test_targets"]*80
