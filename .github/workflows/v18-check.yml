@@ -1,0 +1,21 @@
+name: V18 Cift Havuz Testi
+on:
+  push:
+    paths:
+      - 'v18_cift_havuz.py'
+      - 'v18_cift_havuz_app.py'
+      - 'v18_selftest.py'
+      - '.github/workflows/v18-check.yml'
+  workflow_dispatch:
+jobs:
+  v18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V18 Python syntax
+        run: python -m py_compile v18_cift_havuz.py v18_cift_havuz_app.py v18_selftest.py
+      - name: V18 two disjoint pools and 217 draw archive
+        run: python v18_selftest.py
