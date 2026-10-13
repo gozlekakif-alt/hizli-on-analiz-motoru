@@ -547,11 +547,23 @@ with tabs[0]:
     st.caption("Başlık, tarih-saat ve alt alta 20 sayı. Birden fazla çekilişi de aynı kutuya yapıştırabilirsin.")
     next_info=next_recorded_slot(draws)
     if next_info:
-        st.info(f"📅 Sıradaki kayıt: Çekiliş #{next_info['no']} • {next_info['dt']:%d.%m.%Y} • saat {next_info['time']}")
-    if st.session_state.pop("v10_clear_paste", False) or "v10_pasted_draw" not in st.session_state:
-        st.session_state["v10_pasted_draw"] = next_paste_template(draws)
+        st.info(f"📅 Son kayıtlı çekilişten sonraki: #{next_info['no']} • {next_info['dt']:%d.%m.%Y} • saat {next_info['time']}")
+        if next_info["dt"] < now_tr()-timedelta(minutes=5):
+            st.caption("Bu tarih geçmişte görünüyor: ana veri.txt henüz güncel değil. Sonuçları geriye dönük sırayla yapıştırabilirsin.")
+    # Version migration: clear legacy auto-inserted two-line template once.
+    # Do not clear a user's partially typed/pasted 20-number result.
+    if "v10_blank_input_migrated" not in st.session_state:
+        existing=st.session_state.get("v10_pasted_draw", "")
+        legacy=next_paste_template(draws)
+        if not existing or existing.strip()==legacy.strip() or re.fullmatch(
+            r"Çekiliş no:\s*\d+\s*\n\s*\d{2}\.\d{2}\.\d{4}-\d{2}:\d{2}\s*",
+            existing.strip()):
+            st.session_state["v10_pasted_draw"]=""
+        st.session_state["v10_blank_input_migrated"]=True
+    if st.session_state.pop("v10_clear_paste", False):
+        st.session_state["v10_pasted_draw"] = ""
     pasted=st.text_area("Çekiliş sonuç metni",height=225,key="v10_pasted_draw",
-         placeholder="Çekiliş no:61629\n12.10.2026-00:02\n5\n6\n11\n22\n...\n75")
+                        placeholder="")
     if st.button("📥 Yapıştırdığım çekilişi ekle",type="primary",key="v10_add_paste"):
         records, issues=parse_pasted_draws(pasted)
         known_ids={d["no"] for d in draws}
@@ -580,11 +592,17 @@ with tabs[0]:
         st.rerun()
     if st.session_state.get("v10_last_paste"):
         p=st.session_state.v10_last_paste
-        st.success(f"{p['added']} yeni çekiliş eklendi, {p['repeats']} kayıt zaten vardı.")
+        if p["added"]:
+            st.success(f"{p['added']} çekiliş uygulamaya alındı; {p['repeats']} zaten kayıtlı.")
+        else:
+            st.info(f"Yeni kayıt eklenmedi; {p['repeats']} çekiliş zaten kayıtlı.")
         if p["issues"]:
             st.warning("Kontrol: " + " | ".join(p["issues"]))
         if p["saved"]:
-            st.info(p["saved"])
+            if "GitHub veri.txt kalıcı kayıt:" in p["saved"] or "zaten veri.txt içinde" in p["saved"]:
+                st.success("✅ GitHub ana veri.txt güncellendi. "+p["saved"])
+            else:
+                st.error("⚠️ Kalıcı kayıt henüz yapılmadı. "+p["saved"])
     st.download_button("⬇️ Çekilişlerimin JSON yedeğini indir",
                        json.dumps({"live":st.session_state.v10_live,
                                    "tickets":st.session_state.v10_tickets},ensure_ascii=False,indent=2),
