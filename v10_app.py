@@ -2829,8 +2829,9 @@ def v15_cached_fit(training_json,n_days):
 
 
 @st.cache_data(ttl=3600,show_spinner=False)
-def v15_cached_replay(all_draws_json,n_days):
-    return v15_backtest(json.loads(all_draws_json),train_days=n_days)
+def v15_cached_replay(all_draws_json,n_days,wide):
+    return v15_backtest(json.loads(all_draws_json),train_days=n_days,
+                        coverage=wide)
 
 
 with tabs[11]:
@@ -2848,6 +2849,18 @@ with tabs[11]:
         "Geçmiş veriye bakarak strateji tasarlanması nedeniyle "
         "37 günlük ayrılmış dönem tam canlı kör test sayılmaz."
     )
+    v15_mode=st.radio(
+        "Kupon dağıtım biçimi",
+        options=["Aile odaklı", "Geniş kapsama"],
+        index=1,horizontal=True,key="v15_mode_select"
+    )
+    v15_wide=v15_mode=="Geniş kapsama"
+    st.caption(
+        "Geniş kapsama: İlk kupondan sonra her 10'lu kupon en az "
+        "7 yeni sayı taşır. Böylece altı kupon daha fazla farklı "
+        "sayıyı hedefler. Bu seçenek eski test sonuçları görüldükten "
+        "sonra tasarlandığı için geçmiş sınaması keşif amaçlıdır."
+    )
     st.markdown("#### 🧪 İlk 36 gün eğitim — sonraki 37 gün kupon testi")
     if st.button("🚀 V15 6×10 aileli kupon performansını test et",
                  type="primary",key="v15_run_test"):
@@ -2856,14 +2869,15 @@ with tabs[11]:
             "kupon; 2–10 ailelerin her biri hesaplanıyor..."
         ):
             v15_report=v15_cached_replay(
-                json.dumps(draws,separators=(",",":")),36
+                json.dumps(draws,separators=(",",":")),36,v15_wide
             )
         st.session_state["v15_test_report"]={
             "nmax":max((r["no"] for r in draws),default=0),
+            "mode":v15_mode,
             "result":v15_report
         }
     v15_report_saved=st.session_state.get("v15_test_report")
-    if v15_report_saved:
+    if v15_report_saved and v15_report_saved.get("mode")==v15_mode:
         rr=v15_report_saved["result"];mm=rr["summary"]
         if v15_report_saved.get("nmax")!=max((r["no"] for r in draws),default=0):
             st.warning("Yeni çekiliş geldi. Bu sonuç raporu önceki veri "
@@ -2877,6 +2891,11 @@ with tabs[11]:
             "Hiçbir başarısız kupon atılmaz. "
             "Her k'lı ailenin ilk k sayısı sonuç gelmeden bellidir."
         )
+        cover1,cover2=st.columns(2)
+        cover1.metric("Motor: altı kupon farklı sayı",
+                      mm["model_coverage"])
+        cover2.metric("Rastgele: altı kupon farklı sayı",
+                      mm["random_coverage"])
         st.markdown("##### 🎯 10'lu kuponlar: 0/10–10/10 gerçek sonuç")
         st.dataframe(rr["methods"],hide_index=True,use_container_width=True)
         st.markdown("##### 🏆 Altı kupondan en iyisi — rastgele kontrol")
@@ -2957,10 +2976,11 @@ with tabs[11]:
                         json.dumps(first36,separators=(",",":")),36
                     )
                     tickets=v15_six(
-                        v15_day_known,v15_pos,v15_target_no,models
+                        v15_day_known,v15_pos,v15_target_no,models,
+                        coverage=v15_wide
                     )
                 st.session_state["v15_live_tickets"]={
-                    "day":daystr,"pos":v15_pos,
+                    "day":daystr,"pos":v15_pos,"mode":v15_mode,
                     "trigger":v15_day_known[-1]["no"],
                     "target_no":v15_target_no,
                     "generated_at":now_tr().isoformat(timespec="seconds"),
@@ -2968,10 +2988,16 @@ with tabs[11]:
                 }
         v15_frozen=st.session_state.get("v15_live_tickets",{})
         if (v15_frozen.get("day")==daystr
+            and v15_frozen.get("mode")==v15_mode
             and v15_frozen.get("pos")==v15_pos
             and v15_frozen.get("trigger")==v15_day_known[-1]["no"]
             and v15_due>now_tr()):
             st.markdown("##### ✅ Çekilişten önce sabitlenen altı kupon")
+            st.metric(
+                "Altı kuponun kapsadığı farklı sayı",
+                len({n for t in v15_frozen["tickets"]
+                     for n in t["numbers"]})
+            )
             v15_table=[
                 {"No":i+1,"Motor":ticket["method"],
                  "10 sayı":" – ".join(
@@ -3035,7 +3061,7 @@ with tabs[11]:
                             "family":family,
                             "numbers":nums,
                             "size":10,
-                            "kind":"V15 "+ticket["method"],
+                            "kind":"V15 "+v15_mode+" "+ticket["method"],
                             "trigger_no":v15_frozen["trigger"],
                             "created_at":now_tr().isoformat(timespec="seconds")
                         })
