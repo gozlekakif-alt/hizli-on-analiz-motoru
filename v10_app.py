@@ -453,6 +453,52 @@ def repeat_gap_targets(dayhits, profiles, families, day, now, observed_positions
             unique[key]=item
     return list(unique.values())
 
+def day_signal_replay(dayhits, profiles, families, target_day, day_draws,
+                      minimum_days=2):
+    """Recreate historical targets only after each observed 1st/2nd/3rd family
+    appearance, without using later outcomes to form a candidate.
+
+    The previous-day training profiles are supplied by caller. Results are
+    evaluated separately against already recorded target slots, if available.
+    """
+    actual_by_pos={d["pos"]:d for d in day_draws}
+    rows={}
+    for label, observed in dayhits.items():
+        appearances=sorted(observed,key=lambda d:d["pos"])
+        for i in range(min(3,len(appearances))):
+            known=appearances[:i+1]
+            trigger=known[-1]
+            candidates=repeat_gap_targets(
+                {label:known}, profiles, families, target_day,
+                moment(target_day,trigger["pos"]),
+                {d["pos"] for d in known},
+                minimum_days=minimum_days,
+                latest_known=trigger
+            )
+            for signal in candidates:
+                result=actual_by_pos.get(signal["pos"])
+                own=set(families[label]["nums"])
+                matched=sorted(own.intersection(result["nums"])) if result else []
+                status=("Bekliyor (çekiliş kayıtta yok)" if result is None
+                        else "TAM" if len(matched)==families[label]["k"]
+                        else "Tam olmadı")
+                key=(label,signal["stage"],signal["pos"])
+                rows[key]={
+                    "Aile":label,"Boyut":families[label]["k"],
+                    "Aşama":signal["stage"],"Ritim":signal["pattern"],
+                    "Ritim türü":signal["kind"],"Destek gün":signal["support"],
+                    "Tetikleyen":f"#{trigger['no']} {trigger['dt'][11:16]}",
+                    "Hedef sıra":signal["pos"],"Hedef saat":signal["time"],
+                    "Hedef no":f"#{result['no']}" if result else "Kayıt yok",
+                    "Sonuç":status,"İsabet":(
+                        f"{len(matched)}/{families[label]['k']}" if result else "—"
+                    ),
+                    "Tutan sayılar":"-".join(map(str,matched)) if result else "—",
+                }
+    return sorted(rows.values(),
+                  key=lambda r:(r["Hedef sıra"],r["Boyut"],r["Aile"],r["Aşama"]))
+
+
 def all_draws(history, live):
     by_no = {d["no"]:d for d in history}
     for d in live:
@@ -911,7 +957,7 @@ with tabs[1]:
     a,b,c=st.columns(3)
     a.metric("Seçili gün çekilişi",len(day_draws))
     b.metric("Tam çıkan farklı aile",len(hits))
-    c.metric("İleri hedef sinyali",len(signals))
+    c.metric("Şu an gelecek hedef",len(signals))
     st.caption(f"Aday havuzu: {len(families)} aile; görünüş yalnız tam sayılar tek çekilişte bulunduğunda sayılır.")
     if day_draws:
         first=min(day_draws,key=lambda d:d["dt"])
@@ -925,6 +971,38 @@ with tabs[1]:
               "Bu gün tam çıkan":by_k[k],
               "Gelecek saat hedefi":sig_by_k[k]} for k in range(5,11)]
     st.dataframe(summary,hide_index=True,use_container_width=True)
+    st.markdown("### 📜 Günlük Sinyal Defteri — geçmiş ve sonuçlar")
+    replay=day_signal_replay(hits,profiles,families,daystr,day_draws,
+                             minimum_days=support_days)
+    settled=[r for r in replay if r["Sonuç"]!="Bekliyor (çekiliş kayıtta yok)"]
+    successes=[r for r in settled if r["Sonuç"]=="TAM"]
+    pending=[r for r in replay if r["Sonuç"]=="Bekliyor (çekiliş kayıtta yok)"]
+    b1,b2,b3,b4=st.columns(4)
+    b1.metric("Gün içinde doğan",len(replay))
+    b2.metric("Sonucu kayıtlı",len(settled))
+    b3.metric("Tam tutan",len(successes))
+    b4.metric("Sonuç bekleyen",len(pending))
+    st.caption("Bu tablo, her ailenin 1., 2. veya 3. görünüşünden sonra o anda "
+               "bilinebilecek önceki gün ritimleriyle yeniden hesaplanır. "
+               "Sonradan girilen çekiliş sonucu yalnızca isabet kontrolünde kullanılır. "
+               "Sinyal oluşması, başarılı tahmin anlamına gelmez.")
+    if replay:
+        st.dataframe(replay,hide_index=True,use_container_width=True)
+        st.download_button(
+            "⬇️ Günün tüm sinyalleri ve sonuçları (CSV)",
+            family_order_csv(replay),
+            file_name=f"V10_GUNLUK_SINYAL_DEFTERI_{daystr}.csv",
+            mime="text/csv",key="v10_day_replay_csv"
+        )
+    else:
+        st.info(f"{daystr} tarihinde kayıtlı çekilişler üzerinden "
+                f"{support_days} geçmiş gün desteğiyle 1→2, 2→3 veya 3→4 "
+                "tekrar hedefi doğmadı. Bu, başka tür aile aktivasyonu olmadığı "
+                "anlamına gelmez.")
+    if analysis_date!=today:
+        st.caption("Geçmiş gün için 'Şu an gelecek hedef = 0' doğaldır: "
+                   "tarihi geçmiş kuponlar canlı hedef olarak önerilmez. "
+                   "Gün içinde oluşan sinyaller yukarıdaki defterdedir.")
     if hits:
         st.markdown("### 🔍 İlk kez, geçmişten gelen ve ritimli aileler")
         st.caption("İlk kez = yalnız yüklenmiş veri aralığında ilk tam görünüş; tüm tarih boyunca ilk kez demek değildir.")
