@@ -4,6 +4,7 @@ on:
     paths:
       - 'v10_app.py'
       - 'v10_sira.py'
+      - 'v10_geliyorum.py'
       - 'v10_selftest.py'
       - 'v10_streamlit_test.py'
       - 'v10_real_data_test.py'
@@ -18,7 +19,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check Python syntax
-        run: python -m py_compile v10_app.py v10_sira.py
+        run: python -m py_compile v10_app.py v10_sira.py v10_geliyorum.py
       - name: Check timing, family models and coupon outcomes
         run: python v10_selftest.py
       - name: Check against actual 72-day data and family list
