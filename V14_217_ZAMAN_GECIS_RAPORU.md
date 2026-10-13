@@ -62,3 +62,62 @@ Tahmin, gerçek hedef çekilişinin 20 sayısı görülmeden oluşturulur:
 V9 \`app.py\`, ana \`veri.txt\`, V10/V11/V12/V13 kodları, mevcut aileler ve kuponlar değiştirilmez. Hedef %25'ten anlamlı ve ileri tarihte tekrarlanabilir bir sapma bulmak; bulunamıyorsa bunu açıkça söylemektir.
 
 **İstatistiksel sınır:** Bir zaman sırası veya geçiş korelasyonunun betimlenebilir olması, adil ve bağımsız RNG'nin tahmin edilebilir olduğu anlamına gelmez.
+
+
+## 7. İlk gerçek kronolojik test sonucu (13.10.2026)
+
+GitHub Actions ayrı V14 testi **başarılı**: \`38443251102\`.
+
+- **Eğitim:** 01.08.2026–05.09.2026, ilk 36 gün, 7.772 iki-çekiliş geçişi.
+- **Ayrı ilerleyen bölüm:** 06.09.2026–12.10.2026, 37 gün, **7.992** iki-çekiliş geçişi.
+- **V14 ağ modelinin önceki çıkışlara dayanan tahmini**, hedefin gerçekleşmiş 20 sayısını girişte kullanmaz.
+- Bütün saatlerin zaman sınıflarında 20 sayı seçen V14 ağları ile rastgele kontrolün ortalama başarısı yaklaşık **5/20**.
+
+### Rastgele kontrolüne karşı aynı gündeki ortalama fark
+
+| Motor | Kupon başına rastgele kontrolünden fark | Gün-kümeli yaklaşık %95 aralık |
+|---|---:|---:|
+| V14 bir-adım (+1) | **−0,0258** | −0,0766 … +0,0250 |
+| V14 çok-adım (+1/+2/+3/+6/+12) | **−0,0006** | −0,0491 … +0,0479 |
+| V13 sıcaklık koltukları | **+0,0213** | −0,0320 … +0,0745 |
+| V12 ağ-kule (yalnız uygun hedefler) | **−0,0302** | −0,1039 … +0,0435 |
+
+Bu farklar istatistiksel üstünlüğün kanıtı değildir. İncelenen seçenekler çok olduğu için bu aralıklar da kesin doğrulama değildir. 20/20 hiç görülmedi.
+
+### Eğitimde güçlü görünen 80×80 A→B ilişkilerinden örnekler
+
+Burada A bir önceki çekilişte bulunurken B yoktu; sonraki çekilişte B geldi mi?
+
+| A→B | İlk 36 gün gerçekleşen | Ayrı 37 gün gerçekleşen | Adil beklenti |
+|---|---:|---:|---:|
+| 37 → 43 | %29,556 | %24,187 | %25 |
+| 40 → 79 | %29,424 | %22,954 | %25 |
+| 10 → 52 | %29,143 | %26,090 | %25 |
+| 63 → 79 | %28,895 | %25,643 | %25 |
+| 80 → 39 | %28,850 | %25,723 | %25 |
+
+**Yorum:** İlk 36 günden seçilen en yüksek görünen ilişkiler sonraki 37 günde aynı oranlarla tekrar etmedi. Bu yüzden V14 şu anda “güvenilir sayı yerine sayı gelme” tahmin motoru olarak sınıflandırılamaz.
+
+### Saatlik geçiş ritmi
+
+37 gün boyunca her standart saatte 12 geçiş gözlendi; yaklaşık **444 örnek/saat**. Örnekler:
+
+| Saat | Bir önceki 20'den kalan (ortalama) |
+|---|---:|
+| 00 (ilk gecedeki 12 geçiş) | 5,0000 |
+| 07 | 4,9977 |
+| 11 | 5,1216 |
+| 16 | 5,0023 |
+| 20 | 4,8536 |
+| 22 | 5,1149 |
+
+Matematiksel beklenen her saat için **5**. Farkların doğrudan RNG zaman mekanizması ya da kupon avantajı olduğu söylenemez. Saat ayrımının doğrulanması için daha fazla bağımsız gün gerekir.
+
+Saatin ilk/son altı geçişleri de ayrı tabloya kaydedildi. 01:02 ek geçişi ayrı sınıflandırıldı.
+
+### Doğru sonraki adım
+
+1. Mevcut V14 seçeneklerini ve ağırlıklarını şimdi dondur.
+2. Sonraki gerçek yeni çekilişlerde her hedefi çekiliş **öncesinde** kayıt altına al.
+3. Farklı 217 pozisyonlarına ayrı kurallar eklemek için önce yeterli örnek ve düzeltmeli karşılaştırma testi yap. **37 gözlem/pozisyon** çok düşük bir örnek sayısıdır.
+4. Basit rastgele çekiliş modelinden ayrılamayan geçiş ilişkilerini kupon motorunun güçlü işareti gibi gösterme.
