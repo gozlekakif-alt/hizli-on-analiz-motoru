@@ -155,6 +155,37 @@ def retrospective_partition(actual,previous_features):
     return groups
 
 
+def activation_path(actual,prior,repeated):
+    """Twelve-step REAL historical assembly of this target's ball members.
+
+    No claim about physical extraction sequence in the target draw.
+    The number of first-time-seen target members at prior step t should average
+    about 20*.25*.75**(t-1) under independent random draws.
+    """
+    target=set(actual)
+    already=set()
+    first_counts=defaultdict(Counter)
+    for k in SIZES:
+        for data in repeated[k].values():
+            first_counts[data["first_prior"]][k]+=1
+    result=[]
+    for j,past in enumerate(prior,1):
+        hits=set(past["nums"]) & target
+        first=sorted(hits-already)
+        already.update(hits)
+        result.append({
+            "Geçmiş sıra":j,
+            "Geçmiş çekiliş":past["no"],
+            "Geçmiş saat":past["dt"][11:16],
+            "Bugünkü 20'den görünen":len(hits),
+            "İlk kez harekete geçen sayı":len(first),
+            "İlk kez gelen sayılar":"-".join(f"{n:02d}" for n in first),
+            "Biriken benzersiz":len(already),
+            **{f"{k}'li ilk görünüş":first_counts[j][k] for k in SIZES}
+        })
+    return result
+
+
 def expected_repeat_per_target(k):
     """Expected distinct k-families in the current twenty seen in prior12.
 
@@ -178,10 +209,12 @@ def audit_target(actual_draw,prior,features=None):
         for fam,entry in rows.items():
             age=13-entry["last_prior"]  # last seen at most recent prior => age 1
             lags[(k,age)]+=1
+    activation=activation_path(actual,prior,r)
     return {
         "counts":count,"witnessed":groups,
         "uncovered":missing,"covered":20-len(missing),
-        "forced":forced,"lags":lags
+        "forced":forced,"lags":lags,
+        "activation":activation
     }
 
 
@@ -250,6 +283,9 @@ def run_tower_study(draws,train_days=36):
     overall=Counter()
     by_position=defaultdict(lambda:Counter())
     lag_counter=Counter()
+    activation_new=Counter()
+    activation_cumulative=Counter()
+    activation_family_first=Counter()
     for di,day in enumerate(days):
         rs=byday[day]
         bypos={r["pos"]:r for r in rs}
@@ -266,6 +302,12 @@ def run_tower_study(draws,train_days=36):
                 overall[(phase,k)]+=c
             for (k,age),v in audit["lags"].items():
                 lag_counter[(phase,k,age)]+=v
+            for step in audit["activation"]:
+                t=step["Geçmiş sıra"]
+                activation_new[(phase,t)]+=step["İlk kez harekete geçen sayı"]
+                activation_cumulative[(phase,t)]+=step["Biriken benzersiz"]
+                for k in SIZES:
+                    activation_family_first[(phase,t,k)]+=step[f"{k}'li ilk görünüş"]
             slot=hour_draw_index(target["pos"])
             for method in METHODS:
                 by_position[(phase,slot)][method]+=row[method]
@@ -285,6 +327,28 @@ def run_tower_study(draws,train_days=36):
                 "Bağımsız çekilişte matematik beklenti":round(expected,4),
                 "Gözlenen / beklenen":round(observed/expected,4) if expected else None
             })
+    number_flow=[]
+    family_first_order=[]
+    for phase in ("İlk dönem","Sonraki dönem"):
+        n=sum(r["Dönem"]==phase for r in result)
+        if not n:continue
+        for step in range(1,13):
+            number_flow.append({
+                "Dönem":phase,"Geçmiş çekiliş sırası":step,"Hedef":n,
+                "20'den yeni ilk görülen":round(activation_new[(phase,step)]/n,4),
+                "Bağımsız beklenen yeni":round(5*(.75**(step-1)),4),
+                "Birikimli görülen":round(activation_cumulative[(phase,step)]/n,4),
+                "Bağımsız beklenen birikim":round(20*(1-.75**step),4)
+            })
+            for k in SIZES:
+                pk=math.comb(20,k)/math.comb(80,k)
+                expected=math.comb(20,k)*pk*((1-pk)**(step-1))
+                family_first_order.append({
+                    "Dönem":phase,"Boyut":k,
+                    "Geçmiş çekiliş sırası":step,"Hedef":n,
+                    "Yeni tam aile ortalaması":round(activation_family_first[(phase,step,k)]/n,4),
+                    "Bağımsız beklenen":round(expected,4)
+                })
     slotted=[]
     for (phase,slot),s in sorted(by_position.items()):
         n=s["n"]
@@ -304,6 +368,8 @@ def run_tower_study(draws,train_days=36):
                      "Ortak aile olayları":v}
                     for (phase,k,age),v in sorted(lag_counter.items())],
         "slot_methods":slotted,
+        "family_first_order":family_first_order,
+        "number_first_order":number_flow,
         "ledger":result
     }
 
