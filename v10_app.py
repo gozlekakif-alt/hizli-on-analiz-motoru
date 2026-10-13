@@ -355,8 +355,11 @@ def train_profiles(history_json, labels_json):
                 byday[d["day"]].append(d["pos"])
                 indices ^= bit
             pair_days, first_days, triple_days, quad_days = defaultdict(set),defaultdict(set),defaultdict(set),defaultdict(set)
+            hourly_days = defaultdict(set)
             for day, ps in byday.items():
                 ps.sort()
+                for position in ps:
+                    hourly_days[moment(day, position).hour].add(day)
                 if len(ps) >= 2:
                     first_days[ps[1]-ps[0]].add(day)
                 for i in range(len(ps)):
@@ -374,10 +377,31 @@ def train_profiles(history_json, labels_json):
                 "first":{gap:len(ds) for gap,ds in first_days.items()},
                 "triple":{pat:len(ds) for pat,ds in triple_days.items()},
                 "quad":{pat:len(ds) for pat,ds in quad_days.items()},
+                "hour_days":{hour:len(ds) for hour,ds in hourly_days.items()},
             }
         except (ValueError, IndexError):
             continue
     return profiles
+
+
+def historical_hour_support(profiles, label, target_pos, minimum_days=2):
+    """Prior-day calendar support for the *same clock hour* as a target slot.
+
+    The supplied profiles must be trained only on draws before target day.
+    'Supported' is an additional conservative filter, not a forecast.
+    """
+    target_hour=moment("2026-01-01",target_pos).hour
+    count=int(profiles.get(label,{}).get("hour_days",{}).get(target_hour,0))
+    return {"hour":target_hour,"days":count,
+            "required":minimum_days,"ok":count>=minimum_days}
+
+
+def rhythm_ticket_gate(profiles, label, target_pos, fire_families, minimum_days=2):
+    """Only FIRE-tagged coupons need independent historical hour support."""
+    info=historical_hour_support(profiles,label,target_pos,minimum_days)
+    info["flame"]=label in fire_families
+    info["coupon_ok"]=not info["flame"] or info["ok"]
+    return info
 
 
 def gap_rhythm(gaps):
@@ -1109,6 +1133,10 @@ with tabs[1]:
     session_fire=cross_day_repeat_families(profiles,families,minimum_days=2)
     intraday_repeats=cross_day_intraday_report(profiles,families,minimum_days=2)
     fire_families=calendar_fire | session_fire
+    hour_days_required=max(2,support_days)
+    def ticket_gate(label,position):
+        return rhythm_ticket_gate(profiles,label,position,fire_families,
+                                  minimum_days=hour_days_required)
     st.caption("🔥 = geçmiş günlerde aynı aralık veya aynı aileye ait "
                "gün içi tekrar ritmi gözlendi; kesin isabet anlamına gelmez.")
     if support_days==1:
@@ -1263,8 +1291,12 @@ with tabs[1]:
     elif hits and not signals:
         st.info("Aile görüldü ama saat hedefi oluşmadı. Neden: geçmişte iki farklı günde aynı aralık desteği yok, ya da bu günün sonraki uygun saatleri henüz hesaplanamıyor.")
     st.markdown("### 5'li – 10'lu hedef kuponları")
+    st.caption("🔥 alevli ailelere kupon: hedefin saat diliminde geçmişten "
+               f"en az {hour_days_required} ayrı gün tam görünüş desteği gerekli. "
+               "Saat desteği olmayan sinyaller izlenir; kupon oluşturulmaz.")
     groups={k:[] for k in range(5,11)}
     for signal in signals:
+        signal={**signal, "hour_gate":ticket_gate(signal["label"],signal["pos"])}
         groups[signal["size"]].append(signal)
     for k in range(5,11):
         options=sorted(groups[k],key=lambda x:(x["pos"],-x["support"],x["label"]))[:30]
@@ -1278,15 +1310,26 @@ with tabs[1]:
                   "Saat":x["time"],"Sıra":x["pos"],
                   "Tahmini no":"#"+str(x["estimated_no"]) if x["estimated_no"] else "—",
                   "Ritim":x["pattern"],"Tür":x["kind"],
-                  "Geçmiş destek (gün)":x["support"]} for x in options],
+                  "Geçmiş destek (gün)":x["support"],
+                  "Hedef saat geçmiş gün":x["hour_gate"]["days"],
+                  "Kupon durumu":("✅ saat destekli" if x["hour_gate"]["coupon_ok"]
+                                   else "⏳ 🔥 saat desteği eksik")} for x in options],
                 hide_index=True,use_container_width=True)
             pick=st.selectbox(f"{k}'li hedef seç",list(range(len(options))),
                 format_func=lambda i:options[i]["time"]+" | "+("🔥 " if options[i]["label"] in fire_families else "")+options[i]["label"],
                 key=f"v10_select_{k}")
             x=options[pick]
+            if not x["hour_gate"]["coupon_ok"]:
+                st.info(f"🔥 {x['label']} geçmişte ritimli, ancak {x['time']} "
+                        f"saatinde yalnız {x['hour_gate']['days']} ayrı geçmiş gün desteği var. "
+                        f"En az {hour_days_required} gün olmadığı için kupon üretilmiyor.")
+                continue
             ticket_nums=make_ticket(x,draws,size=k)
             st.markdown(f"**{'🔥 ' if x['label'] in fire_families else ''}{k}'li kupon: "+", ".join(map(str,ticket_nums))+"**")
-            st.caption(f"{x['day']} {x['time']} · {x['stage']} · {x['kind']} · "+                       f"{x['support']} geçmiş gün destekli · Çekiliş sıra {x['pos']}. "+                       ("Çekiliş numarası yalnız tahminidir." if x['estimated_no'] else "Numara henüz bilinmiyor."))
+            st.caption(f"{x['day']} {x['time']} · {x['stage']} · {x['kind']} · "+
+                       f"{x['support']} ritim destek günü · Hedef saat geçmiş gün desteği: "
+                       f"{x['hour_gate']['days']} · Çekiliş sıra {x['pos']}. "+
+                       ("Çekiliş numarası yalnız tahminidir." if x['estimated_no'] else "Numara henüz bilinmiyor."))
             if st.button(f"🎟️ {k}'li kuponu kaydet",key=f"v10_save_{k}"):
                 ticket={"day":x["day"],"pos":x["pos"],"time":x["time"],
                         "family":x["label"],"numbers":ticket_nums,
@@ -1440,7 +1483,8 @@ with tabs[2]:
                      for r in sira_targets[:150]],
                     hide_index=True, use_container_width=True
                 )
-                candidates=sira_targets[:50]
+                candidates=[{**t, "hour_gate":ticket_gate(t["Aile"],t["Hedef sıra"])}
+                            for t in sira_targets[:50]]
                 picked=st.selectbox(
                     "Kupon hedefi seç", range(len(candidates)),
                     format_func=lambda i:(
@@ -1449,16 +1493,24 @@ with tabs[2]:
                     ),key="v10_sira_ticket_pick"
                 )
                 chosen=candidates[picked]
-                coupon=make_ticket(
-                    {"label":chosen["Aile"],"moment":chosen["moment"]},
-                    draws, size=len(chosen["Aile"].split("-"))
-                )
-                st.write(("🔥 " if chosen["Aile"] in fire_families else "")+"**Deneysel aile kuponu:** " + ", ".join(map(str,coupon)))
-                st.caption(
-                    f'{chosen["Aşama"]} • {chosen["Destek gün"]} geçmiş gün desteği. '
-                    "Bu ritmin sonraki çekilişte süreceğine dair garanti yoktur."
-                )
-                if st.button("🎟️ Sıra kuponunu kaydet", key="v10_sira_save"):
+                coupon_ok=chosen["hour_gate"]["coupon_ok"]
+                if coupon_ok:
+                    coupon=make_ticket(
+                        {"label":chosen["Aile"],"moment":chosen["moment"]},
+                        draws, size=len(chosen["Aile"].split("-"))
+                    )
+                    st.write(("🔥 " if chosen["Aile"] in fire_families else "")+
+                             "**Deneysel aile kuponu:** "+", ".join(map(str,coupon)))
+                    st.caption(
+                        f'{chosen["Aşama"]} • {chosen["Destek gün"]} ritim destek günü • '
+                        f'Hedef saat geçmiş destek: {chosen["hour_gate"]["days"]} gün. '
+                        "Bu ritmin sonraki çekilişte süreceğine dair garanti yoktur."
+                    )
+                else:
+                    st.info(f"🔥 {chosen['Aile']} hedef saat {chosen['Hedef saat']} "
+                            f"için {chosen['hour_gate']['days']}/{hour_days_required} "
+                            "geçmiş gün desteği bulundu. Kupon üretilmedi.")
+                if coupon_ok and st.button("🎟️ Sıra kuponunu kaydet", key="v10_sira_save"):
                     ticket={
                         "day":daystr, "pos":chosen["Hedef sıra"],
                         "time":chosen["Hedef saat"], "family":chosen["Aile"],
