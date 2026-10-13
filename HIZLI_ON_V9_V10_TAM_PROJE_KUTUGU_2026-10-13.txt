@@ -728,3 +728,102 @@ gelecege yonelik anlamli ustunluk VERMEZ.
 
 Dosyalar V9 app.py, veri.txt, mevcut V10 aile
 CSV, v10_canli_kayit.json, eski kuponlar KORUNDU.
+21 — V13 217 CEKILIS HAREKETLI HAVUZ VE KOLTUK MOTORU
+
+
+====================================================================
+21 — V13 217 CEKILIS HAREKETLI HAVUZ VE KOLTUK MOTORU
+====================================================================
+13 Ekim 2026. Kullanici V12'nin ustune HER 1-80
+sayisinin gunun 1–217. cekilis boyunca sicak/ilik/
+soguk ve hareketli aile durumlariyla merkezi kuleyi
+tamamlamayi istedi.
+
+YAPILANLAR:
+- v13_havuz_koltuk.py ayri, saf Python motoru.
+- V10 Streamlit uygulamasina 10. sekme:
+  "🌡️ V13 Hareketli Havuz".
+- v13_selftest.py sentetik test + 36 egitim gunu
+  ve sonraki 37 ayri gunun cekilis testini yapar.
+- .github/workflows/v10-check.yml CI V13'i de
+  derler, sinar, Streamlit UI smoke testi yapar.
+- V13_217_CEKILIS_HAVUZ_KOLTUK_RAPORU.md tam
+  mimari, test ve uyari raporu.
+
+80 SAYI KIMLIKLERI:
+- Gunun basindan toplam gorunus n/217
+- Son 12, son 6, onceki 6 siklik ve artma/azalma
+- Bir sayinin kac cekilistir cikmadigi
+- Sicak/ilik/soguk (+ erken veri) havuzlari
+- Soguk-uyaniyor / soguk-dinleniyor / durgun
+- Ilik-yukseliyor / ilik-soguyor / dengeli
+- Sicak-yukseliyor / sicak-tepe / sicak-soguyor
+- Hedef 20'nin bu havuzlardan kac "KOLTUK"
+  aldigi, hedefi gormeden tahmin edilen kota.
+- Koltuklar fiziksel top sirasi DEGILDIR.
+
+MEKANIZMA:
+- Ilk 36 gun sadece modelin kosullu duruma gore
+  cikis oranlari ve koltuk dagilimini ogrenir.
+- Son 37 gun 217 cekilisin tamaminda zaman
+  ilerledikce 80 sayinin hali anlik guncellenir.
+- Sicak-tepedekileri puanla AZALT / KORU iki
+  deneysel ayri kupon secici yapildi.
+- 20 koltuk motoru, ayni 20'li uzerinden V12
+  aile agi ve rastgele20 ile karsilastirilir.
+- Hareket puanina gore 20 sayi SIRALANIR.
+  Ilk 2..10 sayi "ic ice aile merdiveni";
+  ayri 2+3+4+5+6 aileler 20 sayiyi doldurur.
+- 2..10 ic ice aileler tam k/k sonucuna ve
+  tum 0/k..k/k dagilimina gore test edilir.
+- Sicak, soguk, ilik ve spesifik soguk uyaniyor,
+  sicak tepe, sicak yukseliyor, sicak soguyor
+  gruplarindan ONCEDEN sabit aileler uretip
+  her k=2..10 icin tam k/k ve isabet yazilir.
+- 20 SICAKLIK KOLTUGUNUN TAM TUTMASI ayrica
+  rastgele hipergeometrik beklenenle olculur.
+- Gelecek hedefe dair 6..10'lu kuponu kullanici
+  isterse dugmeye basarak kaydeder; otomatik
+  ucretli oynama yok.
+- CSV: 217 tum hedef, 20 sayilik kupon isabeti,
+  aile merdiveni, sicak/ilik/soguk tam koltuk
+  tahmin testi, 80 sayi hareketi, soguk/sicak
+  aileler ve kupon ornekleri.
+
+VERI:
+01.08–05.09 egitim 36 gun, 7810 cekilis;
+06.09–12.10 test 37 gun, 8029 cekilis.
+V12 ile karsilastirilabilir 7–12 hedef 3774.
+
+SON 37 GUN AYNI HEDEFLERDE 20 ORTALAMA:
+- V13 koltuk: 5.0384/20
+- V13 tepe azalt: 5.0450/20
+- V13 tepe koru: 5.0379/20
+- Koltuk + V12: 5.0125/20
+- Sadece V12 ag-kule: 4.9645/20
+- Rastgele20: 5.0400/20
+- Matematik beklentisi: 5/20.
+Kazandirici ustunluk kanitlanmadi.
+
+YENI KRITIK VERI:
+- AILE TAMAMI SOGUK OLAN ONCEDEN SECILMIS 6LI:
+  7755 hedefte 1 kez TAM 6/6.
+- TUMU SICAK 6LI:
+  7797 hedefte 4 kez TAM 6/6.
+- SICAK-TEPE 6LI:
+  sadece 106 denemede 0.
+- SOGUK-UYANIYOR 6LI:
+  40 denemede 0.
+Tepe 6li 0 sonuc, oradan sayi gelmez anlamina
+gelmez; az orneklemli ve coklu kategori var.
+Sicak soguk olasiliklari adil cekiliste %25'tir.
+
+HATA VE SINIR:
+36/37 test kronolojik olarak ayrilmistir,
+ancak 13 Ekim'de butun tarihsel veriye
+bakilarak tasarlanan motor GERCEK ileri tarihli
+kor test DEGIL. Gelecek gunlerde kod ve aile
+secimini kilitlemek gerekiyor.
+
+KORUNANLAR: app.py (V9), veri.txt, v10_aileler.csv,
+v10_canli_kayit.json ve onceki kuponlar.
