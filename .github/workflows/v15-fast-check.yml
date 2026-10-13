@@ -4,6 +4,7 @@ on:
     paths:
       - 'v15_kupon_motoru.py'
       - 'v15_selftest.py'
+      - 'v15_coverage_test.py'
       - '.github/workflows/v15-fast-check.yml'
   workflow_dispatch:
 jobs:
@@ -18,3 +19,5 @@ jobs:
         run: python -m py_compile v15_kupon_motoru.py v15_selftest.py
       - name: Six real ten-ball coupons with 2–10 family no-lookahead checks
         run: python v15_selftest.py
+      - name: Wide-coverage alternate (exploratory, NOT new blind holdout)
+        run: python v15_coverage_test.py
