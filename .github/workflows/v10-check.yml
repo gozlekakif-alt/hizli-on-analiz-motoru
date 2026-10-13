@@ -5,6 +5,8 @@ on:
       - 'v10_app.py'
       - 'v10_sira.py'
       - 'v10_geliyorum.py'
+      - 'v10_alti_ritim.py'
+      - 'v10_alti_ritim_test.py'
       - 'v10_selftest.py'
       - 'v10_streamlit_test.py'
       - 'v10_real_data_test.py'
@@ -19,11 +21,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check Python syntax
-        run: python -m py_compile v10_app.py v10_sira.py v10_geliyorum.py
+        run: python -m py_compile v10_app.py v10_sira.py v10_geliyorum.py v10_alti_ritim.py v10_alti_ritim_test.py
       - name: Check timing, family models and coupon outcomes
         run: python v10_selftest.py
       - name: Check against actual 72-day data and family list
         run: python v10_real_data_test.py
+      - name: Verify 6-family gap motor and 74-day walk-forward results
+        run: python v10_alti_ritim_test.py
       - name: Install Streamlit runtime
         run: pip install 'streamlit>=1.39,<2' 'requests>=2.31,<3'
       - name: Launch Streamlit and verify UI
