@@ -394,4 +394,51 @@ same_only["nums"]=list(range(1,21))
 e=family_order_events([same_only],order_labels,"2026-10-09")
 assert not family_order_patterns(e,"2026-10-09",12,1)[0]
 
+
+# Geliyorum: 5-10 candidate coverage, strict next-draw target and prior-day hour.
+from v10_geliyorum import upcoming_alerts, replay_warning_day, MIN_PARTIAL
+early_family="01-02-03-04-05"
+early_meta={early_family:{"k":5,"nums":tuple(range(1,6)),
+                           "mask":sum(1 << (x-1) for x in range(1,6))}}
+def early_draw(day,pos,ident,numbers):
+    return env["make_draw"](ident,m(day,pos),numbers)
+training=[
+    early_draw("2026-10-08",20,90000,list(range(1,21))),
+    early_draw("2026-10-10",21,90001,list(range(1,21))),
+]
+early_profile=env["train_profiles"](json.dumps(training),json.dumps([early_family]))
+assert early_profile[early_family]["hour_days"][7]==2
+partial_nums=[1,2,3,4]+list(range(30,46))
+today_early=early_draw("2026-10-12",20,90002,partial_nums)
+rows,stats=upcoming_alerts([today_early],early_meta,early_profile,
+                          "2026-10-12",m("2026-10-12",20),m)
+assert len(rows)==1 and rows[0]["Hedef sıra"]==21 and rows[0]["Hedef saat"]=="07:37",rows
+assert rows[0]["Durum"]=="🔥 Geliyorum" and rows[0]["Kupon uygun"] is True,rows
+assert stats["scanned"]==1 and stats["coupon_ready"]==1,stats
+# One supporting hour-day -> a yellow alert, never a ticket.
+one_hour={"days":["2026-10-08"],
+          "hour_days":{7:1}}
+y,why=upcoming_alerts([today_early],early_meta,{early_family:one_hour},
+                      "2026-10-12",m("2026-10-12",20),m)
+assert len(y)==1 and y[0]["Durum"]=="🟡 Erken uyarı"
+assert not y[0]["Kupon uygun"] and why["coupon_ready"]==0
+# Bad or stale slots must never create a coupon with a past timestamp.
+rows,meta=upcoming_alerts([today_early],early_meta,early_profile,
+                          "2026-10-12",m("2026-10-12",21),m)
+assert not rows and meta["reason"]=="stale"
+# Unknown future result can be inspected for a replay score but not a live target.
+full=early_draw("2026-10-12",21,90003,list(range(1,21)))
+rows,meta=upcoming_alerts([today_early,full],early_meta,early_profile,
+                          "2026-10-12",m("2026-10-12",20),m)
+assert not rows and meta["reason"]=="stale"
+replayed=replay_warning_day([today_early,full],early_meta,early_profile,
+                            "2026-10-12",m)
+assert len(replayed)==1 and replayed[0]["Tam"] and replayed[0]["İsabet"]=="5/5",replayed
+# Partial 3/5 cannot be a Geliyorum alarm.
+weak=early_draw("2026-10-12",20,90004,[1,2,3]+list(range(30,47)))
+rows,meta=upcoming_alerts([weak],early_meta,early_profile,
+                          "2026-10-12",m("2026-10-12",20),m)
+assert not rows and meta["partial"]==0
+assert set(MIN_PARTIAL)==set(range(5,11))
+
 print("PASS: V10 rhythms, repeat stages, families, and paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
