@@ -287,8 +287,11 @@ def retrospective_test(draws,train_days=36):
             prior=complete_preceding_12(bypos,target["pos"])
             if prior is None:
                 continue
-            # STRICT: only prior, not full day, may enter the coupon predictor.
-            tickets=build_six(prior,target["pos"],target["no"],models)
+            # STRICT: pass ALL earlier same-day draws for 217-slot V13 heat
+            # identity; the most recent twelve still form V12's family window.
+            # The target and later outcomes are explicitly excluded.
+            earlier=[r for r in today if r["pos"]<target["pos"]]
+            tickets=build_six(earlier,target["pos"],target["no"],models)
             control=[{"method":RANDOM,"numbers":coupon}
                      for coupon in control_tickets(day,target["pos"])]
             model_hits=[]
