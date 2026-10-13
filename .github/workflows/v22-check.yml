@@ -1,0 +1,32 @@
+name: V22 Aile Ucuncu Gelis Testi
+on:
+  push:
+    paths:
+      - 'v22_ucuncu_aile_zaman.py'
+      - 'v22_selftest.py'
+      - 'v22_family_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v22-check.yml'
+  workflow_dispatch:
+jobs:
+  v22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V22 and integrated UI
+        run: python -m py_compile v22_ucuncu_aile_zaman.py v22_selftest.py v22_family_app.py v10_app.py
+      - name: Ensure frozen predictions and valid hourly chronology
+        run: python v22_selftest.py
+      - name: Deep 72 full-day core and companion third-arrival test
+        run: python -u v22_ucuncu_aile_zaman.py --output V22_AILE_3UNCU_ZAMAN_ESLIKCI_72_GUN.zip
+      - name: Upload full 72-day reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: V22-72-Gun-Ucuncu-Aile-Zaman-Esilikci
+          path: V22_AILE_3UNCU_ZAMAN_ESLIKCI_72_GUN.zip
+          retention-days: 30
+          if-no-files-found: error
