@@ -363,3 +363,41 @@ Bunların tamamı geçmişte konuşulan hipotezlerdir, HEPSİ aynı V10 canlı d
 - Son kullanıcı isteği: Bütün çalışmayı yeni bir kütükle, eksiksiz, güvenli ve tekrar kullanılabilir biçimde devretmek.
 
 SON.
+
+
+====================================================================
+13 — V10 YENI EK: AILELER ARASI SIRA / NOBET DEGISIMI (13.10.2026)
+====================================================================
+Kullanicinin talebi uzerine V10'a "🔁 Aile Sırası" besinci sekme eklendi.
+GitHub main:
+- v10_sira.py: Bagimsiz, yalniz okuyan A→B ve A→B→C desen motoru.
+- v10_app.py: Yeni sekme, aile-zincir tabloları, tarih/gun/cekilis no
+  kanitlari, CSV disari aktarma, gelecekteki uygun cekilisler icin
+  deneysel aile kuponu ve kaydetme.
+- v10_selftest.py: Gercek tarih siralamasi, dis gun destegi, sızma
+  engelleme, gelecekteki hedef, sonuclanmis slotu atlama testleri.
+- .github/workflows/v10-check.yml: Yeni modulun CI kontrolu.
+
+KURAL:
+1) A ve B ayni cekiliste birlikte ciktiysa A→B sırası sayilmaz.
+2) A→B (ve A→B→C) icin aralarindaki Cekilis-sirasi farkı tam
+   olmalıdır. Varsayılan aralık en fazla 12, secilebilir 1–36.
+3) Ritmin tekrar destegi farkli tarih sayisidir: 1/2/3 gun;
+   V10 ana hedefte varsayilan 2 gun temkinli kalir.
+4) Egitim, yalnizca SECILEN GUNDEN ONCEKI gunlerdedir. Secili gune
+   ait gorunusler hedefi tetiklemek icin kullanilir, gecmis destegine
+   eklenmez. Tarih sonrasi bilgilere bakarak tahmin URETILMEZ.
+5) Canli hedef, gecmis saatli veya sonucu girilmis slot icin cikmaz.
+   Gecmis gun secilirse yalnizca gozlenen dizilim raporlanir.
+6) Ailelerin kendi tekrar ritmi, ritimli sayi aileleri ve V9 arastirma
+   uygulamasi degistirilmedi. Ana veri.txt degistirilmedi.
+7) Kutu isaretlenene kadar agir sira analizi baslamaz; Streamlit'in
+   telefonda yavaslamamasi icin sonuc cache'lenir.
+8) Bu analiz hem arastirma hem kupon motorudur ama gercek tahmin
+   basarisi ispatlanmis DEGILDIR. Aday havuzundaki secim yanliligi,
+   tesadufi coklu karsilastirma ve ileri tarihli kor test gereksinimi
+   devam etmektedir.
+
+Ilk yeni GitHub Actions kontrolleri: V10 uygulama ve yeni sira testleri
+basarili (38377368321, 38377467674). Yeni CI tetikleyicisi v10_sira.py'yi
+de kapsar.
