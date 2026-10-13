@@ -657,3 +657,74 @@ Ana veri.txt, V9 app.py, mevcut v10 aile CSV,
 v10_canli_kayit.json ve kayitli kuponlara dokunulmadi.
 GitHub V11 Python testleri ve Streamlit UI smoke testi
 CI #38419076441: BASARILI.
+
+20 — V12 80 SAYI KULESI VE 2–10 AILELERIN GECMIS SIRASI
+
+====================================================================
+20 — V12 80 SAYI KULESI VE 2–10 AILELERIN GECMIS SIRASI
+====================================================================
+13.10.2026; kullanici aileleri 2-3-4-5-6-7-8-9-10
+boyutlarina genisletmeyi ve her cekilisteki 20 sayinin
+"hangi ailelerin sirayla birlesmesiyle" olustugunu,
+sadece aileden degil 80 sayinin tamamindan baslayan
+mimariyle olcmeyi istedi.
+
+KRITIK ANLAM: Mevcut TXT'lerin 20 sayisi KUME olarak
+verilmektedir. Kucukten buyuge yazilan sayilar gercek
+makineden cikis SIRASI DEGIL. V12 yalnız gercek gecmis
+cekilislerdeki aile gorunme sirasi ve gelecek cekilis icin
+onceden kurulan aile-tahmin kulesi sirasi tanimlar.
+
+DOSYALAR:
+- v12_80_kule.py: stdlib aile ve 80 sayi kulesi.
+- v12_selftest.py: yapay + gercek 73 gun testi.
+- v10_app.py: 9. sekme "🗼 80 Sayı Kulesi".
+- V12_80_SAYI_KULE_73_GUN_RAPOR.md: tam aciklama.
+- .github/workflows/v10-check.yml yeni motoru da test eder.
+
+MIMARI:
+- Her gercek 20 sayi icinde teorik C(20,k) kadar
+  k=2..10 farkli tam aile vardir.
+- Gercek 20 ile oncesindeki 12 cekiliste tam gorulmus
+  alt aileler, gecmis/gercek 20 kesismelerinden TAM
+  ve hesapli bicimde bulunur.
+- Her aile icin ilk/son gecmis gorunus adimi, tekrar
+  sayisi ve bugunku 20'yi ayrik ailelerle ne kadar
+  KAPSADIGI kaydedilir; kapsanmayan sayilar ayri.
+- Bugunku 20'nin 2+3+4+5+6 parcalara ayrilmasi
+  her zaman matematiksel olarak mumkundur. Bu
+  RETROSPEKTIF tur sinyal diye kullanilmaz.
+- Onceki 12 cekilis sirayla taranir; gercek 20'ye
+  ait sayi ve 2–10 ailelerin hangi onceki adimda
+  ilk aktif oldugu, birikim ve rastgele beklentisi
+  ayri tablolara yazilir.
+- Ayri olarak ONCEDEN 80 sayi agindan 20 sayi
+  secilir: 2li → 3lu → ... → 10lu aile merdiveni;
+  sonra geri kalan sayilarla 20 tamamlanir.
+- Siklik, ivme, son20 tasima, ag-kule ve rastgele20
+  ayni hedef cekilislerde olculur.
+- Yalniz 7-12 hedef slotlari; bugunun ilk 6'si ve
+  onceki 12 gercek kayit; eksik 12'lik pencere atlanir.
+- Gelecek canli slot varsa 80 dugum, aile merdiveni,
+  2+3+4+5+6 onceden kurulmus ayrik katlar gosterilir.
+- Aile 2–10 gecmis istatistigi, ilk aktif olma
+  sirasi, 12 cekilislik sayi yolculugu, 20li isabet
+  defteri ve 7–12 ayri hedefler CSV indirilebilir.
+
+VERI: 01.08–12.10, 73 gun, 15.839 cekilis,
+7.434 ileri hedef; son 37 gun 3774 hedef.
+Son 37 gun 20li kupon ortalama isabet:
+- Ag-kule 4.9645/20
+- Siklik 4.9748/20
+- Ivme 5.027/20
+- Son20 tasima 4.9846/20
+- Rastgele 5.0056/20
+Tam 20/20 HICBIRINDE yok. Rastgele beklenti
+20 sayi kuponda 5/20.
+Ortak aile sayilari k2..10 icin matematiksal
+bagimsiz cekilis beklenenine cok yakin.
+Bu sonuclar "sira var" betimlemesini dogrular,
+gelecege yonelik anlamli ustunluk VERMEZ.
+
+Dosyalar V9 app.py, veri.txt, mevcut V10 aile
+CSV, v10_canli_kayit.json, eski kuponlar KORUNDU.
