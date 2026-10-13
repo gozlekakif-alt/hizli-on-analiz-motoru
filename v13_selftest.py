@@ -100,6 +100,9 @@ assert meta["test_targets"]==37*217,meta
 assert len(r["ledger"])==meta["test_targets"]
 assert len({(x["Tarih"],x["Hedef"]) for x in r["ledger"]})==meta["test_targets"]
 assert len(r["seats"])>=9
+assert len(r["seat_exact"])==3
+assert sum(x["Hedef"] for x in r["seat_exact"])==meta["test_targets"]
+assert all(0<=x["20 koltuk dağılımı tam tuttu"]<=x["Hedef"] for x in r["seat_exact"])
 assert len(r["states"])>=20
 assert len(r["family"])>=3*9
 assert r["methods"]
