@@ -21,6 +21,7 @@ from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summa
 from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
+from v16_rng_salinim import analyze as v16_analyze
 from v15_kupon_motoru import (fit_models as v15_fit,
                                build_six as v15_six,
                                retrospective_test as v15_backtest,
@@ -969,7 +970,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -3085,3 +3086,120 @@ with tabs[11]:
                 "7–12. hedef çekilişi ve kesintisiz önceki 12 çekiliş "
                 "mevcutsa üretilir. Sonuç gelmiş çekiliş için "
                 "sonradan kupon yazılmaz.")
+
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def v16_cached_rnd_study(data_json,train_days=36):
+    return v16_analyze(json.loads(data_json),train_days=train_days)
+
+
+with tabs[12]:
+    st.subheader("🎲 V16 — RNG Salınımı ve 217 çekilişin gerçek sınaması")
+    st.caption(
+        "Bir 20'likten sonraki 20'liye kaç sayı taşınıyor? "
+        "2, 5, 12 ve diğer bütün salınımların gerçek sıklığı, "
+        "teorik 20/80 dağılımıyla ve sonraki 37 günün sonuçlarıyla "
+        "karşılaştırılır."
+    )
+    st.warning(
+        "Sayı kümesinin salınımı tek başına gizli RNG algoritmasını veya "
+        "tohumunu ortaya çıkarmaz. Bu sekme yalnız adil, bağımsız çekiliş "
+        "modelinden sapma ve önceden tahmin gücü olup olmadığını ölçer."
+    )
+    st.markdown("#### ⚖️ Değişmez matematiksel kontrol")
+    st.write(
+        "**Bağımsız çekiliş beklentisi:** 5 tekrar; "
+        "standart sapma yaklaşık 1,688. "
+        "12 veya daha fazla sayının tekrarının yaklaşık "
+        "10.000 geçişte bir görülmesi beklenir."
+    )
+    if st.button("🔬 V16 — 73 gün RNG salınım testini çalıştır",
+                 type="primary",key="v16_go"):
+        with st.spinner("73 gün × 217 sıra: tekrar sayıları, saat, "
+                        "uç salınımlar ve eğitim/test karşılaştırması..."):
+            result=v16_cached_rnd_study(
+                json.dumps(draws,separators=(",",":")),36
+            )
+        st.session_state["v16_audit"]={
+            "max_no":max((d["no"] for d in draws),default=0),
+            "result":result
+        }
+    saved=st.session_state.get("v16_audit")
+    if saved:
+        if saved["max_no"]!=max((d["no"] for d in draws),default=0):
+            st.info("Yeni çekilişler geldi. V16'yı güncel dosya için yeniden çalıştır.")
+        result=saved["result"]
+        meta=result["meta"]
+        x,y,z=st.columns(3)
+        x.metric("Gerçek 5 dakika geçişi",meta["n_transitions"])
+        y.metric("Ortalama aynı sayı",meta["mean_overlap"])
+        z.metric("12+ tekrar",f'{meta["observed_12plus"]} / ~{meta["expected_12plus"]}')
+        st.caption(
+            "01:02–07:02 arasındaki altı saatlik ara, beş dakika geçişi "
+            "sayılmaz. Eksik kayıtlar atlanır. Günün son eksik "
+            "günü tam günlük analizden çıkarılır."
+        )
+        st.markdown("##### 📊 Bütün tekrar sayılarının gerçek / teorik dağılımı")
+        st.dataframe(result["distribution"],hide_index=True,
+                     use_container_width=True)
+        st.markdown("##### 🧪 Dağılımın RNG modeline uygunluk testi")
+        st.metric(
+            "Ki-kare p değeri",
+            f'{meta["chi_square_p"]:.4f}'
+        )
+        st.caption(
+            f'10 önceden belirlenmiş dilim; {meta["degrees_freedom"]} '
+            "serbestlik derecesi. P değerinin büyük olması "
+            "RNG'nin algoritmasının bulunduğu anlamına gelmez."
+        )
+        st.dataframe(result["pooled_distribution"],hide_index=True,
+                     use_container_width=True)
+        st.markdown("##### 🔮 Sonraki çekilişin tekrar miktarı tahmin edilebiliyor mu?")
+        st.caption(
+            "İlk 36 günün önceki tekrarına bakarak öğrenilen model, "
+            "sonraki 37 gündeki 7.881 üçlü çekiliş dizisinde "
+            "kör biçimde sabit teorik RNG beklentisiyle karşılaştırılır. "
+            "Log-kayıp ve hata KÜÇÜK olan daha iyidir."
+        )
+        st.dataframe(result["forecast"],hide_index=True,
+                     use_container_width=True)
+        st.markdown("##### ↔️ Büyük/küçük salınımdan sonra ne oldu?")
+        st.dataframe(result["conditional"],hide_index=True,
+                     use_container_width=True)
+        st.markdown("##### 🕒 Hangi saat ve yarı farklı?")
+        st.dataframe(result["hour"],hide_index=True,
+                     use_container_width=True)
+        st.dataframe(result["halves"],hide_index=True,
+                     use_container_width=True)
+        st.caption(
+            "18 farklı saat grubunun p-değerleri birlikte kontrol edilir. "
+            "Bir saatin küçük fark göstermesi bağımsız çekilişte "
+            "gelecek sayıların öngörülebilir olduğunu ispatlamaz."
+        )
+        st.markdown("##### 📥 V16 araştırma verilerini indir")
+        for label,key,filename in (
+            ("0–20 tekrar dağılımı","distribution","V16_0_20_SALINIM.csv"),
+            ("Gruplanmış teorik/gerçek","pooled_distribution",
+             "V16_TEORIK_KIYAS.csv"),
+            ("Yüksek/düşük tekrarın sonrasındaki dağılım",
+             "conditional","V16_SALINIM_SONRASI.csv"),
+            ("36/37 gün öngörü hata kontrolü",
+             "forecast","V16_GERCEK_KOR_TEST.csv"),
+            ("18 ayrı saat karşılaştırması",
+             "hour","V16_SAAT_SALINIM.csv"),
+            ("Saat ilk/son altı hareketi",
+             "halves","V16_ILK6_SON6.csv")
+        ):
+            st.download_button(
+                "⬇️ "+label,
+                v15_csv(result[key]),file_name=filename,
+                mime="text/csv",key="v16_dl_"+key
+            )
+        st.info(
+            "Örüntünün görünmesi, gelecekte tam 6/6 veya 10/10 "
+            "kupon avantajı göstermez. Motor yalnız bağımsız sonuçlarla "
+            "doğrulanmış sapmaları dikkate almalıdır."
+        )
+    else:
+        st.info("Sonuçlar için 🔬 analiz düğmesine bas. V9–V15 "
+                "motorları ve kalıcı kayıtlar değiştirilmez.")
