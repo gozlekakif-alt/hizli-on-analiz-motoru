@@ -1,0 +1,31 @@
+name: V25 Aile DNA 72 Gun Kor Test
+on:
+  push:
+    paths:
+      - 'v25_aile_dna_kupon.py'
+      - 'v25_family_app.py'
+      - 'v25_selftest.py'
+      - '.github/workflows/v25-check.yml'
+  workflow_dispatch:
+jobs:
+  v25:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax / Streamlit integration
+        run: python -m py_compile v25_aile_dna_kupon.py v25_selftest.py v25_family_app.py v10_app.py
+      - name: 6+6 freeze no-leak and stage audit
+        run: python -u v25_selftest.py
+      - name: Run all 72 days of first/second/third family DNA + 10-ball true coupon study
+        run: python -u v25_aile_dna_kupon.py --output V25_AILE_DNA_72_GUN_KOR_TEST.zip
+      - name: Deliver complete ZIP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: V25-AileDNA-72Gun-TumKorelasyonVeKupon
+          path: V25_AILE_DNA_72_GUN_KOR_TEST.zip
+          retention-days: 30
+          if-no-files-found: error
