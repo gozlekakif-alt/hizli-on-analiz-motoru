@@ -17,6 +17,7 @@ import streamlit as st
 from v10_sira import (family_order_events, family_order_patterns,
                       family_order_matches, family_order_targets)
 from v10_geliyorum import upcoming_alerts, replay_warning_day, MIN_PARTIAL
+from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summary
 
 REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
 RAW = "https://raw.githubusercontent.com/" + REPO + "/main/"
@@ -945,7 +946,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -1742,3 +1743,185 @@ with tabs[5]:
             )
         else:
             st.caption("Bu gün hiçbir kupon adayı filtreyi geçmedi.")
+
+
+@st.cache_data(ttl=300,show_spinner=False)
+def cached_six_gap_replay(draws_json, families_json, threshold):
+    """Heavy replay only on explicit request; cached by complete inputs."""
+    loaded_draws=json.loads(draws_json)
+    labels=json.loads(families_json)
+    loaded_families={
+        label:{"k":6,"nums":tuple(int(n) for n in label.split("-")),
+               "mask":sum(1 << (int(n)-1) for n in label.split("-"))}
+        for label in labels
+    }
+    return walkforward_six_gap(loaded_draws,loaded_families,moment,
+                               minimum_days=threshold)
+
+
+with tabs[6]:
+    st.subheader("🔥 6'lı aile — aynı çekiliş aralığı farklı günlerde")
+    st.caption("Tam senin tarif ettiğin motor: aynı 6 sayı bir günde iki ayrı "
+               "çekilişte aralarında +G çekiliş farkıyla tam çıktıysa; geçmişte "
+               "aynı ailede aynı +G aralığı başka günde de görülmüşse "
+               "ikinci görünüşten +G sonrası ÜÇÜNCÜ hedef çekiliş olur. "
+               "Eşit takvim günü aralığı değil, çekiliş sayısı farkı aranır.")
+    st.caption("Mevcut V10 aile listesindeki 198 adet 6'lı aile izlenir. "
+               "Tüm olası 6'lı sayı kombinasyonlarını kapsamaz; "
+               "bu aileler de eski verilere bakılarak seçilmiş olabilir.")
+    six_support=st.selectbox(
+        "Daha önce aynı çekiliş aralığı kaç farklı günde görülmüş olsun?",
+        options=[1,2,3],index=0,
+        format_func=lambda n:("1 gün — bugünkü tekrar ile toplam en az 2 gün "
+                              "(deneysel)" if n==1 else
+                              f"{n} geçmiş gün — daha seçici"),
+        key="v10_alti_gap_support"
+    )
+    st.caption("🔥 Gerçek kupon oluşturma eşiği: aralığın bugünden ÖNCE en az "
+               "2 farklı gün desteği ve hedef saatinde en az 2 farklı "
+               "geçmiş gün tam görünüşü. Diğerleri 🟡 izleme sinyalidir.")
+    six_profiles={label:p for label,p in profiles.items()
+                  if label in families and families[label]["k"]==6}
+    cross_gap=[
+        {"Aile":label,"Aralık":gap,"Destek geçmiş gün":count}
+        for label,p in six_profiles.items()
+        for gap,count in p.get("pair",{}).items()
+        if count>=six_support
+    ]
+    cross_gap.sort(key=lambda r:(-r["Destek geçmiş gün"],r["Aralık"],r["Aile"]))
+    st.markdown("#### 🔁 Geçmişte aynı +G aralığını başka günlerde yapanlar")
+    ca,cb,cc=st.columns(3)
+    ca.metric("6'lı aile havuzu",sum(f["k"]==6 for f in families.values()))
+    cb.metric("Geçmişteki aile-aralık",len(cross_gap))
+    cc.metric("Ayrı aile",len({r["Aile"] for r in cross_gap}))
+    if cross_gap:
+        with st.expander("📚 Aileler, aralıklar ve geçmiş destek günleri",
+                         expanded=False):
+            st.dataframe(cross_gap[:200],hide_index=True,use_container_width=True)
+            st.download_button("⬇️ 6'lı aile geçmiş aralıkları CSV",
+                family_order_csv(cross_gap),
+                file_name=f"V10_6LI_GECMIS_ARALIK_{daystr}.csv",
+                mime="text/csv",key="v10_six_history_export")
+    else:
+        st.caption("Bu eşikte farklı gün desteğine sahip aile-aralık bulunamadı.")
+
+    st.markdown("#### 🎯 Aynı aile 2 kez çıktı → 3. çekiliş hedefi")
+    if analysis_date!=today:
+        st.info("Geçmiş gün seçili. Geçmişte kalmış saate canlı kupon "
+                "verilmiyor; aşağıdaki adım adım test kullanılabilir.")
+        six_live=[]
+    else:
+        six_live=gap_targets_today(
+            hits,families,profiles,daystr,now_tr(),moment,known_pos,
+            minimum_days=six_support,minimum_hour_days=2
+        )
+    sa,sb=st.columns(2)
+    sa.metric("Gelecek hedef sinyali",len(six_live))
+    sb.metric("🔥 Kupon koşulu geçen",sum(r["Kupon uygun"] for r in six_live))
+    if six_live:
+        st.dataframe(
+            [{k:v for k,v in r.items() if k!="moment"}
+             for r in six_live[:150]],
+            hide_index=True,use_container_width=True
+        )
+        st.download_button("⬇️ Canlı 6'lı ritim hedefleri CSV",
+            family_order_csv([{k:v for k,v in r.items() if k!="moment"}
+                              for r in six_live]),
+            file_name=f"V10_6LI_CANLI_HEDEF_{daystr}.csv",
+            mime="text/csv",key="v10_six_live_csv"
+        )
+        six_ready=[r for r in six_live if r["Kupon uygun"]]
+        if six_ready:
+            chosen_index=st.selectbox(
+                "🔥 Altılı kupon için hedef seç",range(len(six_ready)),
+                format_func=lambda i:(
+                    f'{six_ready[i]["Hedef saat"]} • '
+                    f'+{six_ready[i]["Aralık"]} • '
+                    f'{six_ready[i]["Aile"]}'
+                ),key="v10_six_coupon_select"
+            )
+            chosen=six_ready[chosen_index]
+            coupon=list(families[chosen["Aile"]]["nums"])
+            st.markdown("**🔥 6'lı hedef kuponu: "+
+                        ", ".join(map(str,coupon))+"**")
+            st.caption(f'Hedef #{chosen["Tahmini no"]} • '
+                       f'{chosen["Hedef tarih"]} {chosen["Hedef saat"]} • '
+                       f'Ritim geçmiş destek: {chosen["Geçmiş ritim gün"]} gün • '
+                       f'Saat desteği: {chosen["Hedef saat destek"]} gün. '
+                       "Çekiliş numarası, sıra devam ederse geçerli tahmindir.")
+            if st.button("🎟️ 6'lı ritim kuponunu kaydet",
+                         key="v10_six_save"):
+                if datetime.fromisoformat(chosen["moment"])<=now_tr():
+                    st.error("Hedef çekilişin saati geçti. Yeni sonuç ekle.")
+                else:
+                    ticket={
+                        "day":chosen["Hedef tarih"],"pos":chosen["Hedef sıra"],
+                        "time":chosen["Hedef saat"],"family":chosen["Aile"],
+                        "numbers":coupon,"size":6,
+                        "kind":f'🔥 6’lı tekrarlanan +{chosen["Aralık"]} ritim',
+                        "trigger_no":chosen["Tetik no"],
+                        "created_at":now_tr().isoformat(timespec="seconds")
+                    }
+                    key=(ticket["day"],ticket["pos"],ticket["family"])
+                    existing={(x["day"],x["pos"],x["family"])
+                              for x in st.session_state.v10_tickets}
+                    if key in existing:
+                        st.warning("Bu çekiliş ve aile için kupon zaten kayıtlı.")
+                    else:
+                        st.session_state.v10_tickets.append(ticket)
+                        st.success("Hedefli 6'lı kupon kaydedildi. "+auto_save())
+        else:
+            st.info("Şu anki hedefler 🟡 izleme amaçlı. Henüz "
+                    "🔥 kupon koşulu geçen hedef yok.")
+    else:
+        st.info("Bu anda iki tam görünüşü ve eski gün aralık desteği "
+                "eşleşen, gelecekteki çekilişi hedefleyen 6'lı aile yok.")
+
+    st.markdown("#### 🧪 Gerçek test — tarih tarih, çekiliş çekiliş")
+    st.caption("Her günün hedefleri o günden ÖNCEKİ ritim kayıtlarıyla "
+               "hesaplanır. O günün sonuçları yalnız sonradan isabet "
+               "kontrolünde kullanılır. Bugünlük yeni veriler girildikçe "
+               "testi yeniden çalıştırabilirsin.")
+    if st.button("🧪 6'lı aile motorunu tüm günlerde test et",
+                 key="v10_six_start_replay"):
+        with st.spinner("Geçmiş günler ileri doğru sırayla test ediliyor..."):
+            replay=cached_six_gap_replay(
+                json.dumps(draws,separators=(",",":")),
+                json.dumps(sorted(label for label,f in families.items()
+                                  if f["k"]==6),separators=(",",":")),
+                six_support
+            )
+        st.session_state["v10_six_replay"]={
+            "day":daystr,"threshold":six_support,
+            "last_no":max((r["no"] for r in draws),default=-1),
+            "rows":replay
+        }
+    saved=st.session_state.get("v10_six_replay",{})
+    if (saved.get("day")==daystr and
+        saved.get("threshold")==six_support and
+        saved.get("last_no")==max((r["no"] for r in draws),default=-1)):
+        replay=saved["rows"]
+        report=six_gap_summary(replay)
+        a,b,c,d=st.columns(4)
+        a.metric("Hedef",report["Tahmin"])
+        b.metric("Sonuçlanan",report["Sonuçlanan"])
+        c.metric("6/6",report["6/6"])
+        d.metric("Yanlış alarm",report["Tam olmayan"])
+        st.caption(f"Kuponun bütün güvenlik koşullarını geçen: "
+                   f'{report["Kupon koşulu geçen"]}. Bu sayı deneysel '
+                   "izleme sinyallerinden ayrı tutulur.")
+        dist=[{"İsabet":hit,"Hedef":number}
+              for hit,number in report["Dağılım"].items()]
+        st.dataframe(dist,hide_index=True,use_container_width=True)
+        if replay:
+            st.dataframe(replay[:150],hide_index=True,use_container_width=True)
+            st.download_button("⬇️ 6'lı aile tüm gerçek test CSV",
+                family_order_csv(replay),
+                file_name=f"V10_6LI_GAP_WALKFORWARD_{six_support}GUN.csv",
+                mime="text/csv",key="v10_six_test_csv")
+        else:
+            st.info("Bu destek ayarında geçmişte hedef doğmamış. "
+                    "0 isabet, başarısız tahmin anlamına gelmez.")
+        st.warning("Dikkat: Aileler geçmiş sonuçlara göre seçilmiş "
+                   "olabileceğinden bu test kör bağımsız örneklem değildir. "
+                   "Tekrarlar kazanmayı garanti etmez.")
