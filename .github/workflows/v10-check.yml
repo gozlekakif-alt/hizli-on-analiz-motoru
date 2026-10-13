@@ -13,6 +13,8 @@ on:
       - 'v12_selftest.py'
       - 'v13_havuz_koltuk.py'
       - 'v13_selftest.py'
+      - 'v14_gecis_agi.py'
+      - 'v14_selftest.py'
       - 'v10_selftest.py'
       - 'v10_streamlit_test.py'
       - 'v10_real_data_test.py'
@@ -27,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check Python syntax
-        run: python -m py_compile v10_app.py v10_sira.py v10_geliyorum.py v10_alti_ritim.py v10_alti_ritim_test.py v11_arastirma.py v11_selftest.py v12_80_kule.py v12_selftest.py v13_havuz_koltuk.py v13_selftest.py
+        run: python -m py_compile v10_app.py v10_sira.py v10_geliyorum.py v10_alti_ritim.py v10_alti_ritim_test.py v11_arastirma.py v11_selftest.py v12_80_kule.py v12_selftest.py v13_havuz_koltuk.py v13_selftest.py v14_gecis_agi.py v14_selftest.py
       - name: Check timing, family models and coupon outcomes
         run: python v10_selftest.py
       - name: Check against actual 72-day data and family list
@@ -40,6 +42,8 @@ jobs:
         run: python v12_selftest.py
       - name: Verify 217-slot thermal seat and V12 family model against 37 held-out days
         run: python v13_selftest.py
+      - name: Test 217-position 80x80 transition tower and 37 held-out days
+        run: python v14_selftest.py
       - name: Install Streamlit runtime
         run: pip install 'streamlit>=1.39,<2' 'requests>=2.31,<3'
       - name: Launch Streamlit and verify UI
