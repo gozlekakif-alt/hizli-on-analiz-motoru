@@ -22,6 +22,7 @@ from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
 from v18_cift_havuz_app import render_v18
+from v21_family_app import render_v21
 from v17_karakter_app import render_v17
 from v16_rng_salinim import analyze as v16_analyze
 from v15_kupon_motoru import (fit_models as v15_fit,
@@ -972,7 +973,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -3213,3 +3214,7 @@ with tabs[13]:
 
 with tabs[14]:
     render_v18(day_draws,daystr,analysis_date==today,now_tr)
+
+
+with tabs[15]:
+    render_v21(draws,family_text)
