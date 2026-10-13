@@ -1,0 +1,32 @@
+name: V21 Aile Yasam Dongusu 2-10
+on:
+  push:
+    paths:
+      - 'v21_aile_yasam_dongusu.py'
+      - 'v21_family_app.py'
+      - 'v21_selftest.py'
+      - 'v10_app.py'
+      - '.github/workflows/v21-family-check.yml'
+  workflow_dispatch:
+jobs:
+  v21:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax
+        run: python -m py_compile v21_aile_yasam_dongusu.py v21_family_app.py v21_selftest.py v10_app.py
+      - name: Exact family and no-leak tests
+        run: python v21_selftest.py
+      - name: Scan all complete days, family sizes 2 through 10
+        run: python -u v21_aile_yasam_dongusu.py --output V21_AILELER_72_TAM_GUN.zip
+      - name: Publish all family CSV files as downloadable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V21-Aileler-2-10-Tum-Gunler
+          path: V21_AILELER_72_TAM_GUN.zip
+          retention-days: 30
+          if-no-files-found: error
