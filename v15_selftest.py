@@ -34,7 +34,13 @@ known=[d for d in day if d["pos"]<20]
 target=next(d for d in day if d["pos"]==20)
 assert len(known)==19
 six=build_six(known,20,target["no"],fit)
+wide=build_six(known,20,target["no"],fit,coverage=True)
 rand=control_tickets(trial_day,20)
+assert len(wide)==6
+assert len({n for t in wide for n in t["numbers"]})>=45
+assert len({tuple(sorted(t["numbers"])) for t in wide})==6
+assert wide==build_six(known,20,target["no"],fit,coverage=True)
+assert all(tuple(t["numbers"][:6])==t["family6"] for t in wide)
 assert len(six)==len(rand)==6
 assert len({tuple(sorted(x["numbers"])) for x in six})==6
 assert len({tuple(sorted(x)) for x in rand})==6
