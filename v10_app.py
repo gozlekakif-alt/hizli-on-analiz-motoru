@@ -2468,6 +2468,56 @@ with tabs[9]:
             for name,nums in v13_live["coupons"].items()
         ]
         st.dataframe(rows,hide_index=True,use_container_width=True)
+        st.markdown("##### 🎟️ V13 önceden sıralanmış aile kuponu")
+        select_kind=st.selectbox(
+            "20 sayıyı hangi yöntemle sıralayalım?",
+            options=list(v13_live["coupons"]),
+            key="v13_coupon_method"
+        )
+        select_size=st.selectbox(
+            "İşleme alınacak aile boyutu",
+            options=[6,7,8,9,10],index=0,
+            format_func=lambda k:f"{k}'lı",
+            key="v13_coupon_size"
+        )
+        # The first k are the predicted rank-order, never numeric order.
+        v13_ticket_numbers=tuple(
+            v13_live["coupons"][select_kind][:select_size]
+        )
+        v13_family_label="-".join(
+            f"{n:02d}" for n in sorted(v13_ticket_numbers)
+        )
+        st.write("**Seçilen aile:** "+
+                 " – ".join(f"{n:02d}" for n in v13_ticket_numbers))
+        st.caption(
+            f"Hedef çekiliş: {due:%H:%M}; {select_kind} metodunun "
+            "çekilişten önceki sıralamasında ilk "
+            f"{select_size} sayı kullanıldı. Bu seçimin "
+            "kazandıracağı gösterilmiş değildir."
+        )
+        if st.button("🎟️ V13 deneysel aile kuponunu kaydet",
+                     key="v13_save_family"):
+            if due<=now_tr():
+                st.warning("Hedef saati geçti; artık kupon kaydedilemez.")
+            else:
+                ticket={
+                    "day":daystr,"pos":v13_live["pos"],
+                    "time":due.strftime("%H:%M"),
+                    "family":v13_family_label,
+                    "numbers":list(sorted(v13_ticket_numbers)),
+                    "size":select_size,
+                    "kind":"🗼 V13 "+select_kind,
+                    "trigger_no":max(v13_day_known,
+                                     key=lambda r:r["pos"])["no"],
+                    "created_at":now_tr().isoformat(timespec="seconds")
+                }
+                keys={(x["day"],x["pos"],x["family"])
+                      for x in st.session_state.v10_tickets}
+                if (ticket["day"],ticket["pos"],ticket["family"]) in keys:
+                    st.info("Bu hedef ve aile daha önce kaydedilmiş.")
+                else:
+                    st.session_state.v10_tickets.append(ticket)
+                    st.success("Deneysel V13 kuponu kaydedildi. "+auto_save())
         st.markdown("##### 🧱 V12 ile birleşen 2–10 aile merdiveni")
         st.dataframe(v13_live["stairs"],hide_index=True,use_container_width=True)
         st.markdown("##### 20 sayıyı dolduran ayrık aileler (2+3+4+5+6)")
@@ -2534,6 +2584,12 @@ with tabs[9]:
                    "hesaplanan kesin çok değişkenli hipergeometrik olasılıktır.")
         st.markdown("##### 📈 Tepeye çıkan ve soğuktan uyanan sayılar")
         st.dataframe(report["states"],hide_index=True,use_container_width=True)
+        st.markdown("##### 🎯 2–10 aile kulesinin gerçek isabeti")
+        st.dataframe(report["nested"],hide_index=True,
+                     use_container_width=True)
+        st.caption("Ailenin sayıları kupondaki öncelik sırasından, "
+                   "hedef sonucundan ÖNCE sabitlenir. Tam isabet ve "
+                   "0/k..k/k dağılımı ayrı gösterilir.")
         st.markdown("##### 👨‍👩‍👧‍👦 Tamamen soğuk veya tamamen sıcak aileler")
         st.caption(
             "Aynı havuzdan seçilmiş bir ailenin önceden kurulmuş "
@@ -2557,6 +2613,7 @@ with tabs[9]:
             ("20 havuz koltuğu ve beklenen sayı","seats","V13_KOLTUK_DAGILIMI.csv"),
             ("20 koltuğun tam doluş isabeti","seat_exact","V13_TAM_KOLTUK_KONTROL.csv"),
             ("Sıcak tepe / soğuk uyanma sonuçları","states","V13_SICAKLIK_DURUMU.csv"),
+            ("2–10 iç içe aile öncü başarıları","nested","V13_2_10_AILE_KULE_ISABET.csv"),
             ("2–10 tamamen soğuk/sıcak aile testleri","family","V13_AILE_SOĞUK_SICAK.csv"),
             ("Örnek 20 sayı / aile dağılımı","examples","V13_KULE_ORNEKLER.csv"),
             ("Örnek bireysel aile hedefleri","family_examples","V13_AILE_HEDEF_ORNEKLER.csv")
