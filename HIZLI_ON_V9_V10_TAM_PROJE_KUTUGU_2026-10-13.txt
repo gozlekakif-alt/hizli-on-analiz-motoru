@@ -1032,3 +1032,74 @@ test et; yoksa salinimdan sonraki hedef 20'liyi
 "kesin" tahmin iddiasina donusturme.
 Korunan: V9 app.py, ana veri.txt, tum eski aile
 ve kupon kayitlari ve V10–V15.
+
+
+====================================================================
+V17 — RAKAMLAR DEGIL CEKILIS KARAKTERI
+====================================================================
+KULLANICI TALIMATI:
+"Sana bırakıyorum ... gecmişten geleceğe bakacağımız şey
+karakter rakam değil."
+V17, tek tek 1–80 rakamlarin kimligini tahmin etmek yerine,
+her 20'lik sonucun YAPISINI, karakterini ve ertesi cekiliste
+karakterin devam edip etmedigini denetler.
+
+13.10.2026; GitHub yeni:
+- v17_karakter_motoru.py (stdlib + V13 sicaklik/2–10 aile izi)
+- v17_selftest.py (73 gun, 36/37 gun kronolojik test)
+- v17_karakter_app.py (Streamlit sekmesinin ayri modulu)
+- .github/workflows/v17-check.yml (hizli test)
+- V17_CEKILIS_KARAKTER_MOTORU_RAPORU.md
+- v10_app.py 14. sekme "🧬 V17 Karakter Motoru".
+- .github/workflows/v10-check.yml: V9–V17 + UI tum kontrol.
+
+SEKIZ KARAKTER:
+1 Onceki 20'den tekrar 0–3/4–6/7+ (kopus/denge/tasima);
+2 tek/cift dengesi;
+3 1–40/41–80 alt/ust dengesi;
+4 dort adet 20'lik bant baskinligi;
+5 komsu ardisik kumelenme;
+6 son 12 cekiliste ayni tam 2–10 aile alt gruplarinin
+  gorunus olaylari (BENZERSIZ aile sayisi DEGIL);
+7 hedef gelmeden tanimli 80 sayilik sicak/ilik/soguk
+  havuzundan hedefe gercekte dolan koltuklar;
+8 tekrarla komsuluk kuvvetinin bilesik karakteri.
+
+GUNDEKI 217 CEKILISIN GECISLERI OZEL SAATLER
+VE ILK6/SON6 olarak incelenir. 01:02–07:02
+arasi 6 saatlik bosluk 5dk varsayilmaz.
+
+KRONOLOJIK TEST:
+Egitim: 01.08–05.09.2026 = 36 gun 7302 hedef.
+Test: 06.09–12.10.2026 = 37 gun 7511 hedef.
+Toplam 15691 gercek karakter gozlemi.
+Her bir sonraki karakter icin 2 rakip:
+A gun-donemi gecmisteki sabit karakter dagilimi,
+B onceki cekilisin karakterinden gecis olasiligi
+(ilk 36 gun egitilmis ve testte dondurulmus).
+Gercek hedef sayilari onceden hic bilinmez.
+LOG-KAYIP (B minus A; negatif B daha iyi):
+- tekrar +0.000741 (kotu)
+- tek/cift +0.002931 (kotu)
+- alt/ust +0.001533 (kotu)
+- dort bant +0.003562 (kotu)
+- komsuluk +0.000133 (ayni)
+- 2-10 aile izi -0.000377 (COK KUCUK olumlu,
+  sekiz secenekten arama, istatistik kaniti DEGIL)
+- sicaklik koltuk +0.000586 (ayni)
+- bilesik karakter +0.004905 (kotu).
+Sekiz karakterden 7'si rakip sabit dagilimi
+gecemedi. Karakterin gercek RNG algoritmasini
+buldugu veya ileri çekilisin tam rakamlarini
+tahmin ettigi iddia EDILMEZ.
+
+V17 ileri hedef onizlemesi sadece son gercek
+cekilislerin karakterini kullanarak SONUCU
+HENUZ GELMEMIS hedefin beklenen karakter
+olasiliklarini gosterir ve CSV indirir.
+V15 kuponlari bu zayif karakter sinyalleriyle
+otamatik degistirilmedi. Herhangi bir yeni
+kural ancak bagimsiz ileri veriyle random ve
+sabit karakter modellerini gecerse etkin.
+Onceki V9–V16 motorlari ve tum cekiis, aile,
+kupon kayitlari KORUNDU.
