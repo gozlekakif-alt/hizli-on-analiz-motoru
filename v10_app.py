@@ -201,6 +201,37 @@ def merge_draws_into_txt(existing_text, additions):
            for d in new]
     return existing_text+joiner+"\n".join(lines)+"\n",len(new),skipped
 
+def draw_confirmation_signature(record):
+    """Stable signature for a complete persisted draw, not just its number."""
+    return record["dt"]+"|"+",".join(map(str,record["nums"]))
+
+
+def live_record_status(live_records, history_records, confirmed=None):
+    """Distinguish unsaved, exact matching and conflicting live records.
+
+    A GitHub successful PUT confirms the pushed content even when subsequent
+    raw/API reads return a temporarily stale file revision.
+    """
+    confirmed = confirmed or {}
+    main = {d["no"]: d for d in history_records}
+    pending, conflicts = [], []
+    for d in live_records:
+        previous=main.get(d["no"])
+        if previous is not None:
+            if draw_confirmation_signature(previous)!=draw_confirmation_signature(d):
+                conflicts.append(d)
+        elif confirmed.get(str(d["no"]))!=draw_confirmation_signature(d):
+            pending.append(d)
+    return pending, conflicts
+
+
+def remember_github_confirmation(records):
+    """Keep GitHub's successful write/exists acknowledgment in this session."""
+    prior=st.session_state.setdefault("v10_git_confirmed", {})
+    for d in records:
+        prior[str(d["no"])]=draw_confirmation_signature(d)
+
+
 def persist_to_github_veri_txt(additions):
     """Optimistic GitHub contents write, including >1 MB source via Git blob API."""
     tok=secret_token()
@@ -234,6 +265,7 @@ def persist_to_github_veri_txt(additions):
                 body=base64.b64decode(b["content"]).decode("utf-8-sig")
             merged,added,already=merge_draws_into_txt(body,additions)
             if added==0:
+                remember_github_confirmation(additions)
                 github_text.clear()
                 return True,0,f"Yeni çekiliş yok; {already} tanesi zaten veri.txt içinde."
             payload={"message":f"V10: veri.txt'ye {added} yeni cekilis ekle",
@@ -243,6 +275,7 @@ def persist_to_github_veri_txt(additions):
             if put.status_code in (409,422) and attempt<2:
                 continue
             put.raise_for_status()
+            remember_github_confirmation(additions)
             github_text.clear()
             return True,added,f"GitHub veri.txt kalıcı kayıt: {added} yeni çekiliş; {already} zaten mevcuttu."
         return False,0,"GitHub'da eşzamanlı güncelleme var; tekrar dene."
@@ -849,21 +882,20 @@ if not families:
     st.error("Aile CSV bulunamadi; hedef tahmini icin v10_aileler.csv gerekli.")
 # If the cached historical snapshot is older than this session's live backup,
 # recheck the actual GitHub main branch BEFORE warning about missing records.
-existing_main_nos={d["no"] for d in historical}
-pending_draws=[d for d in st.session_state.v10_live if d["no"] not in existing_main_nos]
+session_confirmed=st.session_state.get("v10_git_confirmed",{})
+pending_draws,conflicted_live=live_record_status(
+    st.session_state.v10_live, historical, session_confirmed)
 verified_remote=False
-if pending_draws and not upl:
+if (pending_draws or conflicted_live) and not upl:
     try:
         fresh_history,fresh_bad=latest_main_history()
         verified_remote=True
         if len(fresh_history)>=len(historical):
             historical,bad=fresh_history,fresh_bad
-            existing_main_nos={d["no"] for d in historical}
-            pending_draws=[d for d in st.session_state.v10_live
-                           if d["no"] not in existing_main_nos]
+            pending_draws,conflicted_live=live_record_status(
+                st.session_state.v10_live,historical,session_confirmed)
     except Exception:
-        # A failed network verification is not proof of a successful save.
-        # Keep the pending warning; no data is discarded.
+        # No proof of save: keep pending and warn so backups are retained.
         pass
 draws=all_draws(historical,st.session_state.v10_live)
 today=now_tr().date()
@@ -874,13 +906,18 @@ a,b,c=st.columns(3)
 a.metric("Geçmiş çekiliş",len(historical))
 b.metric("Aile havuzu",len(families))
 c.metric("Canlı eklenen",len(st.session_state.v10_live))
+if conflicted_live:
+    st.error(f"⛔ {len(conflicted_live)} çekilişin numarası kayıtlı ama "
+             "tarih/saat veya 20 sayısı GitHub'dakinden farklı. "
+             "Bu kayıtlar otomatik değiştirilmedi; JSON yedeğinizi koruyun.")
 if pending_draws:
-    extra=(" (GitHub ana dalında yeniden doğrulandı.)" if verified_remote
-           else " (Güncel GitHub kontrolü yapılamadı; yedeğinizi koruyun.)")
-    st.warning(f"⚠️ {len(pending_draws)} çekiliş henüz ana veri.txt içinde görünmüyor."
-               +extra+" 💾 Yedek & Kayıt bölümünden JSON indir ve PIN ile kalıcı kaydı denetle.")
+    extra=(" Güncel GitHub dosyası kontrol edildi." if verified_remote
+           else " GitHub'daki en son sürüm doğrulanamadı.")
+    st.warning(f"⚠️ {len(pending_draws)} çekiliş için henüz GitHub kayıt onayı yok."
+               +extra+" JSON yedeğini saklayıp kalıcı kayıt durumunu denetle.")
 else:
-    st.caption("✅ Canlı oturum kayıtlarının tamamı GitHub veri.txt içinde görünüyor.")
+    st.success(f"✅ Canlı kayıtlardan {len(st.session_state.v10_live)} çekiliş "
+               "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
 tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt"])
@@ -890,7 +927,7 @@ with tabs[0]:
     # A public Streamlit app must not allow unauthenticated visitors to use its GitHub write token.
     if secret_token() and secret_admin_pin():
         if st.session_state.get("v10_admin_unlocked", False):
-            st.success("🔓 Otomatik GitHub kayıt açık — yeni çekilişler anında veri.txt'ye yazılır.")
+            st.success("🔓 GitHub yazma yetkisi açık. Yeni çekilişler kaydedilir; doğrulama durumu yukarıdadır.")
         else:
             st.warning("🔒 Kalıcı kayıt kilitli. Bu oturum için PIN'i bir kez aç; aksi halde çekiliş yalnız geçici eklenir.")
             pin_on_live=st.text_input("V10 yönetici PIN (yalnız bu oturum için)",type="password",key="v10_pin_live")
