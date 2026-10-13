@@ -31,6 +31,10 @@ for k in SIZES:
         k,len(family_counts[k]),math.comb(10,k))
 audit=audit_target(target,prior)
 assert audit["covered"]==10 and audit["uncovered"]==list(range(11,21)),audit
+assert len(audit["activation"])==12
+assert audit["activation"][-1]["Biriken benzersiz"]==10
+assert audit["activation"][-1]["İlk kez harekete geçen sayı"]==10
+assert audit["activation"][-1]["10'li ilk görünüş"]==1
 assert sum(map(len,audit["forced"]))==20
 assert sorted(set().union(*(set(v) for v in audit["forced"])))==list(range(1,21))
 assert len(retrospective_partition(target["nums"],history_features(prior)))==5
@@ -77,6 +81,10 @@ assert len(report["ledger"])==meta["targets"]
 assert len(report["methods"])==10
 assert len(report["recurrent"])==18
 assert len(report["slot_methods"])==2*6*len(METHODS)
+assert len(report["number_first_order"])==24
+assert len(report["family_first_order"])==2*12*9
+assert all(0<=row["20'den yeni ilk görülen"]<=20
+           for row in report["number_first_order"])
 assert all(0<=r["Önceden görülmüş ailelerin kapsadığı sayı"]<=20
            for r in report["ledger"])
 assert all(r["Gerçek 20 ile ortak"]==r["Ağ-kule"]
