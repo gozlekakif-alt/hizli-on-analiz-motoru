@@ -14,6 +14,7 @@ names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_temp
        "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
        "gap_rhythm","gap_class","family_rhythm_report","repeat_gap_targets",
        "active_signals","daily_chains","make_ticket","result_rows","day_signal_replay",
+       "draw_confirmation_signature","live_record_status","remember_github_confirmation",
        "cross_day_rhythm_report","cross_day_intraday_report","cross_day_repeat_families"}
 tree=ast.parse(src)
 nodes=[]
@@ -104,6 +105,22 @@ assert x["date"]=="2026-10-12" and x["time"]=="07:02",x
 template=env["next_paste_template"]([make("2026-10-11",217,61628)])
 assert "Çekiliş no:61629" in template and "12.10.2026-00:02" in template,template
 
+# GitHub committed PUT acknowledgement beats a lagging cached raw/API GET.
+live_new=make("2026-10-12",2,61630)
+old_main=[make("2026-10-12",1,61629)]
+pending, conflicts=env["live_record_status"]([live_new],old_main,{})
+assert [d["no"] for d in pending]==[61630] and not conflicts
+confirmed={"61630":env["draw_confirmation_signature"](live_new)}
+pending, conflicts=env["live_record_status"]([live_new],old_main,confirmed)
+assert not pending and not conflicts,(pending,conflicts)
+assert env["live_record_status"]([live_new],old_main,{"61630":"WRONG"})[0]
+conflict=dict(old_main[0],nums=list(range(2,22)))
+pending, conflicts=env["live_record_status"]([conflict],old_main,{})
+assert not pending and len(conflicts)==1
+# Same ID, equal numbers alone are not sufficient unless timestamp matches.
+confirmed_same=make("2026-10-12",2,61630)
+assert env["draw_confirmation_signature"](confirmed_same)==confirmed["61630"]
+
 # Preserve every old line and reject both same-number and same-slot mismatches.
 raw=("===== preserved V9 header =====\n"
      +"61628;11.10.2026 23:57;"+",".join(map(str,range(1,21)))+"\n")
@@ -167,6 +184,7 @@ env["github_text"]=SimpleNamespace(clear=lambda:None)
 ok,added,message=env["persist_to_github_veri_txt"]([new_record])
 assert ok and added==1 and fake.blob_called,(ok,added,message)
 assert base64.b64decode(fake.last_put["content"]).decode("utf-8")==merged
+assert env["st"].session_state["v10_git_confirmed"][str(new_record["no"])]==env["draw_confirmation_signature"](new_record)
 assert fake.last_put["sha"]=="example_sha"
 
 
