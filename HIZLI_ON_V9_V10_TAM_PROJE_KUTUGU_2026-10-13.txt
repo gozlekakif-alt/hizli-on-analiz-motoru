@@ -968,3 +968,67 @@ GUNCEL VE SONUCU GELMEMIS cekilislerde onceden
 kaydet, sonra test et. Yeni gunde agir V15 analizi
 dugmeye basilinca calisir; rastgele biletle gercek
 ileri tarih farklarini izle.
+
+
+====================================================================
+V16 — RNG SALINIM ANALIZI / 217 CEKILIS GERCEK UYUM TESTI
+====================================================================
+13.10.2026: Kullanici "20/80=1/4; ortalama 5 tekrar
+ama 2–12 sayi arasinda salinim gosterebiliyor;
+RNG algoritmasini cozelim" dedi.
+
+V16 MOTORU eklendi:
+v16_rng_salinim.py, v16_selftest.py,
+.github/workflows/v16-check.yml ve V10 Streamlit
+13. sekme "🎲 V16 RNG Salınımı".
+V16_RNG_217_SALINIM_ARASTIRMA.md tam rapor.
+
+RESMI KURAL: HIZLI ON 80 sayidan 20 farkli sayiyi
+RNG ile uretir (Milli Piyango Hızlı On oyun kurallari
+Madde 2.5 ve 6.2). Gizli PRNG kodu/tohumu resmi
+kurallarda yayimlanmiyor. Sadece 20 sayilik listeden
+bilinemez.
+
+MATEMATIK:
+X = iki bagimsiz 20/80 cekilisinin ortak sayi adedi.
+P(X=k)=C(20,k)C(60,20-k)/C(80,20).
+E(X)=5, std dev=1.687632.
+P(X>=12)≈0.00010021, ortalama her 9979 geciste 1.
+
+TARAMA:
+01.08–12.10.2026 73 gun; 15,691 gercek 5 dakikalik
+gecis. 01:02->07:02 alti saat ve eksik cekilisler
+5dk varsayilmadi. Gozlenen tekrar ort=4.99643.
+Tam 2 tekrarda 837 olayi (beklenen 780);
+tam 5'te 3624 (beklenen 3660);
+12+ tekrar 2 olay (beklenen 1.572).
+10 onceden secilmis Pearson uygunluk diliminde
+chi2=14.341, df9, p=0.1107; RNG hipotezine aykiri
+guclu sapma gosterilmedi.
+
+GERIYE DONUK KRONOLOJIK TEST:
+Ilk 36 gun 7736 gecis (egitim);
+son 37 gun 7955 gecis (test);
+bir onceki tekrar dilimi de olan 7881 hedef.
+Onceki X=0–2 ise sonraki ort=5.0532;
+3–4:4.9848;5–6:4.9896;7–8:4.9187;9+:5.0435.
+Ilk 36 gun X_prev'ye gore egitilen olasilik modeli
+testte SALT matematiksel RNG'yi gecemedi:
+RNG logloss=1.941646, salinim model=1.946500;
+RNG Brier=0.835339, salinim model=0.836112;
+RNG MAE=1.326735, salinim=1.333780.
+Tam sayi tahmini ikisinde de %22.3322.
+
+18 saat ayrimi ve BH coklu test uygulandi:
+37 gunluk saatte ANLAMLI SABIT SAPMA YOK.
+Ilk 6 ort 4.9786, son 6 4.9802, 01:02 ek 5.0811.
+Bu gozlem RNG sisteminin gizli algoritmasini bulmus
+olmaz ve kupon avantajini da kanitlamaz.
+
+ONEMLI SONRAKI ADIM: Gelecekte gecerliligi
+tekrarlanan, cogu false-positive'in ayiklandigi
+istatistiksel sapma varsa bunu ileriye yonelik
+test et; yoksa salinimdan sonraki hedef 20'liyi
+"kesin" tahmin iddiasina donusturme.
+Korunan: V9 app.py, ana veri.txt, tum eski aile
+ve kupon kayitlari ve V10–V15.
