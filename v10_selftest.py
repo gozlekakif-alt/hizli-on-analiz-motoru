@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 src=open("v10_app.py",encoding="utf-8").read()
 ast.parse(src)
 names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_template",
-       "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","parse_history",
+       "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","filter_new_draws","parse_history",
        "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
        "active_signals","daily_chains","make_ticket","result_rows"}
 tree=ast.parse(src)
@@ -166,5 +166,26 @@ ok,added,message=env["persist_to_github_veri_txt"]([new_record])
 assert ok and added==1 and fake.blob_called,(ok,added,message)
 assert base64.b64decode(fake.last_put["content"]).decode("utf-8")==merged
 assert fake.last_put["sha"]=="example_sha"
+
+
+# Exact duplicate within pasted batch is skipped; conflicting IDs or slots are rejected.
+baseline=make("2026-10-12",1,61629)
+new=make("2026-10-12",2,61630)
+conflicting_id=dict(baseline,nums=list(range(2,22)))
+conflicting_slot=dict(baseline,no=61631)
+accepted,repeats,problems=env["filter_new_draws"](
+    [baseline,new,new,conflicting_id,conflicting_slot],[baseline])
+assert len(accepted)==1 and accepted[0]["no"]==61630,accepted
+assert repeats==2,repeats
+assert len(problems)==2,problems
+# A malformed draw must not silently enter a bulk file.
+bad_draw=dict(new,nums=[1]*20)
+accepted,repeats,problems=env["filter_new_draws"]([new,bad_draw],[])
+assert len(accepted)==1 and len(problems)==1
+# End-to-end: merge accepted records into original without replacing old records.
+updated,n_new,n_rep=env["merge_draws_into_txt"](raw,[baseline,new])
+assert n_new==2 and n_rep==0
+repeat_again,n_new,n_rep=env["merge_draws_into_txt"](updated,[baseline,new])
+assert repeat_again==updated and n_new==0 and n_rep==2
 
 print("PASS: V10 paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
