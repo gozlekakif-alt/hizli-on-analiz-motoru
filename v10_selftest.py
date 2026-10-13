@@ -15,7 +15,8 @@ names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_temp
        "gap_rhythm","gap_class","family_rhythm_report","repeat_gap_targets",
        "active_signals","daily_chains","make_ticket","result_rows","day_signal_replay",
        "draw_confirmation_signature","live_record_status","remember_github_confirmation",
-       "cross_day_rhythm_report","cross_day_intraday_report","cross_day_repeat_families"}
+       "cross_day_rhythm_report","cross_day_intraday_report","cross_day_repeat_families",
+       "historical_hour_support","rhythm_ticket_gate"}
 tree=ast.parse(src)
 nodes=[]
 for node in tree.body:
@@ -279,6 +280,34 @@ ledger2=env["day_signal_replay"](
     {family:hist_ledger[-2:]},past_profiles,fmeta,today_day,
     hist_ledger[-2:]+[make(today_day,20,61653)],minimum_days=2)
 assert any(r["Aşama"]=="2→3" and r["Sonuç"]=="TAM" for r in ledger2)
+
+
+# Flame hours: prior days only, separate clock-hour support from gap support.
+hour_label="01-02-03-04-05"
+hour_meta={hour_label:{"k":5,"nums":tuple(range(1,6)),
+                       "mask":sum(1<<(x-1) for x in range(1,6))}}
+h_before=[
+    make("2026-10-08",20,91000), # 07:32
+    make("2026-10-09",21,91001), # 07:37
+    make("2026-10-10",100,91002), # 14:12
+]
+h_profile=env["train_profiles"](json.dumps(h_before),json.dumps([hour_label]))
+assert h_profile[hour_label]["hour_days"][7]==2,h_profile
+assert h_profile[hour_label]["hour_days"][14]==1,h_profile
+ok_hour=env["historical_hour_support"](h_profile,hour_label,22,2)
+bad_hour=env["historical_hour_support"](h_profile,hour_label,102,2)
+assert ok_hour["ok"] and ok_hour["days"]==2 and ok_hour["hour"]==7
+assert not bad_hour["ok"] and bad_hour["days"]==1 and bad_hour["hour"]==14
+assert not env["rhythm_ticket_gate"](h_profile,hour_label,102,{hour_label},2)["coupon_ok"]
+assert env["rhythm_ticket_gate"](h_profile,hour_label,22,{hour_label},2)["coupon_ok"]
+assert env["rhythm_ticket_gate"](h_profile,hour_label,102,set(),2)["coupon_ok"]
+assert not env["rhythm_ticket_gate"](h_profile,hour_label,22,{hour_label},3)["coupon_ok"]
+# Two observations in one day never count as two independent support days.
+same_day=[make("2026-10-08",20,91005),make("2026-10-08",21,91006)]
+h2=env["train_profiles"](json.dumps(same_day),json.dumps([hour_label]))
+assert h2[hour_label]["hour_days"][7]==1
+# A target-day observation cannot accidentally strengthen a prior-day profile.
+assert env["historical_hour_support"](h_profile,hour_label,102,2)["days"]==1
 
 # On prior-day data only, a single historical supporting day is experimental.
 one_day=env["train_profiles"](json.dumps(historic[:4]),json.dumps([family]))
