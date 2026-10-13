@@ -46,18 +46,11 @@ def upcoming_alerts(day_draws, families, profiles, target_day, now, moment_fn,
     recent_masks=[
         sum(1 << (n-1) for n in d["nums"]) for d in recent
     ]
-    existing_day=set()
-    for label,fam in families.items():
-        for d,m in zip(observed,recent_masks) if len(observed)<=3 else ():
-            if (m & fam["mask"])==fam["mask"]:
-                existing_day.add(label)
-    # For a normal day, also scan earlier observed draws for prior full completion.
-    if len(observed)>3:
-        for d in observed:
-            m=sum(1 << (n-1) for n in d["nums"])
-            for label,fam in families.items():
-                if m & fam["mask"]==fam["mask"]:
-                    existing_day.add(label)
+    # Only evaluate today's full history for families that pass the
+    # partial-overlap filter; avoid quadratic all-family scan on each rerun.
+    earlier_masks=[
+        sum(1 << (n-1) for n in d["nums"]) for d in observed[:-3]
+    ]
 
     rows=[]
     stats={"reason":"ok","scanned":len(families),"partial":0,
@@ -102,7 +95,8 @@ def upcoming_alerts(day_draws, families, profiles, target_day, now, moment_fn,
             "Geçmiş saat günü":hour_days,
             "Geçmiş aile günü":history_days,
             "Gün ritmi": "🔥" if same_day_rhythm else "—",
-            "Bugün tam görünüş":label in existing_day,
+            "Bugün tam görünüş":any((m & fam["mask"])==fam["mask"]
+                                     for m in recent_masks+earlier_masks),
             "Hedef sıra":target_pos, "Hedef saat":target_dt.strftime("%H:%M"),
             "Hedef no":last["no"]+1,
             "İşaret çekilişi":source["no"],
