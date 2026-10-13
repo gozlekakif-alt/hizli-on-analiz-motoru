@@ -21,6 +21,12 @@ from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summa
 from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
+from v15_kupon_motoru import (fit_models as v15_fit,
+                               build_six as v15_six,
+                               retrospective_test as v15_backtest,
+                               as_csv as v15_csv,
+                               METHODS as V15_METHODS,
+                               FAMILY_SIZES as V15_SIZES)
 from v14_gecis_agi import (replay as v14_replay, preview as v14_preview,
                            csv_export as v14_csv, clock_slot as v14_clock)
 from v13_havuz_koltuk import (trained_model as v13_train,
@@ -963,7 +969,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -2815,3 +2821,241 @@ with tabs[10]:
     else:
         st.caption("Canlı hedefi görmek için V14'ün tarihsel testini "
                    "çalıştır ve bugünün verilerini seç.")
+
+
+@st.cache_data(ttl=3600,show_spinner=False)
+def v15_cached_fit(training_json,n_days):
+    return v15_fit(json.loads(training_json),train_days=n_days)
+
+
+@st.cache_data(ttl=3600,show_spinner=False)
+def v15_cached_replay(all_draws_json,n_days):
+    return v15_backtest(json.loads(all_draws_json),train_days=n_days)
+
+
+with tabs[11]:
+    st.subheader("🎟️ V15 — 6 kupon × 10 sayı | 2–10 aile merdiveni")
+    st.caption(
+        "Her uygun 7–12. hedef çekilişine, 12 önceki çekilişin 240 sayısı "
+        "ve 217'lik gün kimliğinden ALTİ farklı 10'lu kupon oluşturur. "
+        "V12 aile ağı + V13 sıcaklık koltukları + V14 geçiş sırası birleşir. "
+        "Her kuponun 2'li–10'lu ilk aileleri hedef öncesinden sabitlenir."
+    )
+    st.warning(
+        "Daha çok kupon daha çok kazanma garantisi değildir; "
+        "altı model kuponu her hedefte altı rastgele 10'lu ile karşılaştırılır. "
+        "Motorun doğrulanmış RNG avantajı bulunmamaktadır. "
+        "Geçmiş veriye bakarak strateji tasarlanması nedeniyle "
+        "37 günlük ayrılmış dönem tam canlı kör test sayılmaz."
+    )
+    st.markdown("#### 🧪 İlk 36 gün eğitim — sonraki 37 gün kupon testi")
+    if st.button("🚀 V15 6×10 aileli kupon performansını test et",
+                 type="primary",key="v15_run_test"):
+        with st.spinner(
+            "73 gün; 7–12. hedeflere altı model + altı rastgele "
+            "kupon; 2–10 ailelerin her biri hesaplanıyor..."
+        ):
+            v15_report=v15_cached_replay(
+                json.dumps(draws,separators=(",",":")),36
+            )
+        st.session_state["v15_test_report"]={
+            "nmax":max((r["no"] for r in draws),default=0),
+            "result":v15_report
+        }
+    v15_report_saved=st.session_state.get("v15_test_report")
+    if v15_report_saved:
+        rr=v15_report_saved["result"];mm=rr["summary"]
+        if v15_report_saved.get("nmax")!=max((r["no"] for r in draws),default=0):
+            st.warning("Yeni çekiliş geldi. Bu sonuç raporu önceki veri "
+                       "sürümüne aittir; düğmeyle yeniden test edebilirsin.")
+        a,b,c=st.columns(3)
+        a.metric("Ayrı test günü",mm["test_days"])
+        b.metric("Hedef çekiliş",mm["targets"])
+        c.metric("Karşılaştırılan kupon",mm["coupons"])
+        st.caption(
+            "Her hedefte 6 motor ve 6 rastgele kontrol = 12 kupon. "
+            "Hiçbir başarısız kupon atılmaz. "
+            "Her k'lı ailenin ilk k sayısı sonuç gelmeden bellidir."
+        )
+        st.markdown("##### 🎯 10'lu kuponlar: 0/10–10/10 gerçek sonuç")
+        st.dataframe(rr["methods"],hide_index=True,use_container_width=True)
+        st.markdown("##### 🏆 Altı kupondan en iyisi — rastgele kontrol")
+        st.dataframe(rr["best6"],hide_index=True,use_container_width=True)
+        x,y=st.columns(2)
+        x.metric("Önceden seçilmiş 6'lı tam",
+                 mm["model_6_full"])
+        y.metric("Rastgele 6'lı tam",mm["random_6_full"])
+        st.caption(
+            "Aile 6/6 için yalnız kupon hazırlanırken belirlenmiş "
+            "ilk 6 sayı sayılır. Sonradan tutan bir 10'lunun "
+            "içinden 6 sayı seçmek tahmin başarısı değildir."
+        )
+        with st.expander("🧬 Her motorun 2'li–10'lu aile başarısı"):
+            selected_size=st.select_slider(
+                "Aile boyutu",options=list(V15_SIZES),value=6,
+                key="v15_family_size"
+            )
+            st.dataframe(
+                [x for x in rr["families"]
+                 if x["Aile boyutu"]==selected_size],
+                hide_index=True,use_container_width=True
+            )
+        with st.expander("⌚ Her hedefte altı model / altı rastgele sonuç"):
+            st.dataframe(rr["differences"][:200],
+                         hide_index=True,use_container_width=True)
+        for title_name,key,filename in (
+            ("Her kupon ve 6'lı aile isabeti","ledger","V15_KUPONLAR_VE_ISABETLER.csv"),
+            ("Altı kupondan en iyi sonuçlar","differences","V15_HEDEF_BAZINDA_KIYAS.csv"),
+            ("0–10 tam isabet dağılımı","methods","V15_10_LU_ISABET_DAGILIMI.csv"),
+            ("2–10 ailelerin tam isabetleri","families","V15_AILELER_2_10.csv"),
+            ("6 model / 6 rastgele en iyisi","best6","V15_EN_IYI_ALTI_KUPON.csv"),
+        ):
+            st.download_button(
+                "⬇️ "+title_name,v15_csv(rr[key]),file_name=filename,
+                mime="text/csv",key="v15_dl_"+key
+            )
+    else:
+        st.info("Geçmişe yönelik test için yukarıdaki 🚀 düğmesine bas. "
+                "Canlı kupon için aşağıdaki ayrı düğmeyi kullan.")
+
+    st.markdown("#### 🔭 Gelecek çekilişin altı 10'lu kuponunu hazırla")
+    v15_pending=None
+    if analysis_date==today:
+        v15_day_known=[
+            r for r in day_draws
+            if datetime.fromisoformat(r["dt"])<=now_tr()
+        ]
+        v15_day_known.sort(key=lambda r:r["pos"])
+        v15_pos=max((r["pos"] for r in v15_day_known),default=0)+1
+        v15_due=moment(daystr,v15_pos) if v15_pos<=217 else None
+        v15_target_no=(
+            max(v15_day_known,key=lambda r:r["pos"])["no"]+1
+            if v15_day_known else None
+        )
+        v15_pending=(v15_due is not None and v15_due>now_tr()
+                     and v15_pos not in {r["pos"] for r in day_draws}
+                     and hour_draw_index(v15_pos) in (7,8,9,10,11,12)
+                     and v15_target_no is not None
+                     and all(v15_pos-i in {r["pos"] for r in v15_day_known}
+                             for i in range(1,13)))
+    if v15_pending:
+        st.write(f"**Hedef:** {v15_due:%H:%M} — "
+                 f"{v15_pos}. çekiliş (tahmini #{v15_target_no})")
+        if st.button(
+            "🎟️ V15 — Bu hedefe altı 10'lu kupon üret",
+            type="primary",key="v15_generate_six"
+        ):
+            earlier_days=sorted({r["day"] for r in draws if r["day"]<daystr})
+            if len(earlier_days)<36:
+                st.error("İlk 36 eğitim günü henüz yok.")
+            else:
+                train_days=set(earlier_days[:36])
+                first36=[r for r in draws if r["day"] in train_days]
+                with st.spinner("Geçmiş günleri öğrenip V12/V13/V14 "
+                                "ailelerini hedef gelmeden seçiyorum..."):
+                    models=v15_cached_fit(
+                        json.dumps(first36,separators=(",",":")),36
+                    )
+                    tickets=v15_six(
+                        v15_day_known,v15_pos,v15_target_no,models
+                    )
+                st.session_state["v15_live_tickets"]={
+                    "day":daystr,"pos":v15_pos,
+                    "trigger":v15_day_known[-1]["no"],
+                    "target_no":v15_target_no,
+                    "generated_at":now_tr().isoformat(timespec="seconds"),
+                    "tickets":tickets
+                }
+        v15_frozen=st.session_state.get("v15_live_tickets",{})
+        if (v15_frozen.get("day")==daystr
+            and v15_frozen.get("pos")==v15_pos
+            and v15_frozen.get("trigger")==v15_day_known[-1]["no"]
+            and v15_due>now_tr()):
+            st.markdown("##### ✅ Çekilişten önce sabitlenen altı kupon")
+            v15_table=[
+                {"No":i+1,"Motor":ticket["method"],
+                 "10 sayı":" – ".join(
+                     f"{n:02d}" for n in sorted(ticket["numbers"])
+                 ),"6'lı aile":" – ".join(
+                     f"{n:02d}" for n in sorted(ticket["family6"])
+                 )}
+                for i,ticket in enumerate(v15_frozen["tickets"])
+            ]
+            st.dataframe(v15_table,hide_index=True,use_container_width=True)
+            pick=st.selectbox(
+                "2–10 aile merdivenini aç",
+                options=list(range(6)),
+                format_func=lambda i:(
+                    f'{i+1}. kupon — {v15_frozen["tickets"][i]["method"]}'
+                ),
+                key="v15_pick_family"
+            )
+            vals=v15_frozen["tickets"][pick]["numbers"]
+            st.dataframe([
+                {"Boyut":k,
+                 "Çekilişten önce seçilmiş aile":
+                    " – ".join(f"{n:02d}" for n in sorted(vals[:k]))}
+                for k in V15_SIZES
+            ],hide_index=True,use_container_width=True)
+            st.download_button(
+                "⬇️ Altı 10'lu kuponu CSV indir",
+                v15_csv(v15_table),
+                file_name=f"V15_6_KUPON_{daystr}_{v15_pos}.csv",
+                mime="text/csv",key="v15_download_six"
+            )
+            if not st.session_state.get("v10_admin_unlocked",False):
+                st.info(
+                    "Kuponları GitHub'a kalıcı kaydetmek için önce "
+                    "💾 Yedek & Kayıt bölümündeki yönetici PIN kilidini aç."
+                )
+            if st.button("💾 Hedef geçmeden altı kuponu kalıcı kaydet",
+                         key="v15_save_six",type="primary",
+                         disabled=not st.session_state.get(
+                             "v10_admin_unlocked",False)):
+                if v15_due<=now_tr() or v15_pos in {
+                    r["pos"] for r in day_draws
+                }:
+                    st.error("Hedef çekiliş saati geldi veya geçti. "
+                             "Sonuç göründükten sonra kupon kaydetmiyoruz.")
+                else:
+                    earlier_keys={
+                        (x["day"],x["pos"],x["family"])
+                        for x in st.session_state.v10_tickets
+                    }
+                    created=0
+                    for ticket in v15_frozen["tickets"]:
+                        nums=sorted(ticket["numbers"])
+                        family="-".join(f"{n:02d}" for n in nums)
+                        ticket_key=(daystr,v15_pos,family)
+                        if ticket_key in earlier_keys:
+                            continue
+                        st.session_state.v10_tickets.append({
+                            "day":daystr,"pos":v15_pos,
+                            "time":v15_due.strftime("%H:%M"),
+                            "family":family,
+                            "numbers":nums,
+                            "size":10,
+                            "kind":"V15 "+ticket["method"],
+                            "trigger_no":v15_frozen["trigger"],
+                            "created_at":now_tr().isoformat(timespec="seconds")
+                        })
+                        earlier_keys.add(ticket_key)
+                        created+=1
+                    response=auto_save()
+                    if response.startswith("GitHub kalici kaydi"):
+                        st.success(f"{created} adet 10'lu hedef kupon "
+                                   "GitHub'a kaydedildi. "
+                                   "İsabet bölümünde sonuçları izleyebilirsin.")
+                    else:
+                        st.warning(
+                            f"{created} kupon oturuma eklendi ama kalıcı "
+                            "GitHub kaydı doğrulanamadı: "+response
+                        )
+        else:
+            st.caption("Bu hedef için henüz altı kupon üretilmedi. "
+                       "Hedef saati geçmeden yukarıdaki düğmeye bas.")
+    else:
+        st.info("Canlı kupon yalnız bugünkü, henüz gerçekleşmemiş "
+                "7–12. hedef çekilişi ve kesintisiz önceki 12 çekiliş "
+                "mevcutsa üretilir. Sonuç gelmiş çekiliş için "
+                "sonradan kupon yazılmaz.")
