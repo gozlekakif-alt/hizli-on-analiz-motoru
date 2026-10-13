@@ -895,3 +895,76 @@ SONRAKI ADIM: kodu ve tahmin kurallarini sabitleyip
 her tahmini once kaydet, sonucu sonradan eslestir.
 Gecmisi test etmek ileri zaman simülasyonudur;
 tam bagimsiz "canli kör test" degildir.
+
+
+====================================================================
+V15 — ALTI KUPON VE 2-10 AILE MOTORU
+====================================================================
+13.10.2026 kullanici artik gercek KUpon MOTORU istedi.
+GitHub'a v15_kupon_motoru.py, v15_selftest.py,
+v15_coverage_test.py, .github/workflows/v15-fast-check.yml
+eklendi. V10 Streamlit uygulamasina 12. sekme
+"🎟️ V15 Kupon Motoru" eklendi.
+
+HER HEDEF: Saatin 7–12 cekilisleri icin o andaki
+onceki tum gun cekilisleri ve son 12 adet kesintisiz
+20-sayili cekilis kullanilir. Onceki 36 gunde V13 sicaklik
+ve V14 gecis modelleri egitilir, sonraki 37 gun
+DONMUS modelle test edilir. Her hedefe 6 tane 10'lu
+kupon + 6 adet rastgele onlu kontrol. 10'lularin
+ilk 2,3,4,5,6,7,8,9,10 sayisi aile olarak
+HEDEFTEN ONCE belirlenir. Gercek sonuc sonrasi
+10'ludan tutan altili ayiklama YASAK (yanli test).
+
+ALTI KUPON YOLU:
+1 V12 aile omurgasi; 2 V13 sicaklik koltuklari;
+3 V14 +1 gecis; 4 V14 +1/+2/+3/+6/+12;
+5 birlesik V12/V13/V14 aile kulesi;
+6 daha az ortak sayili dagitilmis kule.
+
+ILK "AILE ODAKLI" 37 GUN TESTI:
+3774 hedef, 22644 model onlu + 22644 rastgele onlu.
+Alti motor kupondan EN IYI ortalama 3.933/10;
+alti rastgeleden EN IYI ortalama 4.1388/10.
+Model once sabit 6li ailelerde 6/6 sayisi 4,
+rastgele kontrol 6/6 sayisi 5.
+10/10 iki yontemde de 0.
+6 model kupon ortalama 33.223 farkli sayi
+kapsiyordu, 6 rastgele 44.099. Motorlar
+yuksek ortak sayi yuzunden verimsiz kapsama yapiyor.
+
+IKINCI "GENIS KAPSAMA" V15-B (KEŞIF):
+Aile odakli test SONUCLARI GORULDUKTEN SONRA
+tasarlandi. Ilk kupon disinda sonraki her onlu
+en az 7 YENI sayi kapsar. 37 gunluk yeniden testte
+alti motor onlu ortalama 47.408 farkli sayi kapsadi;
+en iyi kupon isabeti 4.1471/10; rastgele 4.1388/10.
+Ancak 6/6 aile sayisi yalniz 2; rastgele 5.
+10/10 yok. 0.0083 sayilik fark GERCEK RNG USTUNLUGU
+KANITI DEGIL. Bu versiyon AYNI test sonuclarindan
+sonra yapildigi icin 37 gunu kor test kabul ETME.
+
+UYGULAMA:
+V15 Aile odakli / Genis kapsama secimi.
+Ayrica eski 36/37 gun testini butonla calistirir.
+Gelecek 7–12 slotunda 12 gecmis cekilis varsa
+onceden 6 kupon uret ve 2–10 aile merdiveni goster.
+Hedef saati GECMEDEN kullanici "Kalici Kaydet" derse,
+mevcut V10 Yonetici PIN kilidi aciksa,
+GitHub v10_canli_kayit.json dosyasina 6 kupon ekler.
+GitHub gercekten kaydetmeden "kalici kaydedildi"
+iddia etmez. Isabetler mevcut 📊 İsabet sekmesinde.
+CSV rapor: tum 45,288 kupon ve 2–10 aile k/k,
+her hedefte 6 model/6 rastgele en iyi sonuc, 
+6'li tam, 10'lu tam, farkli sayi kapsama.
+
+RAPOR: V15_6_KUPON_AILE_MOTORU_RAPOR.md.
+CI V15 hizli #38446076355: iki stil test basarili.
+V9 app.py, veri.txt, aile csv, onceki kayitlar,
+V10–V14 motorlari korunmustur.
+
+SONRA: Genis kapsama modelini ve her hedefin 6 kuponunu
+GUNCEL VE SONUCU GELMEMIS cekilislerde onceden
+kaydet, sonra test et. Yeni gunde agir V15 analizi
+dugmeye basilinca calisir; rastgele biletle gercek
+ileri tarih farklarini izle.
