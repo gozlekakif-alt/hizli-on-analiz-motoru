@@ -13,7 +13,8 @@ names={"pos_of","moment","next_slot_after","next_recorded_slot","next_paste_temp
        "normalize_numbers","make_draw","parse_draw_line","parse_pasted_draws","filter_new_draws","parse_history",
        "merge_draws_into_txt","persist_to_github_veri_txt","load_family_csv","train_profiles",
        "gap_rhythm","gap_class","family_rhythm_report","repeat_gap_targets",
-       "active_signals","daily_chains","make_ticket","result_rows","day_signal_replay"}
+       "active_signals","daily_chains","make_ticket","result_rows","day_signal_replay",
+       "cross_day_rhythm_report","cross_day_intraday_report","cross_day_repeat_families"}
 tree=ast.parse(src)
 nodes=[]
 for node in tree.body:
@@ -217,6 +218,30 @@ for n,pos,target,step in [(1,10,15,"1→2"),(2,15,20,"2→3"),(3,20,25,"3→4")]
     assert targets[0]["support"]==2
     assert targets[0]["estimated_no"]==live[-1]["no"]+(target-pos),targets
 
+
+
+# Historical fixed day-gap labels and across-day repeated within-day first gaps.
+fA="01-02-03-04-05"
+fB="06-07-08-09-10"
+fake_meta={
+    fA:{"k":5},fB:{"k":5}
+}
+fixture={
+    fA:{"days":["2026-10-01","2026-10-03","2026-10-05"],
+        "first":{5:2},"triple":{(5,5):2},"quad":{}},
+    fB:{"days":["2026-10-01","2026-10-04","2026-10-09"],
+        "first":{4:1},"triple":{},"quad":{}}
+}
+dr=env["cross_day_rhythm_report"](fixture,fake_meta)
+assert len(dr)==1 and dr[0]["Aile"]==fA and dr[0]["Ritim"]=="+2 gün",dr
+assert dr[0]["Ritimli gün"]==3 and dr[0]["Devam etse tarih"]=="2026-10-07"
+assert env["cross_day_repeat_families"](fixture,fake_meta,2)=={fA}
+intra=env["cross_day_intraday_report"](fixture,fake_meta,2)
+assert len(intra)==2 and {r["Aşama"] for r in intra}=={"1→2","2→3"},intra
+# No look-ahead: a second interval completed on the target day does not light up.
+pre={"days":["2026-10-01","2026-10-03"],"first":{},"triple":{},"quad":{}}
+assert not env["cross_day_rhythm_report"]({fA:pre},fake_meta)
+assert not env["cross_day_repeat_families"]({fA:pre},fake_meta,2)
 
 # Historical ledger: earlier-day support and time-frozen targets, evaluated later.
 hist_ledger=historic+[make(today_day,10,61651),make(today_day,15,61652)]
