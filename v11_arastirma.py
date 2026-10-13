@@ -267,6 +267,8 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
     """
     daydraws=defaultdict(list)
     for d in draws:
+        if "mask" not in d:
+            d={**d,"mask":sum(1 << (int(n)-1) for n in d["nums"])}
         daydraws[d["day"]].append(d)
     days=sorted(daydraws)
     if not days:
@@ -406,6 +408,8 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
 
 def live_preview(day_draws,families,next_pos,prior_hour_days=None):
     """One prospective 7..12 slot only, from the exact previous 12 draw records."""
+    day_draws=[{**d,"mask":d.get("mask",sum(1<<(int(n)-1) for n in d["nums"]))}
+               for d in day_draws]
     bypos={d["pos"]:d for d in day_draws}
     if next_pos in bypos or hour_draw_index(next_pos) not in range(7,13):
         return []
