@@ -106,6 +106,32 @@ def _diversity(order,other_tickets,min_new=2):
     raise ValueError("Cannot distinguish proposed tickets")
 
 
+def _covered_order(order,previous,minimum_new=7):
+    """Coverage variant: keep two family seeds, require >=7 unseen numbers.
+
+    Purely deterministic selection made before target result; this is a new
+    exploratory strategy, not a model 'improved' on untouched holdout data.
+    """
+    seen=set(n for ticket in previous for n in ticket)
+    if not previous:
+        return tuple(order[:10])
+    chosen=[]
+    for n in order[:2]:
+        if n not in chosen:chosen.append(n)
+    fresh=sum(n not in seen for n in chosen)
+    for n in order:
+        if fresh>=minimum_new:break
+        if n not in chosen and n not in seen:
+            chosen.append(n)
+            fresh+=1
+    for n in order:
+        if len(chosen)>=10:break
+        if n not in chosen:chosen.append(n)
+    assert len(chosen)==10 and len(set(chosen))==10
+    assert sum(n not in seen for n in chosen)>=minimum_new
+    return tuple(chosen)
+
+
 def _ordered_v14(prior,pos,models,target_no,multi=False):
     model=models["transition"]
     style="V14 çok-adım ağ" if multi else "V14 bir-adım ağ"
@@ -122,7 +148,7 @@ def _ordered_v14(prior,pos,models,target_no,multi=False):
     return still[:n_stay]+new[:10-n_stay]+still[n_stay:]+new[10-n_stay:]
 
 
-def build_six(day_history,target_pos,target_no,models):
+def build_six(day_history,target_pos,target_no,models,coverage=False):
     """Return six TEN-number tickets, ordered by frozen pretarget preference."""
     history=make_ready(day_history)
     bypos={r["pos"]:r for r in history}
@@ -208,13 +234,19 @@ def build_six(day_history,target_pos,target_no,models):
     proposals=[v12_order,v13_order,lag1,lagall,fusion_order]
     tickets=[]
     for order in proposals:
-        tickets.append(_diversity(order,tickets))
+        tickets.append(
+            _covered_order(order,tickets) if coverage
+            else _diversity(order,tickets)
+        )
     # Ticket 6: diversify from all first five while respecting the same scores.
     exposure=Counter(n for ticket in tickets for n in ticket)
     diverse=sorted(range(1,81),key=lambda n:(
         -(fusion[n]-.07*exposure[n]),n
     ))
-    tickets.append(_diversity(diverse,tickets))
+    tickets.append(
+        _covered_order(diverse,tickets) if coverage
+        else _diversity(diverse,tickets)
+    )
     assert len(tickets)==N_TICKETS
     assert all(len(t)==10 and len(set(t))==10 for t in tickets)
     return [
@@ -256,7 +288,7 @@ def _stats(rows,category):
     return out
 
 
-def retrospective_test(draws,train_days=36):
+def retrospective_test(draws,train_days=36,coverage=False):
     """37-day untouched chronological evaluation: 6 model + 6 random coupons.
 
     This is not a prospective live blind test: development was prompted by the
@@ -291,7 +323,7 @@ def retrospective_test(draws,train_days=36):
             # identity; the most recent twelve still form V12's family window.
             # The target and later outcomes are explicitly excluded.
             earlier=[r for r in today if r["pos"]<target["pos"]]
-            tickets=build_six(earlier,target["pos"],target["no"],models)
+            tickets=build_six(earlier,target["pos"],target["no"],models,coverage=coverage)
             control=[{"method":RANDOM,"numbers":coupon}
                      for coupon in control_tickets(day,target["pos"])]
             model_hits=[]
@@ -355,6 +387,8 @@ def retrospective_test(draws,train_days=36):
                        "En fazla":max(hist),
                        "0..10 dağılım":"/".join(str(hist[k]) for k in range(11))})
     summary={
+        "mode":"Geniş kapsama (en az 7 yeni sayı/kupon)" if coverage
+                 else "Aile odaklı (özgün motorlar)",
         "train_days":train_days,"test_days":len(days)-train_days,
         "first_test":days[train_days],"last_test":days[-1],
         "targets":len(differences),"coupons":len(detailed),
