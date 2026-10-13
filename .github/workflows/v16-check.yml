@@ -1,0 +1,20 @@
+name: V16 RNG Salinim Bilimsel Testi
+on:
+  push:
+    paths:
+      - 'v16_rng_salinim.py'
+      - 'v16_selftest.py'
+      - '.github/workflows/v16-check.yml'
+  workflow_dispatch:
+jobs:
+  v16:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax
+        run: python -m py_compile v16_rng_salinim.py v16_selftest.py
+      - name: Exact 20-of-80 overlap and 36/37 day no-lookahead check
+        run: python v16_selftest.py
