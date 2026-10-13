@@ -1765,7 +1765,8 @@ with tabs[6]:
                "çekilişte aralarında +G çekiliş farkıyla tam çıktıysa; geçmişte "
                "aynı ailede aynı +G aralığı başka günde de görülmüşse "
                "ikinci görünüşten +G sonrası ÜÇÜNCÜ hedef çekiliş olur. "
-               "Eşit takvim günü aralığı değil, çekiliş sayısı farkı aranır.")
+               "Eşit takvim günü aralığı değil, çekiliş sayısı farkı aranır. "
+               "Her gün SADECE ilk iki tam görünüşten 3. hedef çıkarılır.")
     st.caption("Mevcut V10 aile listesindeki 198 adet 6'lı aile izlenir. "
                "Tüm olası 6'lı sayı kombinasyonlarını kapsamaz; "
                "bu aileler de eski verilere bakılarak seçilmiş olabilir.")
@@ -1785,7 +1786,7 @@ with tabs[6]:
     cross_gap=[
         {"Aile":label,"Aralık":gap,"Destek geçmiş gün":count}
         for label,p in six_profiles.items()
-        for gap,count in p.get("pair",{}).items()
+        for gap,count in p.get("first",{}).items()
         if count>=six_support
     ]
     cross_gap.sort(key=lambda r:(-r["Destek geçmiş gün"],r["Aralık"],r["Aile"]))
