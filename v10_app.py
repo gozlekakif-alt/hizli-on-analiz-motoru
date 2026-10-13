@@ -2010,6 +2010,13 @@ with tabs[7]:
                    f"ortalaması {selected_k}/4 = {selected_k/4:.2f} sayıdır. "
                    "Katalog aileleri geçmiş sonuçlarla seçildiğinden tarafsız "
                    "bağımsız veri testi kabul edilmez.")
+        st.markdown("#### 🔥 1–80 sayının sıcak / soğuk aktivasyonu")
+        st.caption("Her 7–12 hedefi öncesindeki 12 çekilişte, 1–80 "
+                   "arasındaki HER sayının sıcaklığı ve son 6 çekilişteki "
+                   "ivmesi hesaplandı. 20 gerçek çıkan sayı yalnız sonuç "
+                   "sütununda kullanıldı. Bağımsız çekilişte beklenen oran %25.")
+        st.dataframe(r["ball_states"],hide_index=True,
+                     use_container_width=True)
         st.markdown("#### 7–12. çekilişlerin isabet karşılaştırması")
         slot_rows=[x for x in r["slots"] if x["Boyut"]==selected_k]
         st.dataframe(slot_rows,hide_index=True,use_container_width=True)
@@ -2026,6 +2033,7 @@ with tabs[7]:
             ("73 gün bütün hedefler ve her yöntem isabeti","target_ledger","V11_7434_HEDEF_DEFTERI.csv"),
             ("7, 8, 9, 10, 11, 12. çekiliş ayrı sonuçları","slots","V11_7_12_SIRA_RAPORU.csv"),
             ("Önceden hedeflenen kuponların isabeti","methods","V11_TUM_ISABETLER.csv"),
+            ("1–80 sayı sıcaklık ve aktivasyon oranları","ball_states","V11_80_SAYI_AKTIVASYON.csv"),
             ("12×20 sayı saat özeti","hour_summary","V11_20_SAYI_SAAT.csv"),
             ("Tam aile görünüş örnekleri","examples","V11_AILE_ORNEKLER.csv"),
             ("Sinyal ve hedef örnekleri","signals","V11_HEDEF_SINYALLERI.csv"),
