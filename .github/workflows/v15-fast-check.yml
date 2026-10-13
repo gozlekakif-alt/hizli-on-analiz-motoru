@@ -1,0 +1,20 @@
+name: V15 Kupon Testi
+on:
+  push:
+    paths:
+      - 'v15_kupon_motoru.py'
+      - 'v15_selftest.py'
+      - '.github/workflows/v15-fast-check.yml'
+  workflow_dispatch:
+jobs:
+  v15-coupon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V15 syntax
+        run: python -m py_compile v15_kupon_motoru.py v15_selftest.py
+      - name: Six real ten-ball coupons with 2–10 family no-lookahead checks
+        run: python v15_selftest.py
