@@ -167,6 +167,7 @@ def replay(draws,train_days=36):
     method_acc=defaultdict(lambda:[0,0,0,Counter(),0])
     change_acc=defaultdict(lambda:[0,0,0,Counter()])
     per_slot=defaultdict(lambda:[0,0,0])
+    halves=defaultdict(lambda:[0,0,0,Counter()])
     paired_by_day=defaultdict(lambda:defaultdict(list))
     conditional_new=Counter()
     for day in days[train_days:]:
@@ -191,6 +192,10 @@ def replay(draws,train_days=36):
             change[3][unchanged]+=1
             per=per_slot[pos]
             per[0]+=1;per[1]+=unchanged;per[2]+=len(incoming)
+            half=("İlk 6" if step<=6 else "Son 6" if step<=12 else "01:02 ek")
+            hs=halves[(group,half)]
+            hs[0]+=1;hs[1]+=unchanged;hs[2]+=len(incoming)
+            hs[3][unchanged]+=1
             for a,b in edge_eval:
                 if a in prevset and b not in prevset:
                     v=edge_eval[(a,b)]
@@ -214,7 +219,8 @@ def replay(draws,train_days=36):
                  "Saat grubu":group,"Saat içi sıra":step,
                  "Önceki 20'den kalan":unchanged,
                  "Önceki 20'den ayrılan":len(outgoing),
-                 "Yeni giren":len(incoming)}
+                 "Yeni giren":len(incoming),
+                 **{name:None for name in METHODS+EXTRAS}}
             for name,nums in proposals.items():
                 good=len(targetset&set(nums))
                 row[name]=good
@@ -249,6 +255,11 @@ def replay(draws,train_days=36):
                     "Hedef":v[0],"Ortalama tekrar":round(v[1]/v[0],4),
                     "Beklenen":5.0,"Yeni gelen ortalama":round(v[2]/v[0],4)}
                    for pos,v in sorted(per_slot.items())]
+    half_rows=[{"Gün dönemi":group,"Saat yarısı":half,
+                "Hedef":v[0],"Ortalama tekrar":round(v[1]/v[0],4),
+                "Rastgele beklenen tekrar":5.0,
+                "Ortalama yeni sayı":round(v[2]/v[0],4)}
+               for (group,half),v in sorted(halves.items())]
     relation=[]
     for lift,_,a,b,train_rate in leaders:
         ev,h,leave,leave_h=edge_eval[(a,b)]
@@ -297,6 +308,7 @@ def replay(draws,train_days=36):
                 "test_transitions":numtargets,
                 "note":"A->B is association, not physically assigned replacement."},
         "methods":methodology,"times":transitions,"positions":position_rows,
+        "half_hours":half_rows,
         "pairs":relation,"paired":paired,"ledger":tledger,
         "model":model,"v13_model":v13_model
     }
