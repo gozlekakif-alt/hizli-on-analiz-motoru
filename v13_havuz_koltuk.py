@@ -214,7 +214,11 @@ def pick_20(states,model,pos,style="Koltuk-model",v12_graph=None):
             # Extra terms are predetermined tie breakers, not trained evidence.
             return (p,st["slope"]*.0001,-st["gap"]*.00001,-st["n"])
         selected.extend(sorted(bypool[pool],key=weight,reverse=True)[:q])
-    numbers=tuple(sorted(st["n"] for st in selected))
+    # The 20 members are fixed by the seat quotas; their ORDER is the
+    # genuinely pretarget construction ranking for nested 2..10 families.
+    # Do NOT numeric-sort: that would make the first k tickets arbitrary.
+    selected.sort(key=weight,reverse=True)
+    numbers=tuple(st["n"] for st in selected)
     assert len(numbers)==20 and len(set(numbers))==20
     return numbers,seats
 
@@ -283,6 +287,7 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
     stage_results=defaultdict(lambda:[0,0])
     family_stats=defaultdict(lambda:{"n":0,"complete":0,"sum":0,
                                      "any_full_at_target":0})
+    nested_stats=defaultdict(lambda:{"n":0,"sum":0,"full":0,"hist":Counter()})
     examples=[]
     allfamily=[]
     for day in holdout:
@@ -351,9 +356,13 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
             # k=2..10 nested family levels of the SAME 20-number proposal.
             primary=proposals["Koltuk-model"]
             for k in SIZES:
-                vals=tuple(sorted(primary[:k]))
+                vals=tuple(primary[:k]) # V13 score-ordered construction
                 got=len(actual.intersection(vals))
                 out[f"{k}'li iç aile"]=got
+                nst=nested_stats[k]
+                nst["n"]+=1;nst["sum"]+=got
+                nst["full"]+=int(got==k)
+                nst["hist"][got]+=1
             rs=family_test(states,target)
             for x in rs:
                 v=family_stats[(x["Grup"],x["Boyut"])]
@@ -433,7 +442,15 @@ def run_study(draws,train_days=36,include_today=False,details_limit=100):
                        "Tam oran %":round(100*v[1]/v[0],4)}
                       for ph,v in sorted(exact_seats.items())],
         "states":bystate,
-        "family":familyrows,"ledger":rows,
+        "family":familyrows,
+        "nested":[{"Boyut":k,"Hedef":v["n"],
+                   "Tam k/k":v["full"],
+                   "Ortalama":round(v["sum"]/v["n"],4),
+                   "Adil rastgele ortalama":k/4,
+                   "Rastgele tam beklenen":round(v["n"]*confidence_hit(k),5),
+                   "Dağılım 0..k":"/".join(str(v["hist"][i]) for i in range(k+1))}
+                  for k,v in sorted(nested_stats.items())],
+        "ledger":rows,
         "examples":examples,"family_examples":allfamily,
         "train_model":model
     }
