@@ -2525,6 +2525,13 @@ with tabs[9]:
         st.dataframe(report["methods"],hide_index=True,use_container_width=True)
         st.markdown("##### 🪑 Hedef 20'nin sıcak / ılık / soğuk koltukları")
         st.dataframe(report["seats"],hide_index=True,use_container_width=True)
+        st.markdown("##### ✅ 20 sıcak / ılık / soğuk koltuğun TAM dağılımı")
+        st.dataframe(report["seat_exact"],hide_index=True,
+                     use_container_width=True)
+        st.caption("Bir çekilişteki 20 sayının soğuk/ılık/sıcak grup sayıları "
+                   "ayrı ayrı tam tutmuşsa başarı olarak yazılır. "
+                   "Rastgele beklenen değer, mevcut havuz büyüklüklerine göre "
+                   "hesaplanan kesin çok değişkenli hipergeometrik olasılıktır.")
         st.markdown("##### 📈 Tepeye çıkan ve soğuktan uyanan sayılar")
         st.dataframe(report["states"],hide_index=True,use_container_width=True)
         st.markdown("##### 👨‍👩‍👧‍👦 Tamamen soğuk veya tamamen sıcak aileler")
@@ -2548,6 +2555,7 @@ with tabs[9]:
             ("217 çekiliş boyunca tüm hedefler","ledger","V13_TUM_HEDEFLER.csv"),
             ("Koltuk tahmini ve 20 sayılık isabet","methods","V13_KUPON_PERFORMANSI.csv"),
             ("20 havuz koltuğu ve beklenen sayı","seats","V13_KOLTUK_DAGILIMI.csv"),
+            ("20 koltuğun tam doluş isabeti","seat_exact","V13_TAM_KOLTUK_KONTROL.csv"),
             ("Sıcak tepe / soğuk uyanma sonuçları","states","V13_SICAKLIK_DURUMU.csv"),
             ("2–10 tamamen soğuk/sıcak aile testleri","family","V13_AILE_SOĞUK_SICAK.csv"),
             ("Örnek 20 sayı / aile dağılımı","examples","V13_KULE_ORNEKLER.csv"),
