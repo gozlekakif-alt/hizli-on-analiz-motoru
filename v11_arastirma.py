@@ -288,10 +288,12 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
     slot_acc={}
     target_ledger=[]
     arrivals=Counter()
+    ball_states=defaultdict(lambda:{"gözlem":0,"çıktı":0})
     arrival_examples=[]
     signal_examples=[]
     hours=defaultdict(lambda:{"hedef":0,"yeni20":0,"benzersiz12":0,
-                               "sıcak":0,"soğuk":0,"sabit20":0})
+                               "sıcak":0,"soğuk":0,"sabit20":0,
+                               "ardışık":0,"bant": [0,0,0,0]})
     by_day_count=Counter()
     scanned=0
     for day_index,day in enumerate(days):
@@ -320,6 +322,23 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
             h["benzersiz12"]+=ctx["unique12"]
             h["sıcak"]+=ctx["hot"]
             h["soğuk"]+=ctx["cold"]
+            h["ardışık"]+=ctx["last_consecutive"]
+            for i,v in enumerate(ctx["bands"]):
+                h["bant"][i]+=v
+            # Every 1..80 number is observed prospectively, including
+            # those never seen in the previous 12 draws.
+            target_set=set(target)
+            for n in range(1,81):
+                freq=ctx["count12"][n]
+                temp=("0 hiç" if freq==0 else "1–2 soğuk" if freq<=2
+                      else "3–4 ılık" if freq<=4 else
+                      "5–6 sıcak" if freq<=6 else "7+ çok sıcak")
+                rise=ctx["count6"][n]-ctx["first6"][n]
+                trend=("Artıyor" if rise>=2 else
+                       "Azalıyor" if rise<=-2 else "Dengeli")
+                bucket=ball_states[(phase,temp,trend)]
+                bucket["gözlem"]+=1
+                bucket["çıktı"]+=int(n in target_set)
             for k in SIZES:
                 ledger={"Tarih":day,"Hedef":actual["no"],
                         "Saat":actual["dt"][11:16],
@@ -414,7 +433,12 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                           "Önceki 20'den tekrar":round(v["sabit20"]/n,2),
                           "12 çekilişte farklı sayı":round(v["benzersiz12"]/n,2),
                           "12'de sıcak sayı (5+)":round(v["sıcak"]/n,2),
-                          "12'de soğuk sayı (0)":round(v["soğuk"]/n,2)})
+                          "12'de soğuk sayı (0)":round(v["soğuk"]/n,2),
+                          "Son 20'de ardışık komşu":round(v["ardışık"]/n,2),
+                          "Son 20 sayı bant 1–20":round(v["bant"][0]/n,2),
+                          "Son 20 sayı bant 21–40":round(v["bant"][1]/n,2),
+                          "Son 20 sayı bant 41–60":round(v["bant"][2]/n,2),
+                          "Son 20 sayı bant 61–80":round(v["bant"][3]/n,2)})
     return {
         "meta":{"tarih_sayısı":len(days),"ilk_gün":days[0],
                 "son_gün":days[-1],"çekiliş_sayısı":sum(len(daydraws[d]) for d in days),
@@ -427,6 +451,12 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                  for (phase,k,method,slot),v in sorted(slot_acc.items())],
         "target_ledger":target_ledger,
         "arrival":arrival_rows,
+        "ball_states":[{"Dönem":phase,"Önceki12 sıcaklık":temp,
+                        "İlk6 / son6 hareketi":trend,
+                        "Sayı-hedef gözlemi":v["gözlem"],
+                        "Sonraki çekilişte çıktı":v["çıktı"],
+                        "Çıkış yüzdesi":round(100*v["çıktı"]/v["gözlem"],3)}
+                       for (phase,temp,trend),v in sorted(ball_states.items())],
         "examples":arrival_examples,
         "signals":signal_examples,
         "hour_summary":hour_rows
