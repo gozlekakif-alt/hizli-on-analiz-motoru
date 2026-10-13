@@ -255,4 +255,51 @@ assert rows[0]["+2 gün"]==2
 assert "#61651 10:??" not in rows[0]["Bugün çekilişler"]
 assert "#61651 00:??" not in rows[0]["Bugün çekilişler"]
 
+
+# Separate A->B / A->B->C evidence tests: strict earlier-day training.
+from v10_sira import (family_order_events, family_order_patterns,
+                      family_order_matches, family_order_targets)
+A="-".join(f"{x:02d}" for x in range(1,6))
+B="-".join(f"{x:02d}" for x in range(6,11))
+C="-".join(f"{x:02d}" for x in range(11,16))
+order_labels=[A,B,C]
+def order_draw(day,pos,ident,label):
+    prefix=[int(n) for n in label.split("-")]
+    # The fillers exclude the other two families.
+    return env["make_draw"](ident,m(day,pos),prefix+list(range(30,45)))
+training=[]
+for day,first_id in (("2026-10-08",1000),("2026-10-10",2000)):
+    training.extend([order_draw(day,10,first_id,A),
+                     order_draw(day,13,first_id+1,B),
+                     order_draw(day,18,first_id+2,C)])
+live=[order_draw("2026-10-12",10,3000,A),order_draw("2026-10-12",13,3001,B)]
+order_events=family_order_events(training+live,order_labels,"2026-10-12")
+pairs,triples=family_order_patterns(order_events,"2026-10-12",max_gap=12,min_days=2)
+assert any(r["A"]==A and r["B"]==B and r["Fark"]==3 and r["Destek gün"]==2
+           for r in pairs),pairs
+assert any(r["A"]==A and r["B"]==B and r["C"]==C
+           and r["Fark 1"]==3 and r["Fark 2"]==5
+           and r["Destek gün"]==2 for r in triples),triples
+assert not family_order_patterns(order_events,"2026-10-12",12,3)[0]
+matches=family_order_matches(order_events,"2026-10-12",pairs,triples)
+assert any(r["Zincir"]=="A→B" for r in matches)
+targets=family_order_targets(order_events,"2026-10-12",pairs,triples,
+                             m("2026-10-12",13),m)
+assert any(r["Aile"]==C and r["Aşama"]=="A→B→C" and
+           r["Hedef sıra"]==18 for r in targets),targets
+assert not family_order_targets(order_events,"2026-10-12",pairs,triples,
+                                m("2026-10-12",19),m)
+order_events_complete=family_order_events(
+    training+live+[order_draw("2026-10-12",18,3002,C)],
+    order_labels,"2026-10-12")
+assert not any(r["Hedef sıra"]==18 for r in family_order_targets(
+    order_events_complete,"2026-10-12",pairs,triples,m("2026-10-12",13),m))
+matches=family_order_matches(order_events_complete,"2026-10-12",pairs,triples)
+assert any(r["Zincir"]=="A→B→C" for r in matches)
+# A and B on the same draw is not chronological evidence.
+same_only=order_draw("2026-10-08",10,9000,A)
+same_only["nums"]=list(range(1,21))
+e=family_order_events([same_only],order_labels,"2026-10-09")
+assert not family_order_patterns(e,"2026-10-09",12,1)[0]
+
 print("PASS: V10 rhythms, repeat stages, families, and paste, family targets, calendar, safe veri.txt append, >1MB blob GitHub API")
