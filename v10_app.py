@@ -18,6 +18,9 @@ from v10_sira import (family_order_events, family_order_patterns,
                       family_order_matches, family_order_targets)
 from v10_geliyorum import upcoming_alerts, replay_warning_day, MIN_PARTIAL
 from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summary
+from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
+                           summary_text as v11_text, SIZES as V11_SIZES,
+                           NUMBER_METHODS as V11_METHODS)
 
 REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
 RAW = "https://raw.githubusercontent.com/" + REPO + "/main/"
@@ -946,7 +949,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -1926,3 +1929,155 @@ with tabs[6]:
         st.warning("Dikkat: Aileler geçmiş sonuçlara göre seçilmiş "
                    "olabileceğinden bu test kör bağımsız örneklem değildir. "
                    "Tekrarlar kazanmayı garanti etmez.")
+
+
+@st.cache_data(ttl=900,show_spinner=False)
+def cached_v11_study(draws_json, family_json, train_days):
+    selected=json.loads(family_json)
+    f={
+        label:{"k":len(label.split("-")),
+               "nums":tuple(int(n) for n in label.split("-")),
+               "mask":sum(1<<(int(n)-1) for n in label.split("-"))}
+        for label in selected
+    }
+    return run_study(json.loads(draws_json),f,train_days=train_days)
+
+
+with tabs[7]:
+    st.subheader("🧠 V11 — Aile davranışları ve 12 çekilişteki 20 sayı")
+    st.caption(
+        "6, 7, 8, 9 ve 10 sayılık aileleri ayrı inceler. Sessiz, tamamlayarak, "
+        "yükselerek, dalgalanarak ve tam tekrar görünüşleri araştırır. "
+        "Hedef öncesindeki 12 çekiliş × 20 sayı üzerinde sıcak/soğuk/ivme, "
+        "beraber çıkış, yeni gelen sayılar, ardışık komşular ve bant dağılımı "
+        "hesaplanır. Her hedef için yalnızca önceden bilinen kayıtlar kullanılır."
+    )
+    total_by_size={
+        k:sum(1 for f in families.values() if f["k"]==k)
+        for k in V11_SIZES
+    }
+    st.write("**Araştırılan aileler:** " +
+             " · ".join(f"{k}'lı: {total_by_size[k]}" for k in V11_SIZES))
+    st.caption(
+        "Hedefler saatin 7, 8, 9, 10, 11 ve 12. çekilişleridir; "
+        "ilk altı çekiliş ve önceki kayıtlar 12 çekilişlik geçmiş pencereyi "
+        "oluşturur. 01:02 ek çekilişi ayrı tutulur. Eksik 12'lik pencereden "
+        "tahmin üretilmez."
+    )
+    phase_days=st.slider("İlk araştırma dönemi (gün)",
+                         min_value=20,max_value=55,value=36,step=1,
+                         key="v11_research_train_days")
+    if st.button("🚀 V11 — 73 günün tamamını analiz et",
+                 key="v11_run_complete",type="primary"):
+        with st.spinner("Bütün çekilişler, aileler ve 12×20 sayı hareketi "
+                        "sırayla inceleniyor. Telefonu kapatmadan bekle."):
+            report=cached_v11_study(
+                json.dumps(draws,separators=(",",":")),
+                json.dumps(sorted(label for label,f in families.items()
+                                  if f["k"] in V11_SIZES),separators=(",",":")),
+                phase_days
+            )
+        st.session_state["v11_analysis"]={
+            "last_no":max((x["no"] for x in draws),default=0),
+            "phase_days":phase_days,"result":report
+        }
+    last_draw_no=max((d["no"] for d in draws),default=0)
+    v11_saved=st.session_state.get("v11_analysis",{})
+    if v11_saved and v11_saved.get("phase_days")==phase_days:
+        if v11_saved.get("last_no")!=last_draw_no:
+            st.warning("Yeni çekilişler eklendi. Son rapor eski veriyle "
+                       "hesaplanmış olabilir. Analizi yeniden başlat.")
+        r=v11_saved["result"]
+        meta=r["meta"]
+        a,b,c,d=st.columns(4)
+        a.metric("Takvim günü",meta["tarih_sayısı"])
+        b.metric("Geçerli çekiliş",meta["çekiliş_sayısı"])
+        c.metric("Test hedefi",meta["hedef_sayısı"])
+        d.metric("Aile sayısı",sum(meta["aile_sayısı"].values()))
+        st.caption(f'Veri dönemi: {meta["ilk_gün"]} → {meta["son_gün"]}. '
+                   "İlk dönem ve sonraki dönem ayrı raporlanır; yöntemlerin "
+                   "puanları son dönemin sonucuna bakılarak ayarlanmaz.")
+        st.markdown("#### 🔬 Gerçekte tamamlanan aileler nasıl geldi?")
+        selected_k=st.selectbox("Aile boyutu",V11_SIZES,
+                                key="v11_size_select")
+        arrival=[x for x in r["arrival"] if x["Boyut"]==selected_k]
+        st.dataframe(arrival,hide_index=True,use_container_width=True)
+        st.markdown("#### 🎯 Önceden verilen kupon hedeflerinin sonuçları")
+        scores=[x for x in r["methods"] if x["Boyut"]==selected_k]
+        st.dataframe(scores,hide_index=True,use_container_width=True)
+        st.caption("Tam isabet ve isabet ortalaması, her kuponun tam hedef "
+                   "çekilişi üzerinde ölçülür. Rastgele beklenen tek bilet "
+                   f"ortalaması {selected_k}/4 = {selected_k/4:.2f} sayıdır. "
+                   "Katalog aileleri geçmiş sonuçlarla seçildiğinden tarafsız "
+                   "bağımsız veri testi kabul edilmez.")
+        st.markdown("#### 🕘 Saatlik 20 sayının davranışı")
+        st.dataframe(r["hour_summary"],hide_index=True,
+                     use_container_width=True)
+        with st.expander("👁️ Tam görünüşlerin 12 çekilişlik yolculuk örnekleri"):
+            st.dataframe(r["examples"],hide_index=True,use_container_width=True)
+        with st.expander("🧪 Gerçek hedefe gitmeden önce üretilmiş sinyal örnekleri"):
+            st.dataframe(r["signals"],hide_index=True,use_container_width=True)
+        st.markdown("#### 📥 Ayrı veri raporları")
+        downloadable=(
+            ("6–10 ailelerinin geliş yolları","arrival","V11_GELIS_YOLLARI.csv"),
+            ("Önceden hedeflenen kuponların isabeti","methods","V11_TUM_ISABETLER.csv"),
+            ("12×20 sayı saat özeti","hour_summary","V11_20_SAYI_SAAT.csv"),
+            ("Tam aile görünüş örnekleri","examples","V11_AILE_ORNEKLER.csv"),
+            ("Sinyal ve hedef örnekleri","signals","V11_HEDEF_SINYALLERI.csv"),
+        )
+        for display,key,filename in downloadable:
+            st.download_button("⬇️ "+display,
+                v11_csv(r[key]),file_name=filename,
+                mime="text/csv",key="v11_dl_"+key)
+        st.download_button(
+            "⬇️ V11 73 günlük tam araştırma özeti TXT",
+            v11_text(r),file_name="V11_73_GUN_ARASTIRMA_OZETI.txt",
+            mime="text/plain",key="v11_download_summary")
+        st.warning("⚠️ Geçmişte güzel görünen ritim, sonraki çekilişte "
+                   "kazandıracağı anlamına gelmez. Çok sayıda aile ve yöntem "
+                   "taranması tesadüfi kalıpları artırır. Bağımsız ileri tarih "
+                   "testi yapılmadan tahmin avantajı kanıtlanmış sayılmaz.")
+    else:
+        st.info("Araştırmayı çalıştırmak için 🚀 düğmesine bas. "
+                "Geniş analiz yalnız isteğinle çalışır; diğer V10 "
+                "sekmesini yavaşlatmaz.")
+
+    st.markdown("#### 🔭 Yeni çekiliş için V11 ön izleme")
+    st.caption("Ön izleme yalnız saatin 7–12. gelecek çekilişi için "
+               "ve arkasında kesintisiz 12 kayıt varsa gösterilir.")
+    if analysis_date==today and day_draws:
+        ready_draws=[d for d in day_draws
+                     if datetime.fromisoformat(d["dt"])<=now_tr()]
+        last_pos=max((d["pos"] for d in ready_draws),default=0)
+        next_pos=last_pos+1
+        next_dt=moment(daystr,next_pos) if next_pos<=217 else None
+        if (next_dt and next_dt>now_tr() and
+            next_pos not in known_pos):
+            preview=live_preview(
+                ready_draws,
+                {label:f for label,f in families.items()
+                 if f["k"] in V11_SIZES},
+                next_pos,
+                {label:p.get("hour_days",{})
+                 for label,p in profiles.items()}
+            )
+        else:
+            preview=[]
+        if preview:
+            st.caption(f"Bir sonraki hedef: {next_dt:%H:%M} "
+                       f"(günlük {next_pos}. çekiliş).")
+            st.dataframe(preview,hide_index=True,use_container_width=True)
+            st.download_button(
+                "⬇️ V11 anlık deneysel sayı adayları",
+                v11_csv(preview),
+                file_name=f"V11_ON_IZLEME_{daystr}.csv",
+                mime="text/csv",key="v11_live_csv")
+            st.info("Bunlar araştırma adaylarıdır; V11 henüz doğrulanmış "
+                    "tam isabet motoru değildir. Bu sekmede otomatik ücretli "
+                    "kupon oluşturulmaz.")
+        else:
+            st.caption("Şu an için yeterli 12 çekilişli geçmişi bulunan "
+                       "gelecek 7–12 slotu yok. Yeni çekiliş gelince "
+                       "tekrar kontrol et.")
+    else:
+        st.caption("Ön izleme yalnız bugünün kayıtlarıyla çalışır.")
