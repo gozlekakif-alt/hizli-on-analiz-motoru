@@ -169,9 +169,10 @@ def family_features(family,prior,context):
     family_hot=sum(n12[n]>=5 for n in family["nums"])
     family_cold=sum(n12[n]==0 for n in family["nums"])
     # Family-with-family co-movement and surrounding 20-ball context.
-    cohesion=sum(context["pairs"][tuple(sorted((n,m)))]
+    cohesion=(sum(context["pairs"][(n,m) if n<m else (m,n)]
                  for i,n in enumerate(family["nums"])
                  for m in family["nums"][i+1:])
+              if recent_max>=k-2 and family_hot>=max(2,k//2) else 0)
     return {
         "overlaps":overlaps,"max12":peak,"max3":recent_max,
         "early":early,"late":late,"change":late-early,
@@ -315,7 +316,6 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
             h["benzersiz12"]+=ctx["unique12"]
             h["sıcak"]+=ctx["hot"]
             h["soğuk"]+=ctx["cold"]
-            proposals=constructed_tickets(ctx,10) # returned per k below
             for k in SIZES:
                 tickets=constructed_tickets(ctx,k)
                 # matched random coupon with no outcome access: per-target
@@ -378,9 +378,8 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
             for category in ("Sessiz","Tamamlayarak","Yükselerek",
                              "Dalgalanarak","Tam tekrar","Diğer / karma"):
                 count=arrivals[(phase,k,category)]
-                if count or True:
-                    arrival_rows.append({"Dönem":phase,"Boyut":k,
-                                         "Geliş yolu":category,"Tam görünüş":count})
+                arrival_rows.append({"Dönem":phase,"Boyut":k,
+                                     "Geliş yolu":category,"Tam görünüş":count})
     hour_rows=[]
     for (phase,hr),v in sorted(hours.items()):
         n=v["hedef"]
@@ -403,6 +402,42 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
         "signals":signal_examples,
         "hour_summary":hour_rows
     }
+
+
+def live_preview(day_draws,families,next_pos,prior_hour_days=None):
+    """One prospective 7..12 slot only, from the exact previous 12 draw records."""
+    bypos={d["pos"]:d for d in day_draws}
+    if next_pos in bypos or hour_draw_index(next_pos) not in range(7,13):
+        return []
+    prior=complete_preceding_12(bypos,next_pos)
+    if prior is None:
+        return []
+    ctx=number_window(prior)
+    prehour=moment_hour(next_pos)
+    prior_hour_days=prior_hour_days or {}
+    ret=[]
+    for k in SIZES:
+        proposals=constructed_tickets(ctx,k)
+        for method,coupon in proposals.items():
+            ret.append({"Boyut":k,"Kaynak":method,"Aile":"-".join(f"{n:02d}" for n in coupon),
+                        "Hedef sıra":next_pos,"Saat destek gün":None,
+                        "Kupon uygun":False,
+                        "Açıklama":"Sayı akışı; deneyseldir"})
+        candidates=[]
+        for label,f in families.items():
+            if f["k"]!=k:continue
+            feat=family_features(f,prior,ctx)
+            hour_count=int(prior_hour_days.get(label,{}).get(prehour,0))
+            sig=prospective_signal(f,feat,hour_count)
+            if sig:candidates.append((sig["score"],label,sig,hour_count))
+        if candidates:
+            candidates.sort(key=lambda x:(-x[0],x[1]))
+            score,label,sig,daycount=candidates[0]
+            ret.append({"Boyut":k,"Kaynak":SIGNAL_METHOD,"Aile":label,
+                        "Hedef sıra":next_pos,"Saat destek gün":daycount,
+                        "Kupon uygun":False,
+                        "Açıklama":", ".join(sig["routes"])})
+    return ret
 
 
 def csv_export(rows):
