@@ -327,7 +327,9 @@ def run_study(draws,families,train_days=36,complete_days_only=True):
                         "Boyut":k,"Dönem":phase,
                         "Son12 benzersiz":ctx["unique12"],
                         "Son çekilişte yeni":ctx["new20"],
-                        "Sıcak sayı":ctx["hot"],"Soğuk sayı":ctx["cold"]}
+                        "Sıcak sayı":ctx["hot"],"Soğuk sayı":ctx["cold"],
+                        "Aile sinyali":"","Aile hedefi":"",
+                        "Aile sinyal koşulları":""}
                 tickets=constructed_tickets(ctx,k)
                 # matched random coupon with no outcome access: per-target
                 # reproducible seed, no use of Python salted hash().
