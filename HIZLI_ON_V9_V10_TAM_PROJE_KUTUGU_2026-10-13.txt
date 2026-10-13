@@ -830,3 +830,68 @@ v10_canli_kayit.json ve onceki kuponlar.
 
 V13 final CI #38432571382: tum Python/syntax, V9/V10/V11/V12/V13
 73 gun gercek veri smoke testleri ve Streamlit UI: BASARILI.
+
+
+====================================================================
+V14 — 217 CEKILIS ZAMAN HARITASI VE 80x80 GECIS AGI
+====================================================================
+13.10.2026: Kullanici, bir sayi bir sonraki cekiliste hangi sayiya
+"yerini birakiyor" sorusu ve 217 cekilis boyunca zaman segmentlerini
+test ederek RNG'den ayrisabilen olasi siralarin arastirilmasini istedi.
+"Evet yoldasim" onayi ile GitHub'da kuruldu ve gercek veride test edildi.
+
+DOSYALAR:
+- v14_gecis_agi.py: 80x80 sayi gecis motoru (+1,+2,+3,+6,+12),
+  A kaynagi/B yeni gelen kosullari; 217 saat pozisyonlari,
+  gece, sabah, oglen, aksam; saat ilk6/son6 ozetleri.
+- v14_selftest.py: sentetik onceden tahmin ve 36/37 gunlu gercek
+  ileri-zaman ayrimli test; veri.txt yeni kayit alinca bozulmaz.
+- v10_app.py: 11. sekme "🔄 V14 Geçiş Ağı"; tek cekilis
+  ayrilan-yeni gelen, saat/217 tablo, onceden kupon
+  ve CSV raporlari, canli gelecek slot.
+- V14_217_ZAMAN_GECIS_RAPORU.md: istatistiksel mimari ve bulgular.
+- .github/workflows/v14-fast-check.yml: V14 bagimsiz hizli test.
+- .github/workflows/v10-check.yml: tum onceki motorlar + V14 + UI.
+
+KAVRAM: 20 sayi fiziksel cikis sirasi DEGIL, kume.
+A onceki cekiliste varken B yoksa B'nin sonraki cekiliste
+bulunmasi olasiligi adil bagimsiz RNG'de %25.
+A'nin hedefte AYRILDIGINI SONRADAN bildigimizde B giris
+kosullu olasiligi 20/79 = %25.316.
+Ayrilan 15 rakam ile giren 15 rakam bire bir
+hangi rakama yer verdi diye KESIN eslenemez.
+Sonuc oncesi kestirim ile sonuc sonrasi betimleme ayri tutuldu.
+
+EGITIM: 01.08–05.09.2026 = 36 gun, 7772 iki-cekilis iliskisi.
+TEST: 06.09–12.10.2026 = 37 gun, 7992 iki-cekilis iliskisi.
+13.10 veri.txt yeni cekilislerle kismen büyudugunden
+final gun kapsam disi. 217 pozisyon: ilk gun cekilisi
+icin onceki ayni-gun cekiis yok, bu nedenle 216 gecis/gun.
+
+PERFORMANS, RASTGELE20'YE AYNI HEDEFTE ORTALAMA FARK:
+- V14 tek-adim ag: -0.0258/20 (37 gun, %95 yakl
+  aralik -0.0766 .. +0.0250).
+- V14 cok-adim ag: -0.0006/20 (aralik -0.0491 .. +0.0479).
+- V13 sicaklik: +0.0213/20 (aralik -0.0320 .. +0.0745).
+- V12 ag kule: -0.0302/20 (yalniz uygun 7–12 hedefleri).
+20/20 HIC olmadı. Gercek anlamda RNG ustunlugu kanitlanmadi.
+
+ILK 36 GUNDE GUCLU GORUNEN SAYI CIFTLERI:
+- 37->43, egitim %29.556, test %24.187.
+- 40->79, egitim %29.424, test %22.954.
+- 10->52, egitim %29.143, test %26.090.
+Farkli gunlerde sabit iliski kanitlanamadi. 80x80 cift
+aramasi (6,320 aday A!=B) coklu test yanilmasina aciktir.
+Saatte onceki cekilisten kalan 20 sayinin ortalama 5
+olmasi adil 20/80 matematiginin dogal sonucudur.
+
+KORUNAN: V9 app.py, ana veri.txt, aile CSV, canli
+kayit JSON, eski kuponlar, V10/V11/V12/V13 motorlari.
+CI: V14 hizli #38443251102 BASARILI;
+tum V9–V14/Streamlit #38443104291 BASARILI.
+
+SONRAKI ADIM: kodu ve tahmin kurallarini sabitleyip
+14 Ekim ve sonraki HENUZ GORULMEMIS cekilislerde
+her tahmini once kaydet, sonucu sonradan eslestir.
+Gecmisi test etmek ileri zaman simülasyonudur;
+tam bagimsiz "canli kör test" degildir.
