@@ -355,7 +355,7 @@ def latest_character(day_draws,target_pos):
     """Last actually observable character strictly before a future target."""
     history=make_ready(day_draws)
     bypos={d["pos"]:d for d in history}
-    if target_pos in bypos or target_pos<=2:
+    if target_pos in bypos or target_pos<=2 or not contiguous(target_pos):
         return None
     prev=bypos.get(target_pos-1)
     earlier=bypos.get(target_pos-2)
