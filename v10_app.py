@@ -21,6 +21,12 @@ from v10_alti_ritim import gap_targets_today, walkforward_six_gap, six_gap_summa
 from v11_arastirma import (run_study, live_preview, csv_export as v11_csv,
                            summary_text as v11_text, SIZES as V11_SIZES,
                            NUMBER_METHODS as V11_METHODS)
+from v12_80_kule import (run_tower_study, audit_target as v12_audit_target,
+                         target_tower_row as v12_target_row,
+                         next_draw_tower as v12_next_tower,
+                         csv_export as v12_csv, expected_repeat_per_target,
+                         make_ready as v12_ready, SIZES as V12_SIZES,
+                         METHODS as V12_METHODS)
 
 REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
 RAW = "https://raw.githubusercontent.com/" + REPO + "/main/"
@@ -949,7 +955,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -2094,3 +2100,242 @@ with tabs[7]:
                        "tekrar kontrol et.")
     else:
         st.caption("Ön izleme yalnız bugünün kayıtlarıyla çalışır.")
+
+
+@st.cache_data(ttl=1200,show_spinner=False)
+def cached_v12_tower_study(draws_json,training_days):
+    return run_tower_study(json.loads(draws_json),train_days=training_days)
+
+
+with tabs[8]:
+    st.subheader("🗼 V12 — 80 sayılık kule ve 2–10 aile oluşum sırası")
+    st.warning(
+        "Önemli ayrım: Resmî 20 sayı bir kümedir; küçükten büyüğe yazılan "
+        "sonuçlar topların makineden çıkma SIRASINI göstermez. Buradaki sıra, "
+        "ailelerin ÖNCEKİ çekilişlerde hangi sırayla göründüğünü ve kulenin "
+        "geçmiş sayılardan hangi sırayla kurulduğunu ifade eder."
+    )
+    st.caption(
+        "80 sayılık merkez → her çekilişteki 20 sayı → o yirmilinin bütün "
+        "2, 3, 4, 5, 6, 7, 8, 9, 10'lu alt aileleri → geçmiş 12 çekilişte "
+        "tam görülmüş ailelerin zaman çizelgesi → önceki verilerle kurulan "
+        "tahmin kulesi → rastgele 20 sayılık kontrol."
+    )
+    st.markdown("#### 📐 Her 20 sayıda teorik olarak kaç farklı aile var?")
+    from math import comb as v12_comb
+    v12_theoretical=[
+        {"Aile boyutu":k,"Her 20 sayıda":v12_comb(20,k),
+         "Tanım":"Tam alt aile (sonradan sayılır)"}
+        for k in V12_SIZES
+    ]
+    st.dataframe(v12_theoretical,hide_index=True,use_container_width=True)
+    st.caption(
+        "Bu tablo 20 sayıyı gördükten sonra çıkarılan ailelerin sayısını gösterir. "
+        "Her yirmili matematiksel olarak 2+3+4+5+6 parçalanabilir. "
+        "Bunun kendisi gelecek çekilişi tahmin ettiğimiz anlamına gelmez."
+    )
+
+    st.markdown("#### 🔎 Tek bir gerçek çekilişi kulede incele")
+    v12_day_sorted=v12_ready(day_draws)
+    v12_positions=[r for r in v12_day_sorted if r["pos"]>12]
+    if not v12_positions:
+        st.info("İncelenecek günün en az 13. çekilişine kadar verisi gerekli.")
+    else:
+        v12_choice=st.selectbox(
+            "İncelenecek çekiliş",
+            options=list(range(len(v12_positions)))[::-1],
+            format_func=lambda i:(
+                f'#{v12_positions[i]["no"]} • '
+                f'{v12_positions[i]["dt"][11:16]} • '
+                f'günlük {v12_positions[i]["pos"]}. çekiliş'
+            ),
+            key="v12_actual_select")
+        chosen_draw=v12_positions[v12_choice]
+        v12_bypos={r["pos"]:r for r in v12_day_sorted}
+        v12_previous=[v12_bypos.get(n)
+                      for n in range(chosen_draw["pos"]-12,chosen_draw["pos"])]
+        if any(r is None for r in v12_previous):
+            st.info("Bu çekilişten önce 12 kesintisiz kayıt bulunmuyor. "
+                    "Eksik veriden sıra çıkarmıyoruz.")
+        else:
+            with st.spinner("Gerçek 20 sayının alt aileleri taranıyor..."):
+                v12_row,v12_data,v12_prior_guesses=v12_target_row(
+                    chosen_draw,v12_previous,phase="Tek çekiliş",keep_detail=True
+                )
+            x,y,z=st.columns(3)
+            x.metric("Gerçek sayı",20)
+            y.metric("Geçmiş ailelerle kapsanan",
+                     v12_data["covered"])
+            z.metric("Kulenin önceden doğru sayısı",
+                     v12_row["Ağ-kule"])
+            st.write("**Gerçek çıkan 20 sayı:** "+
+                     " · ".join(f"{n:02d}" for n in chosen_draw["nums"]))
+            st.write("**Önceden kurulan ağ kulesindeki 20 sayı:** "+
+                     " · ".join(f"{n:02d}"
+                                for n in v12_prior_guesses["Ağ-kule"]))
+            st.caption("Gerçek 20 sayıyla ortak çıkan sayılar, "
+                       "sadece ÖNCEKİ 12 çekilişle oluşturulan kuleden sayıldı.")
+            st.markdown("##### Aile boyutlarına göre gerçek geçmiş izleri")
+            by_size=[
+                {"Boyut":k,
+                 "20 sayıda var olan alt aile":v12_comb(20,k),
+                 "Önceki 12'de tam görülmüş":v12_data["counts"][k],
+                 "Kulede k'lı öncü aile doğru":
+                    f'{v12_row[f"{k}'+ "'li aile ortak" + f'"]}/{k}'}
+                for k in V12_SIZES
+            ]
+            st.dataframe(by_size,hide_index=True,use_container_width=True)
+            st.markdown("##### ⏱️ Geçmişte görünmüş ailelerin sırası")
+            if v12_data["witnessed"]:
+                display_order=[
+                    {"İlk geçmiş konum":r["prior_first"],
+                     "Son geçmiş konum":r["prior_last"],
+                     "Geçmişte kaç kez":r["prior_count"],
+                     "Boyut":r["size"],
+                     "Aile":"-".join(f"{n:02d}" for n in r["nums"])}
+                    for r in v12_data["witnessed"]
+                ]
+                st.dataframe(display_order,hide_index=True,
+                             use_container_width=True)
+                st.caption(
+                    "Geçmiş 12 çekilişin 1 numarası en eski, 12 numarası "
+                    "en yenidir. Buradaki sıralama TOPLARIN bugünkü çıkma "
+                    "sırası değil, ailelerin önceki çekilişlerde görünme sırasıdır."
+                )
+            else:
+                st.info("Gerçek 20 sayının hiçbir ikili veya daha büyük "
+                        "ailesi önceki 12 çekilişte tam görünmemiş.")
+            if v12_data["uncovered"]:
+                st.write("**Geçmiş ailelerden kapsanamayan sayılar:** "+
+                         " – ".join(map(str,v12_data["uncovered"])))
+            st.markdown("##### 🧩 Sonradan yapılabilen 20 sayı bölünmesi")
+            st.dataframe([
+                {"Aşama":i+1,"Boyut":len(g),
+                 "Aile":"-".join(f"{n:02d}" for n in g)}
+                for i,g in enumerate(v12_data["forced"])
+            ],hide_index=True,use_container_width=True)
+            st.caption(
+                "Bu 2+3+4+5+6 bölünmesi bütün gerçek 20 sayıyı kaplar, "
+                "ancak sonucu GÖRDÜKTEN SONRA kurulmuştur. "
+                "Kupon başarısı olarak sayılmaz."
+            )
+            st.download_button(
+                "⬇️ Seçilen çekilişin aile sırasını CSV indir",
+                v12_csv(display_order if v12_data["witnessed"] else [
+                    {"Sonuç":"Bu hedefin geçmiş 12'de tam görünen ailesi yok"}
+                ]),
+                file_name=f'V12_GECMIS_AILE_SIRASI_{chosen_draw["no"]}.csv',
+                mime="text/csv",key="v12_download_audit"
+            )
+
+    st.markdown("#### 🧪 73 günlük kronolojik kule testi")
+    v12_training_days=st.slider("İlk öğrenme / inceleme dönemi (gün)",
+                                min_value=20,max_value=55,value=36,step=1,
+                                key="v12_first_period")
+    st.caption(
+        "Bu testte 7–12. hedef çekilişleri için kule SADECE geçmiş 12×20 "
+        "sayıdan kuruluyor. Her kule 20 sayı öneriyor. "
+        "Öğrenme günlerinden sonra 20'de kaç sayı tuttuğu, 2–10 aile "
+        "alt seviyeleri ve rastgele20 kontrolü ölçülüyor. "
+        "Ayrıca 20 sayının önceki 12 çekilişte görülmüş kaç gerçek "
+        "aileyle kapsandığı ve bunun tesadüfi beklentisi inceleniyor."
+    )
+    if st.button("🚀 V12 — 80 sayılık kuleyi tüm geçmişte test et",
+                 key="v12_run",type="primary"):
+        with st.spinner("Bütün 2–10 aileleri, geçmiş 12 çekilişteki kronolojik "
+                        "görünüşleri ve 20 sayılık kuleler inceleniyor..."):
+            v12_full_report=cached_v12_tower_study(
+                json.dumps(draws,separators=(",",":")),v12_training_days
+            )
+        st.session_state["v12_report"]={
+            "last_no":max((r["no"] for r in draws),default=0),
+            "days":v12_training_days,"report":v12_full_report
+        }
+    v12_saved=st.session_state.get("v12_report")
+    if v12_saved and v12_saved.get("days")==v12_training_days:
+        report=v12_saved["report"]
+        if v12_saved.get("last_no")!=max((r["no"] for r in draws),default=0):
+            st.warning("Yeni çekiliş eklendi. Bu rapor bir önceki veri "
+                       "sürümüne ait; testi tekrar çalıştır.")
+        meta=report["meta"]
+        a,b,c=st.columns(3)
+        a.metric("Taranan gün",meta["days"])
+        b.metric("Gerçek hedef çekiliş",meta["targets"])
+        c.metric("Aile seviyeleri","2–10")
+        st.markdown("##### 🎯 20 sayıyı önceden seçme başarısı")
+        st.dataframe(report["methods"],hide_index=True,use_container_width=True)
+        st.markdown("##### 🔁 Geçmişten bugüne taşınan aileler")
+        st.dataframe(report["recurrent"],hide_index=True,use_container_width=True)
+        st.caption(
+            "Her aile boyutundaki geçmiş tekrar adedi, "
+            "20/80 bağımsız çekilişte matematiksel olarak beklenen adetle "
+            "karşılaştırılır. Sadece örüntü bulmak yetmez; "
+            "tesadüften anlamlı biçimde ayrışmalıdır."
+        )
+        with st.expander("📍 Ailelerin önceki 12 çekilişteki son görünüş sırası"):
+            st.dataframe(report["age_lags"],hide_index=True,
+                         use_container_width=True)
+        with st.expander("⏱️ Saatin 7–12 hedef sıralarının başarıları"):
+            st.dataframe(report["slot_methods"],hide_index=True,
+                         use_container_width=True)
+        with st.expander("📚 Bütün hedeflerin 2–10 aile denetimi"):
+            st.dataframe(report["ledger"][:150],hide_index=True,
+                         use_container_width=True)
+        downloads=(
+            ("20 sayılık tüm önceden hedefler","ledger","V12_20_SAYI_TUM_HEDEFLER.csv"),
+            ("2–10 aile geçmiş tekrarları","recurrent","V12_2_10_AILE_TEKRARLARI.csv"),
+            ("Aile aktivasyon sırası","age_lags","V12_AILE_ZAMAN_SIRASI.csv"),
+            ("Kule ve rastgele 20 isabeti","methods","V12_20_LI_KULE_PERFORMANSI.csv"),
+            ("7–12 hedef saat karşılaştırması","slot_methods","V12_7_12_HEDEF_PERFORMANSI.csv")
+        )
+        for title_name,field,file_name in downloads:
+            st.download_button(
+                "⬇️ "+title_name,
+                v12_csv(report[field]),
+                file_name=file_name,mime="text/csv",
+                key="v12_export_"+field
+            )
+    else:
+        st.info("Kapsamlı test kullanıcı düğmesine basınca çalışır. "
+                "Sonuçlar geldikten sonra bütün CSV'ler gösterilir.")
+
+    st.markdown("#### 🔭 Gelecek çekiliş için 80 sayı kulesi")
+    if analysis_date==today and day_draws:
+        v12_ready_day=[r for r in day_draws
+                       if datetime.fromisoformat(r["dt"])<=now_tr()]
+        p=max((r["pos"] for r in v12_ready_day),default=0)+1
+        due=moment(daystr,p) if p<=217 else None
+        preview=None
+        if due is not None and due>now_tr() and p not in known_pos:
+            last_draw=max(v12_ready_day,key=lambda r:r["pos"]) if v12_ready_day else None
+            forecast_no=last_draw["no"]+1 if last_draw else 0
+            preview=v12_next_tower(v12_ready_day,forecast_no,p)
+        if preview:
+            st.write(f'**Hedef:** {due:%H:%M} — günlük {p}. çekiliş')
+            st.write("**80 sayılık kulenin önerdiği 20:** " +
+                     " – ".join(str(n) for n in preview["proposals"]["Ağ-kule"]))
+            st.caption(
+                "Aşağıdaki merdiven, önerilen ailelerin 2'li başlayıp "
+                "3,4,5,6,7,8,9,10'luya kadar NASIL GENİŞLEDİĞİNİ gösterir. "
+                "Bu bir tahmin KURULUŞ sırasıdır; resmî top sırası değildir."
+            )
+            st.dataframe(preview["stairs"],hide_index=True,use_container_width=True)
+            st.markdown("##### 🧱 20 sayıyı kaplayan ayrık aile katları")
+            st.dataframe(preview["composition"],hide_index=True,
+                         use_container_width=True)
+            st.markdown("##### 🌐 80 sayının 12 çekilişlik durumu")
+            st.dataframe(preview["nodes"],hide_index=True,use_container_width=True)
+            st.download_button(
+                "⬇️ V12 sonraki hedef 80 sayı düğümleri",
+                v12_csv(preview["nodes"]),
+                file_name=f"V12_80_SAYI_KULE_{daystr}.csv",
+                mime="text/csv",key="v12_live_nodes"
+            )
+            st.info("Bu seçenekler araştırma hedefleridir; kazanma garantisi "
+                    "veya istatistiksel üstünlük iddiası yoktur. "
+                    "Bu sekme otomatik bahis/kupon satın alma işlemi yapmaz.")
+        else:
+            st.info("Yeni hedef için henüz kesintisiz 12 çekilişlik geçmiş yok, "
+                    "hedef saati geçti veya saatin 7–12 bölümünde değil.")
+    else:
+        st.caption("Canlı önizleme yalnız seçili gün bugünse çalışır.")
