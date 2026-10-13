@@ -55,6 +55,24 @@ Her hedefe ayrıca aynı sayıda **6 rastgele 10'lu kontrol** üretilir; tüm ba
 
 Bu fark, kupon motorunun aynı sayıları tekrar tekrar seçtiğini gösteriyor. Geniş kapsama seçeneği bu tekrarı azaltmak için geliştirildi. Sonuçlarına bakarak motoru yeniden ayarlayıp aynı 37 günü yeni kör test diye göstermeyeceğiz.
 
+## Geniş kapsama V15-B: ikinci deneme (keşif amaçlı)
+
+Aile odaklı motorun aynı sayıları gereğinden çok tekrarladığı görüldükten sonra ikinci düzen geliştirildi. İlk kupon hariç her yeni onlu en az **7 daha önce seçilmemiş sayı** içerir; altı kuponun aile merdivenleri yine hedef öncesinden sabittir.
+
+**37 günlük aynı tarihsel veride sonuçlar:**
+
+| Ölçüm | Aile odaklı V15-A | Geniş kapsama V15-B | Altı rastgele |
+|---|---:|---:|---:|
+| Kuponların farklı sayı kapsamı | 33,223 | **47,408** | 44,099 |
+| Altı kupondan en yüksek isabet ortalaması | 3,9330 | **4,1471** | **4,1388** |
+| Önceden sabitlenmiş ailelerde tam 6/6 | 4 | **2** | 5 |
+| En iyi onlu için ulaşılan en yüksek isabet | 8/10 | 8/10 | 8/10 |
+| 10/10 | 0 | 0 | 0 |
+
+**Doğru yorum:** V15-B sayı kapsamını teknik olarak düzeltti. 4,1471 ile 4,1388 arasındaki **+0,0083 sayı/kupon** farkı, gelecekte işe yarayan tahmin avantajı göstermez. Bu yeni kurallar aynı 37 günlük sonuçlara BAKILARAK oluşturulduğundan tekrar edilen tarihsel test gerçek bağımsız kör test değildir. 6/6 ise daha az sayıda çıkmıştır.
+
+Geçerli bilimsel sonraki adım: **V15-B kuralını dondurup yalnız henüz çekilmemiş, sonuç öncesinden kalıcı kayda alınmış yeni hedeflerde sınamak**.
+
 ## Kayıt ve denetim
 
 Uygulamada kullanıcı **V15 Kupon Motoru** sekmesinden test raporunu CSV indirebilir; ayrıca gelecek 7–12 hedefi için altı kupon ve her birinin 2–10 aile merdiveni önceden üretilebilir.
