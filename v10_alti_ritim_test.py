@@ -66,7 +66,8 @@ test_draws=training+today[:2]+[h]
 warmup=walkforward_six_gap(training,meta,moment,1)
 assert len(warmup)==1 and warmup[0]["İsabet"] is None,warmup
 good=walkforward_six_gap(test_draws,meta,moment,2)
-assert len(good)==1 and good[0]["İsabet"]==6 and good[0]["Sonuç"]=="6/6",good
+assert len(good)==2 and good[0]["İsabet"]==6 and good[0]["Sonuç"]=="6/6",good
+assert good[1]["İsabet"] is None and good[1]["Hedef sıra"]==23,good
 assert six_gap_summary(good)["6/6"]==1
 assert good[0]["Kupon koşulu"]
 miss=walkforward_six_gap(training+today[:2]+[fake("2026-10-10",20,10003,False)],meta,moment,2)
