@@ -401,3 +401,40 @@ KURAL:
 Ilk yeni GitHub Actions kontrolleri: V10 uygulama ve yeni sira testleri
 basarili (38377368321, 38377467674). Yeni CI tetikleyicisi v10_sira.py'yi
 de kapsar.
+
+
+====================================================================
+14 — 13 EKIM 2026 / GUNLUK SINYAL DEFTERI DUZELTMESI
+====================================================================
+Sorun: Geçmiş bir tarih seçildiğinde "Hedef & Kupon" canlı sinyal fonksiyonu
+geçmiş tarihli hedefleri bilinçli olarak eliyor. Bu nedenle tüm aile boyutlarında
+"Sinyal yok" yazması, o gün hiç hedef oluşmadığı anlamına GELMIYORDU.
+
+Çözüm:
+- v10_app.py içine day_signal_replay(...) salt-okunur simülasyonu eklendi.
+- "Günlük Sinyal Defteri — geçmiş ve sonuçlar" tablosu seçim ekranında:
+  o anda görülen ilk, ikinci veya üçüncü aile görünüşünden hemen sonra
+  önceki gün ritimleriyle hangi hedefin doğduğunu ve sonradan girilen gerçek
+  çekilişte tam ailenin tutup tutmadığını ayrı raporlar.
+- Gün içinde doğan / sonucu kayıtlı / tam tutan / sonucu bekleyen sayaçları,
+  aile, boyut, 1→2/2→3/3→4 aşaması, önceki destek günleri, tetikleyen çekiliş,
+  hedef saat/sıra/no ve sonuç/İsabet ile CSV indirme eklendi.
+- Eski "İleri hedef sinyali" metriği "Şu an gelecek hedef" olarak düzeltildi.
+- Geçmiş hedefler yeni canlı kupon gibi kaydedilmez; yalnız geriye dönük ölçülür.
+- v10_selftest.py'ye geçmişe dönük sırayla hedef oluşturma, tam başarı ve
+  henüz kaydı olmayan hedefin "bekliyor" kalması testleri eklendi.
+- CI 38386625147 bütün kontrollerde BAŞARILI (sentaks, V10 fonksiyonları,
+  gerçek veri, Streamlit ekran açılışı).
+
+12 Ekim 2026 incelenen GitHub veri.txt anlık kapsam:
+- 121 çekiliş, #61629 (00:02) - #61749 (15:57)
+- 1.131 aday ailede o gün tam görünen 20 ayrı aile
+- Önceki en az 2 ayrı gün ritim desteği koşulunda 4 adet tarihsel 1→2 hedef
+- Hedefi kayıtlı 2 çekilişte 0 tam aile başarısı, diğer 2 hedefin sonucu
+  veri.txt'de henüz yok. Bu 121 çekilişlik kısmî güne aittir.
+- 1 günlük deneysel destekte 38 tarihsel hedef; 3 günlük destekte sıfır.
+- Geriye dönük destek ve görünüşler tahmin başarısı kanıtı değildir.
+- 13 Ekim 2026 tarihinde henüz veri.txt içine 13 Ekim çekilişleri gelmediyse
+  canlı sistem bugüne yönelik hedef çıkaramaz. Güncel veri şarttır.
+
+V9 app.py, v10_aileler.csv ve ana veri.txt bu yama ile değiştirilmedi.
