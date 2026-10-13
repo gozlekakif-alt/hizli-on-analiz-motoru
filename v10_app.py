@@ -615,6 +615,29 @@ def cross_day_rhythm_report(profiles, families):
     return rows
 
 
+def cross_day_intraday_report(profiles, families, minimum_days=2):
+    """Observed same intra-day full-family gap patterns across past dates."""
+    rows=[]
+    levels=(("1→2","first"),("2→3","triple"),("3→4","quad"))
+    for label,p in profiles.items():
+        if label not in families:
+            continue
+        for stage,key in levels:
+            for pattern,days in p.get(key,{}).items():
+                if int(days)<minimum_days:
+                    continue
+                gaps=(pattern,) if isinstance(pattern,int) else pattern
+                rows.append({
+                    "Aile":label, "Boyut":families[label]["k"],
+                    "Aşama":stage,
+                    "Çekiliş aralığı":", ".join("+"+str(g) for g in gaps),
+                    "Destek ayrı gün":int(days),
+                })
+    rows.sort(key=lambda r:(-r["Destek ayrı gün"],-r["Boyut"],
+                            r["Aşama"],r["Aile"]))
+    return rows
+
+
 def cross_day_repeat_families(profiles, families, minimum_days=2):
     """Families repeating their own intra-day first/3rd/4th pattern
     on >=minimum_days distinct previous days."""
@@ -1047,6 +1070,7 @@ with tabs[1]:
     cross_day_runs=cross_day_rhythm_report(profiles,families)
     calendar_fire={r["Aile"] for r in cross_day_runs}
     session_fire=cross_day_repeat_families(profiles,families,minimum_days=2)
+    intraday_repeats=cross_day_intraday_report(profiles,families,minimum_days=2)
     fire_families=calendar_fire | session_fire
     st.caption("🔥 = geçmiş günlerde aynı aralık veya aynı aileye ait "
                "gün içi tekrar ritmi gözlendi; kesin isabet anlamına gelmez.")
@@ -1097,6 +1121,19 @@ with tabs[1]:
     else:
         st.info("Seçilen günden ÖNCE en az 3 farklı günde aynı aralıkla "
                 "tekrarlanan sabit aile zinciri bulunamadı.")
+    if intraday_repeats:
+        with st.expander("🔥 Farklı günlerde aynı çekiliş aralığını tekrar eden aileler",
+                         expanded=False):
+            st.dataframe(
+                [{**r,"Aile":"🔥 "+r["Aile"]} for r in intraday_repeats[:250]],
+                hide_index=True,use_container_width=True)
+            st.download_button("⬇️ Gün içi ritimlerin farklı gün tekrarları CSV",
+                family_order_csv(intraday_repeats),
+                file_name=f"V10_GUN_ICI_RITIM_DESTEK_{daystr}.csv",
+                mime="text/csv",key="v10_intraday_fire_csv")
+    else:
+        st.caption("Önceki günlerde en az iki gün destekli aynı tam-aile "
+                   "gün içi aralık şablonu henüz bulunamadı.")
     st.caption("🔥 alev bu ailelerden verilen kuponun yanında da gösterilir. "
                "Kayıtlı olmayan yeni günü eğitim verisine katmadan "
                "ritimleri yeniden hesaplarız. Gün ritmi tek başına "
