@@ -1,0 +1,23 @@
+name: V14 Ayrı Geçiş Testi
+on:
+  push:
+    paths:
+      - 'v14_gecis_agi.py'
+      - 'v14_selftest.py'
+      - 'v13_havuz_koltuk.py'
+      - 'v12_80_kule.py'
+      - 'v11_arastirma.py'
+      - '.github/workflows/v14-fast-check.yml'
+  workflow_dispatch:
+jobs:
+  v14-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V14 syntax
+        run: python -m py_compile v14_gecis_agi.py v14_selftest.py
+      - name: 80x80 transition map chronological test
+        run: python v14_selftest.py
