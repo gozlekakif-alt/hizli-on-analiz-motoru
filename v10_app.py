@@ -1299,8 +1299,12 @@ with tabs[1]:
         signal={**signal, "hour_gate":ticket_gate(signal["label"],signal["pos"])}
         groups[signal["size"]].append(signal)
     for k in range(5,11):
-        options=sorted(groups[k],key=lambda x:(x["pos"],-x["support"],x["label"]))[:30]
-        title=f"{k}'li aileler — {len(groups[k])} sinyal" if options else f"{k}'li aileler — Sinyal yok"
+        eligible=sum(x["hour_gate"]["coupon_ok"] for x in groups[k])
+        options=sorted(groups[k],
+                       key=lambda x:(not x["hour_gate"]["coupon_ok"],
+                                     x["pos"],-x["support"],x["label"]))[:30]
+        title=(f"{k}'li aileler — {len(groups[k])} sinyal, "
+               f"{eligible} kupon uygun") if options else f"{k}'li aileler — Sinyal yok"
         with st.expander(title,expanded=bool(options)):
             if not options:
                 st.caption("Bu boyutta ileri hedef yok. Motor 0 kupon öneriyor.")
@@ -1478,13 +1482,22 @@ with tabs[2]:
                 sira_targets=[]
                 st.caption("Geçmiş gün seçili: geçmiş saatlere canlı kupon üretilmez.")
             if sira_targets:
+                enriched_targets=[
+                    {**t,"hour_gate":ticket_gate(t["Aile"],t["Hedef sıra"])}
+                    for t in sira_targets
+                ]
                 st.dataframe(
-                    [{k:v for k,v in r.items() if k!="moment"}
-                     for r in sira_targets[:150]],
+                    [{**{k:v for k,v in t.items() if k not in ("moment","hour_gate")},
+                      "Hedef saat geçmiş gün":t["hour_gate"]["days"],
+                      "Kupon durumu":("✅ uygun" if t["hour_gate"]["coupon_ok"]
+                                      else "⏳ 🔥 saat desteği eksik")}
+                     for t in enriched_targets[:150]],
                     hide_index=True, use_container_width=True
                 )
-                candidates=[{**t, "hour_gate":ticket_gate(t["Aile"],t["Hedef sıra"])}
-                            for t in sira_targets[:50]]
+                candidates=sorted(
+                    enriched_targets,
+                    key=lambda t:(not t["hour_gate"]["coupon_ok"],
+                                  t["Hedef sıra"],-t["Destek gün"]))[:50]
                 picked=st.selectbox(
                     "Kupon hedefi seç", range(len(candidates)),
                     format_func=lambda i:(
