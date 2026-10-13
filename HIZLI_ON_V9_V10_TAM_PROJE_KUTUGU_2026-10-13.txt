@@ -1103,3 +1103,73 @@ kural ancak bagimsiz ileri veriyle random ve
 sabit karakter modellerini gecerse etkin.
 Onceki V9–V16 motorlari ve tum cekiis, aile,
 kupon kayitlari KORUNDU.
+
+
+====================================================================
+V18 — 217 CEKILISTE CIKAN 20 / CIKMAYAN 60 CIFT HAVUZ
+====================================================================
+Kullanici 13.10.2026 "80 sayi hedef cekiliste cikan 20
+sayi ve cikmayan 60 sayi 2 ayri havuz yapip 217 cekilis
+boyunca ayri havuzlarda biriktir" istedi.
+V18 gercek 20/60 kapsama ve iki AYRI gunluk TXT/CSV
+havuza kaydetme motoru yapildi.
+
+DOSYALAR:
+- v18_cift_havuz.py: saf Python 20/60 ayrimi, tum
+  gunde gorunus/kayip/giris/bekleme, cekilis bazinda
+  80 sayilik tam kimlik, 217x80 C/B matrisi.
+- v18_cift_havuz_app.py: Streamlit 15. sekme.
+- v18_selftest.py: yapay ve 74 gunluk gercek dosyada
+  normal/kismi/gun icinde aralikli veri kontrolu.
+- .github/workflows/v18-check.yml: ayri hizli test.
+- V18_217_CIKAN20_CIKMAYAN60_HAVUZ_RAPORU.md.
+
+HER CEKILISTE:
+A: CIKAN 20 = gercek 20 farkli sayi.
+B: CIKMAYAN 60 = 1..80-A, tam 60 farkli sayi.
+A ve B ayrik, birlesimi tum 80'i kapsar.
+Bir sayi tum 217 slot boyunca 20/60 gecici
+statulerinden birindedir; kalici sabit iki takim yok.
+Tam 217 cekilis: 4.340 aktif gorunus,
+13.020 aktif olmayan gorunus kaydi,
+80*217=17.360 toplam durum kaydi.
+Bunlar benzersiz sayi degil sayi×cekilis olayidir.
+
+HER RAKAM:
+20 havuzunda gorundugu cekilis adedi,
+60 havuzunda bekledigi cekilis adedi;
+20 havuzuna 60'tan giris ve 20'den cikis;
+20->20 tekrar ve 60->60 bekleme;
+ilk ve son 20 gorunusu;
+20'de ve 60'ta en uzun ardisik seri;
+80 sayinin cekilis cekilis C/B matrisi.
+
+HAVUZ GECISI:
+20->20,20->60,60->20,60->60 her geciste
+toplam 80. Bir cikan sayi bire bir baska
+sayiya "yer verdi" diye gercek olmayan es
+uretilmiyor. 01:02->07:02 alti saatlik ara
+ayri isaretlenir. KAYITSIZ CEKILISLER
+60 havuzuna SAYILMAZ, ? olarak belirsizdir.
+
+KALICI KAYIT:
+Tek gercek kaynak eski GitHub veri.txt'dir.
+Uygulama her acilista ve yeni veri geldikce ondan
+deterministik iki HAVUZ AYRI yeniden insa eder.
+Her havuzun ayri TXT/CSV indirimi var; eski
+verileri degistirmez, Github'a gereksiz ham veri
+cogaltmaz. Tum gun 217 geldiyse tam kayit
+olur; kayitli olmayanlar eksik kalir.
+V17 karakter motoruna 20/60 durum gecislerini
+incelemek icin gecmis olusum defteri saglar;
+kupon veya RNG ustunlugu iddiası YOK.
+
+GERCEK TEST: 74 takvim gunu.
+01.08,11.08,05.09,12.10: 217/217 dogru:
+4340/13020.
+13.10 test aninda 151 kayit:
+3020/9060, kayitsiz 66 slot.
+V18 bagimsiz GitHub CI: #38453019873 BASARILI.
+
+ANA veri.txt, V9 app.py, V10–V17 motorlar,
+eski aile CSV/kuponlar korundu.
