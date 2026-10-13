@@ -16,6 +16,7 @@ import requests
 import streamlit as st
 from v10_sira import (family_order_events, family_order_patterns,
                       family_order_matches, family_order_targets)
+from v10_geliyorum import upcoming_alerts, replay_warning_day, MIN_PARTIAL
 
 REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
 RAW = "https://raw.githubusercontent.com/" + REPO + "/main/"
@@ -944,7 +945,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -1572,3 +1573,172 @@ with tabs[2]:
                        "Gerçek üstünlük için ileri tarihli kör test ve rastgele karşılaştırma gerekir.")
         except Exception as exc:
             st.error("Aile sırası analizinde hata: "+str(exc))
+
+
+with tabs[5]:
+    st.subheader("🔮 Geliyorum — tüm aileler için erken uyarı")
+    st.caption(
+        "V10'un 5'li, 6'lı, 7'li, 8'li, 9'lu, 10'lu tüm kayıtlı aileleri taranır. "
+        "Kısmi eşleşme ve daha önce aynı saat diliminde tam görünme sayısı izlenir. "
+        "Bunlar deneysel işaretlerdir; çekilişler bağımsız olduğundan "
+        "sonraki çekilişte görünme üstünlüğü kanıtlanmış değildir."
+    )
+    alert_min_hour=max(2,support_days)
+    early_daily_support={
+        r["Aile"] for r in cross_day_runs
+        if r["Devam etse tarih"]==daystr
+    }
+    st.caption(
+        f"🔥 kupon için hedef saatinde geçmiş en az {alert_min_hour} ayrı gün tam görünüş "
+        "gereklidir. Kısmi sinyalin yalnız son 3 bilinen çekilişten gelmesi gerekir. "
+        "Öneri sadece bilinen son çekilişin hemen ARDINDAN gelen tek çekiliş içindir."
+    )
+    if analysis_date==today and families and profiles:
+        with st.spinner("Bütün aileler son çekilişler üzerinde taranıyor..."):
+            early_rows,early_stats=upcoming_alerts(
+                day_draws,families,profiles,daystr,now_tr(),moment,
+                minimum_hour_days=alert_min_hour,
+                day_rhythm_families=early_daily_support,
+                limit=len(families)
+            )
+        a,b,c,d=st.columns(4)
+        a.metric("Taranan aile",early_stats["scanned"])
+        b.metric("Kısmi işaret",early_stats["partial"])
+        c.metric("Saat destekli",early_stats["hour_supported"])
+        d.metric("Kupon koşulu",early_stats["coupon_ready"])
+        if early_stats["reason"]=="stale":
+            st.warning("⏳ Son kayıtlı çekilişten sonraki hedef saati geçmiş. "
+                       "Güncel çekilişi 📥 Canlı giriş bölümünden ekleyince motor yeni "
+                       "hedefi hesaplayacak. Geçmiş saate kupon çıkarılmaz.")
+        elif early_stats["reason"]=="no_draw":
+            st.info("Bugünün ilk çekilişini eklemeden 'Geliyorum' tetiklenmez.")
+        elif early_stats["reason"]=="end_of_day":
+            st.info("Bugünün son çekilişi tamamlandı. Yeni gün için veri bekleniyor.")
+        else:
+            st.info(f"🎯 Hedef: #{day_draws[-1]['no']+1} • "
+                    f"{moment(daystr,early_stats['target']):%H:%M} • "
+                    f"{early_stats['target']}. çekiliş. "
+                    "Bu yalnızca bir sonraki çekiliş için oluşturulmuş deneysel aday listesidir.")
+        st.markdown("#### 5'li–10'lu erken uyarı dağılımı")
+        st.dataframe([
+            {"Aile boyutu":k, "Aday havuzu":sum(f["k"]==k for f in families.values()),
+             "Kısmi":early_stats["sizes"].get(k,{}).get("partial",0),
+             "Saat destekli":early_stats["sizes"].get(k,{}).get("supported",0),
+             "Kupon koşulu":early_stats["sizes"].get(k,{}).get("coupon_ready",0)}
+            for k in range(5,11)
+        ], hide_index=True,use_container_width=True)
+        if early_rows:
+            only_ready=st.checkbox("Yalnız 🔥 kupon koşulunu geçenleri göster",
+                                   value=False,key="v10_early_only_ready")
+            visible=[r for r in early_rows if
+                     not only_ready or r["Kupon uygun"]]
+            st.dataframe(
+                [{k:v for k,v in r.items() if k not in ("moment","Hedef tarih")}
+                 for r in visible[:200]],
+                hide_index=True,use_container_width=True
+            )
+            st.download_button(
+                "⬇️ Tüm Geliyorum sinyalleri CSV",
+                family_order_csv([{k:v for k,v in r.items() if k!="moment"}
+                                  for r in early_rows]),
+                file_name=f"V10_GELIYORUM_{daystr}.csv",
+                mime="text/csv",key="v10_geliyorum_csv"
+            )
+            ready=[r for r in early_rows if r["Kupon uygun"]]
+            if ready:
+                picked=st.selectbox(
+                    "🔥 Hedef çekiliş kupon adayı",list(range(len(ready))),
+                    format_func=lambda i:(
+                        f'{ready[i]["Hedef saat"]} • {ready[i]["Durum"]} • '
+                        f'{ready[i]["Aile"]} • {ready[i]["Kısmi"]}'
+                    ),key="v10_early_selected"
+                )
+                chosen=ready[picked]
+                coupon=list(families[chosen["Aile"]]["nums"])
+                st.markdown("**"+chosen["Durum"]+" — "+
+                            str(chosen["Boyut"])+"'li kupon: "+
+                            ", ".join(map(str,coupon))+"**")
+                st.caption(f'Hedef #{chosen["Hedef no"]} • {chosen["Hedef saat"]} • '
+                           f'Geçmiş aynı saat desteği {chosen["Geçmiş saat günü"]} ayrı gün. '
+                           "Bu işaret, tahmin başarısı kanıtı değildir.")
+                if st.button("🎟️ Geliyorum kuponunu kaydet",
+                             key="v10_early_save"):
+                    if datetime.fromisoformat(chosen["moment"])<=now_tr():
+                        st.error("Hedef çekilişin saati geçti. Yeni sonuç ekleyip tekrar değerlendir.")
+                    else:
+                        ticket={
+                            "day":daystr,"pos":chosen["Hedef sıra"],
+                            "time":chosen["Hedef saat"],"family":chosen["Aile"],
+                            "numbers":coupon,"size":chosen["Boyut"],
+                            "kind":chosen["Durum"]+" (Geliyorum erken uyarı)",
+                            "trigger_no":chosen["İşaret çekilişi"],
+                            "created_at":now_tr().isoformat(timespec="seconds")
+                        }
+                        key=(ticket["day"],ticket["pos"],ticket["family"])
+                        existing={
+                            (t["day"],t["pos"],t["family"])
+                            for t in st.session_state.v10_tickets
+                        }
+                        if key in existing:
+                            st.warning("Bu aile için aynı çekilişe kupon zaten kaydedildi.")
+                        else:
+                            st.session_state.v10_tickets.append(ticket)
+                            st.success("Kupon izleme listesine kaydedildi.")
+                            st.info(auto_save())
+            else:
+                st.info("Bu an için geçmiş saat desteği yeterli Geliyorum kuponu yok. "
+                        "🟡 uyarılar izleme amaçlı; kupon verilmez.")
+        elif early_stats["reason"]=="ok":
+            st.info("Bu çekilişten önce yeterli kısmi görünüşü olan aile tespit edilmedi.")
+    elif analysis_date!=today:
+        st.info("Geçmiş gün seçili. Canlı kupon yerine aşağıdan gün içi "
+                "adım adım testini başlatabilirsin.")
+    else:
+        st.info("Geliyorum için aile havuzu ve geçmiş günlerin verisi gerekli.")
+
+    st.markdown("#### 🧪 Günlük ileriye dönük adım adım test")
+    st.caption(
+        "Seçilen günün her çekilişinde sadece o ana kadar bilinen sayılarla "
+        "bir sonraki çekiliş için aday üretir. Seçilen günün gelecekteki "
+        "sonuçları sinyal hesabına sokulmaz; yalnızca sonradan isabeti ölçülür. "
+        "Aile havuzunun geçmiş çekilişlerden seçilmiş olması nedeniyle bu test "
+        "tam bağımsız doğrulama sayılmaz."
+    )
+    if st.button("🧪 Bu günün Geliyorum hedeflerini test et",
+                 key="v10_early_backtest_run"):
+        if not day_draws or not profiles or not families:
+            st.warning("Test için geçmiş ve seçilen güne ait çekiliş gerekli.")
+        else:
+            with st.spinner("Çekilişler sırayla yeniden oynatılıyor..."):
+                early_test=replay_warning_day(
+                    day_draws,families,profiles,daystr,moment,
+                    minimum_hour_days=alert_min_hour,
+                    day_rhythm_families=early_daily_support
+                )
+            st.session_state["v10_early_backtest"]={
+                "day":daystr,"minimum_days":alert_min_hour,
+                "last_no":max(d["no"] for d in day_draws),
+                "rows":early_test
+            }
+    saved_test=st.session_state.get("v10_early_backtest",{})
+    if (saved_test.get("day")==daystr and
+        saved_test.get("minimum_days")==alert_min_hour and
+        saved_test.get("last_no")==max((d["no"] for d in day_draws),default=-1)):
+        tested=saved_test["rows"]
+        full=sum(r["Tam"] for r in tested)
+        t1,t2,t3=st.columns(3)
+        t1.metric("Test edilen kupon",len(tested))
+        t2.metric("Tam aile isabeti",full)
+        t3.metric("Yanlış alarm",len(tested)-full)
+        if tested:
+            st.dataframe([{k:v for k,v in r.items() if k!="Tam"} for r in tested[:150]],
+                         hide_index=True,use_container_width=True)
+            st.download_button(
+                "⬇️ Geliyorum adım adım test CSV",
+                family_order_csv([{k:v for k,v in r.items() if k!="Tam"}
+                                  for r in tested]),
+                file_name=f"V10_GELIYORUM_TEST_{daystr}.csv",
+                mime="text/csv",key="v10_early_backtest_download"
+            )
+        else:
+            st.caption("Bu gün hiçbir kupon adayı filtreyi geçmedi.")
