@@ -63,7 +63,8 @@ assert watch[0]["Durum"].startswith("🟡")
 # as historical evidence on its date. A missed target remains in the denominator.
 h=fake("2026-10-10",20,10003,True)
 test_draws=training+today[:2]+[h]
-assert not walkforward_six_gap(training,meta,moment,1)
+warmup=walkforward_six_gap(training,meta,moment,1)
+assert len(warmup)==1 and warmup[0]["İsabet"] is None,warmup
 good=walkforward_six_gap(test_draws,meta,moment,2)
 assert len(good)==1 and good[0]["İsabet"]==6 and good[0]["Sonuç"]=="6/6",good
 assert six_gap_summary(good)["6/6"]==1
