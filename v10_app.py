@@ -14,6 +14,8 @@ from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 import requests
 import streamlit as st
+from v10_sira import (family_order_events, family_order_patterns,
+                      family_order_matches, family_order_targets)
 
 REPO = "gozlekakif-alt/hizli-on-analiz-motoru"
 RAW = "https://raw.githubusercontent.com/" + REPO + "/main/"
@@ -632,6 +634,25 @@ def result_rows(tickets, draws):
                      "Sinyal":t["kind"]})
     return rows
 
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_family_order_report(draws_json, labels_json, target_day, gap, support):
+    """Read-only historical chains cached by complete data/label inputs."""
+    events = family_order_events(json.loads(draws_json), json.loads(labels_json), target_day)
+    pairs, triples = family_order_patterns(events, target_day, gap, support)
+    return events, pairs, triples
+
+
+def family_order_csv(rows):
+    if not rows:
+        return ""
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]), delimiter=";")
+    writer.writeheader()
+    writer.writerows(rows)
+    return "\ufeff" + out.getvalue()
+
+
 st.set_page_config(page_title="Hizli On V10 Canli Kupon Motoru",page_icon="🎯",
                    layout="wide",initial_sidebar_state="collapsed")
 st.title("🎯 Hızlı On V10 — Canlı Ritim ve Kupon")
@@ -700,7 +721,7 @@ else:
     st.caption("GitHub veri.txt'ye eklenmemiş oturum çekilişi görünmüyor.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","📊 İsabet","💾 Yedek & Kayıt"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -1014,7 +1035,7 @@ with tabs[1]:
         top.sort(key=lambda x:(-x["Boyut"],-x["Bugunku gorunus"],x["Aile"]))
         st.dataframe(top[:100],hide_index=True,use_container_width=True)
 
-with tabs[2]:
+with tabs[3]:
     st.subheader("Kupon isabet raporu")
     results=result_rows(st.session_state.v10_tickets,draws)
     completed=[r for r in results if r["Isabet"] is not None]
@@ -1039,7 +1060,7 @@ with tabs[2]:
     else:
         st.info("Kaydedilmis kupon yok. Hedef ekranindan deneysel kupon kaydedebilirsiniz.")
 
-with tabs[3]:
+with tabs[4]:
     st.subheader("Kalıcı kayıt ve yedek")
     tok=secret_token()
     pin=secret_admin_pin()
@@ -1088,3 +1109,118 @@ with tabs[3]:
         except Exception as exc:
             st.error("Yedek hatasi: "+str(exc))
     st.caption("Bu uygulama gercek cekilis sonuclarini tahmin garantisiyle sunmaz. Veriler acik GitHub deposuna kaydediliyorsa kamuya acik olabilir.")
+
+
+with tabs[2]:
+    st.subheader("🔁 Aileler arası sıra ve nöbet değişimi")
+    st.caption(
+        "A→B ve A→B→C: farklı ailelerin AYRI çekilişlerde aynı gün içinde "
+        "belirli aralıklarla görünmesi. Eğitim sadece incelenen günden önceki "
+        "çekilişlerden yapılır. Aynı çekilişte birlikte çıkan aileler 'sıra' sayılmaz."
+    )
+    st.write(f"**İncelenen tarih:** {daystr} • **Geçmiş destek:** en az {support_days} ayrı gün")
+    sira_gap=st.slider("Aileden sonraki aileye en fazla kaç çekiliş aransın?",
+                       min_value=1, max_value=36, value=12, step=1, key="v10_sira_gap")
+    st.caption("Örnek: +3 aralığı, A'dan üç çekiliş sonra B'nin tam görünmesidir.")
+    sira_open=st.checkbox("🔍 Aile sıralarını analiz et / güncel verilerle yenile",
+                           key="v10_sira_enabled", value=False)
+    if not families or not cutoff:
+        st.info("Sıra araştırması için aile havuzu ve seçilen tarihten önce çekilişler gerekli.")
+    elif not sira_open:
+        st.info("Telefonu yavaşlatmamak için ağır analiz kapalıdır. Yukarıdaki kutuyu işaretleyerek açabilirsin.")
+    else:
+        try:
+            with st.spinner("Geçmiş günlerde A→B ve A→B→C sıraları taranıyor..."):
+                sira_events, sira_pairs, sira_triples = cached_family_order_report(
+                    json.dumps(draws, separators=(",",":")),
+                    json.dumps(sorted(families), separators=(",",":")),
+                    daystr, sira_gap, support_days
+                )
+            sira_seen=family_order_matches(sira_events, daystr, sira_pairs, sira_triples)
+            s1,s2,s3=st.columns(3)
+            s1.metric("A→B ritmi", len(sira_pairs))
+            s2.metric("A→B→C zinciri", len(sira_triples))
+            s3.metric("Bugün gözlenen", len(sira_seen))
+            st.caption("Sayılar, aday havuzunda destek koşulunu sağlayan farklı tam-aile dizilimleridir. "
+                       "Bunlar doğrulanmış tahmin başarısı veya kazanma olasılığı değildir.")
+            st.markdown("#### ⏭️ Sıradaki aile için canlı hedefler")
+            if analysis_date == today:
+                sira_targets=family_order_targets(
+                    sira_events, daystr, sira_pairs, sira_triples, now_tr(), moment
+                )
+            else:
+                sira_targets=[]
+                st.caption("Geçmiş gün seçili: geçmiş saatlere canlı kupon üretilmez.")
+            if sira_targets:
+                st.dataframe(
+                    [{k:v for k,v in r.items() if k!="moment"}
+                     for r in sira_targets[:150]],
+                    hide_index=True, use_container_width=True
+                )
+                candidates=sira_targets[:50]
+                picked=st.selectbox(
+                    "Kupon hedefi seç", range(len(candidates)),
+                    format_func=lambda i:(
+                        f'{candidates[i]["Hedef saat"]} • '
+                        f'{candidates[i]["Aşama"]} • {candidates[i]["Aile"]}'
+                    ),key="v10_sira_ticket_pick"
+                )
+                chosen=candidates[picked]
+                coupon=make_ticket(
+                    {"label":chosen["Aile"],"moment":chosen["moment"]},
+                    draws, size=len(chosen["Aile"].split("-"))
+                )
+                st.write("**Deneysel aile kuponu:** " + ", ".join(map(str,coupon)))
+                st.caption(
+                    f'{chosen["Aşama"]} • {chosen["Destek gün"]} geçmiş gün desteği. '
+                    "Bu ritmin sonraki çekilişte süreceğine dair garanti yoktur."
+                )
+                if st.button("🎟️ Sıra kuponunu kaydet", key="v10_sira_save"):
+                    ticket={
+                        "day":daystr, "pos":chosen["Hedef sıra"],
+                        "time":chosen["Hedef saat"], "family":chosen["Aile"],
+                        "numbers":coupon,"size":len(coupon),
+                        "kind":"Aile sırası "+chosen["Aşama"],
+                        "trigger_no":0,"created_at":now_tr().isoformat(timespec="seconds")
+                    }
+                    ticket_key=(ticket["day"],ticket["pos"],ticket["family"])
+                    existing_keys={(t["day"],t["pos"],t["family"])
+                                   for t in st.session_state.v10_tickets}
+                    if ticket_key in existing_keys:
+                        st.warning("Bu aile ve hedef için kupon zaten kayıtlı.")
+                    else:
+                        st.session_state.v10_tickets.append(ticket)
+                        st.success("Sıra kuponu kaydedildi. "+auto_save())
+                st.download_button("⬇️ Canlı sıra hedefleri CSV",
+                    family_order_csv([{k:v for k,v in r.items() if k!="moment"}
+                                      for r in sira_targets]),
+                    file_name=f"V10_SIRA_HEDEF_{daystr}.csv",mime="text/csv",
+                    key="v10_sira_target_csv")
+            else:
+                st.info("Henüz gelecekteki uygun çekilişe denk gelen, geçmiş destekli sıra hedefi yok.")
+            st.markdown("#### ✅ Bu tarihte gerçekten gözlenen sıralar")
+            if sira_seen:
+                st.dataframe(sira_seen,hide_index=True,use_container_width=True)
+            else:
+                st.caption("Seçilen günde geçmişten destekli bir A→B / A→B→C zinciri tamamlanmadı.")
+            st.markdown("#### 📚 Geçmişte desteklenen aile sıraları")
+            if sira_triples:
+                with st.expander(f"Üç aile zincirleri — {len(sira_triples)}", expanded=True):
+                    st.dataframe(sira_triples[:200], hide_index=True,use_container_width=True)
+                    st.download_button("⬇️ A→B→C zincirlerini indir",
+                        family_order_csv(sira_triples),
+                        file_name=f"V10_ABC_ZINCIRLER_{daystr}.csv",mime="text/csv",
+                        key="v10_sira_triple_csv")
+            if sira_pairs:
+                with st.expander(f"İki aile sıraları — {len(sira_pairs)}",expanded=not bool(sira_triples)):
+                    st.dataframe(sira_pairs[:200],hide_index=True,use_container_width=True)
+                    st.download_button("⬇️ A→B sıralarını indir",
+                        family_order_csv(sira_pairs),
+                        file_name=f"V10_AB_SIRALAR_{daystr}.csv",mime="text/csv",
+                        key="v10_sira_pair_csv")
+            if not sira_pairs:
+                st.warning("Bu tarih öncesinde seçilen gün desteği ve aralık için tekrarlanan sıra bulunamadı.")
+            st.caption("Uyarı: Aynı veri üzerinde birçok sıra aranması tesadüfi tekrar üretir. "
+                       "Gerçek üstünlük için ileri tarihli kör test ve rastgele karşılaştırma gerekir.")
+        except Exception as exc:
+            st.error("Aile sırası analizinde hata: "+str(exc))
