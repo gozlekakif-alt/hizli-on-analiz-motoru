@@ -1,0 +1,36 @@
+name: V38 207 Uzman 17 Ana Grup
+on:
+  push:
+    paths:
+      - 'v38_207_katalog.py'
+      - 'v38_207_uzman_yurutucu.py'
+      - 'v38_207_uzman_app.py'
+      - 'v38_207_selftest.py'
+      - 'v38_207_export.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v38-207-uzman-check.yml'
+  workflow_dispatch:
+jobs:
+  experts207:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile registry, measurement engine, Streamlit app
+        run: python -m py_compile v38_207_katalog.py v38_207_uzman_yurutucu.py v38_207_selftest.py v38_207_export.py v38_207_uzman_app.py v10_app.py
+      - name: Prove all 207/207 measured without lookahead or duplicate records
+        run: python -u v38_207_selftest.py
+      - name: Real 72-day V37 SQLite replay plus 207 expert archive
+        run: python -u v38_207_export.py
+      - name: Publish one 207-expert ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V38_207_UZMAN_HER_CEKILIS_TEK_ZIP
+          path: V38_207_UZMAN_HER_CEKILIS_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
