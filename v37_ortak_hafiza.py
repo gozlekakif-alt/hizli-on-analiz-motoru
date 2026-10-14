@@ -137,7 +137,7 @@ def setup(con):
                     [(n,) for n in BALLS])
     con.executemany("INSERT OR IGNORE INTO motor_registry VALUES(?,?,?,?)",
                     [(m,1,"CALISIYOR_V37_A",BRANCH_DOC[m]) for m in OPERATING])
-    con.execute("INSERT OR REPLACE INTO meta VALUES('schema_version',?)",(str(SCHEMA_VERSION),))
+    con.execute("INSERT OR IGNORE INTO meta VALUES('schema_version',?)",(str(SCHEMA_VERSION),))
     con.commit()
 
 
