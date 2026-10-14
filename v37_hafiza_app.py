@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 import streamlit as st
 from v37_ortak_hafiza import replay,export
+from v37_aile_yon_uzmanlari import build as build_family_direction, export as export_family_direction
 
 
 def render_v37(draws):
@@ -13,10 +14,10 @@ def render_v37(draws):
     st.info("Burası V37'nin **ilk çalışan çekirdeği**: Tek resmi çekiliş defteri, "
             "80 sayının günlük ve ömürlük yaşamı, motor haznesine giriş/çıkış "
             "olayları, delilli motorlar arası bağlantı ve **SQLite kayıt dosyası**.")
-    st.caption("207 uzman alt dalı mimaride tanımlıdır; **henüz 8 temel dal çalışıyor.** "
-               "Ailelerin 2+1+1 gibi ayrıntılı yaşam motorları sonraki aşamada "
-               "bu tek ortak hafızaya bağlanacak. Gizli RNG algoritmasını çözme "
-               "ve gelecekteki sayıları bilme iddiası yok.")
+    st.caption("207 uzman alt dalı tasarımdadır. Şu anda **8 temel hafıza + 6 aile/yön uzmanı** "
+               "kayıt üretir. İkili/üçlü/dörtlü aile tekrarları ve 3+1, 2+2, 2+1+1 gibi "
+               "dörtlü oluşma yolları çalışır; bütün 207 dal tamamlanmış değildir. "
+               "Gizli RNG veya gelecek sayılar için garanti iddiası yok.")
     all_days={}
     for d in draws:all_days.setdefault(d["day"],set()).add(int(d["pos"]))
     full=sum(p==set(range(1,218)) for p in all_days.values())
@@ -29,7 +30,7 @@ def render_v37(draws):
     statekey="v37_hafiza_state_"+str(partial)
     if statekey not in st.session_state:
         st.session_state[statekey]={"dir":tempfile.mkdtemp(prefix="hizli_v37_"),
-                                     "summary":None,"zip":None}
+                                     "summary":None,"zip":None,"expert_zip":None,"expert_summary":None}
     state=st.session_state[statekey]
     src=sorted(draws,key=lambda d:(d["day"],int(d["pos"])))
     digest=hashlib.sha256(str([(d["day"],int(d["pos"]),int(d["no"]),sorted(d["nums"]))
@@ -48,9 +49,14 @@ def render_v37(draws):
         with st.spinner("Her çekilişte 80 sayı, sekiz motor haznesi ve olay bağlantıları işleniyor..."):
             try:
                 result=replay(src,db,include_partial=partial,progress=update)
+                extra=build_family_direction(db,progress=update)
+                smallzip=Path(state["dir"])/"V37_AILE_VE_ISI_YON_UZMANLARI_TEK_ZIP.zip"
+                export_family_direction(db,smallzip)
                 export(db,zipfile,result)
-                state.update({"summary":result,"zip":str(zipfile),"source":digest})
-                bar.progress(1.0,text="Ortak yaşam hafızası ve tek ZIP hazır")
+                state.update({"summary":result,"zip":str(zipfile),
+                              "expert_summary":extra,"expert_zip":str(smallzip),
+                              "source":digest})
+                bar.progress(1.0,text="Ortak hafıza + aile/yön ZIP raporları hazır")
             except ValueError as ex:
                 st.error("Veri güvenliği: "+str(ex))
                 st.warning("Eski geçmiş değiştiyse güvenli kayıt için aşağıdaki "
@@ -72,6 +78,20 @@ def render_v37(draws):
           file_name="V37_ORTAK_80_SAYI_YASAM_HAFIZASI_TEK_ZIP.zip",
           mime="application/zip",type="primary",use_container_width=True,
           key="v37_download")
+        expert=state.get("expert_summary")
+        if expert:
+            a,b,c=st.columns(3)
+            a.metric("Aile ve yön uzmanı",6)
+            b.metric("İşlenen aile çekilişi",expert["completed_draws"])
+            c.metric("Yönle bağlı aile olayı",expert["linked_direction_events"])
+            st.download_button("⬇️ V37 SADECE AİLE + ISI YÖNÜ UZMANLARI (KÜÇÜK ZIP)",
+              data=Path(state["expert_zip"]).read_bytes(),
+              file_name="V37_AILE_VE_ISI_YON_UZMANLARI_TEK_ZIP.zip",
+              mime="application/zip",type="primary",use_container_width=True,
+              key="v37_family_download")
+            st.caption("Bu küçük ZIP 2/3/4 aile tekrarlarını, dörtlü oluşum yollarını, "
+                       "6×6 ısı yönü geçişlerini ve kaynak olaylara bağlı uzman diyaloglarını içerir. "
+                       "Bütün sayıların SQLite hafızası yukarıdaki büyük ZIP içinde kalır.")
         st.dataframe(result["daily"],hide_index=True,use_container_width=True)
         with st.expander("Çalışan ortak hafıza uzmanları"):
             st.write(", ".join(result["engine_operational"]))
@@ -80,7 +100,7 @@ def render_v37(draws):
                    "çekilişi değiştirirse eski veritabanının üstüne yazmaz.")
     if st.button("🗂️ Yeni boş hafıza oluştur (eskisine dokunma)",key="v37_new"):
         st.session_state[statekey]={"dir":tempfile.mkdtemp(prefix="hizli_v37_"),
-                                     "summary":None,"zip":None}
+                                     "summary":None,"zip":None,"expert_zip":None,"expert_summary":None}
         st.rerun()
     st.caption("Streamlit sunucusunun geçici SQLite yolu kalıcı GitHub kaydı "
         "değildir; ZIP'i indir. GitHub Actions veri.txt güncellemesinde yeni "
