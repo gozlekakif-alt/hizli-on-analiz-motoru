@@ -21,8 +21,10 @@ jobs:
       - name: Audit 80-number heat state and H1-H12 time safety
         run: python -u v28_selftest.py
       - name: Replay 72 days 3/6 heat transitions and six RNG-control simulations
+        if: github.event_name == 'workflow_dispatch'
         run: python -u v28_dijital_kaplan_dongu.py --null 6 --output V28_DIJITAL_KAPLAN_72_GUN_DONGU_ANALIZ.zip
-      - name: Upload fourteen research reports
+      - name: Upload full research reports
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: V28-72-Gun-Dijital-Kaplan-Dongu
