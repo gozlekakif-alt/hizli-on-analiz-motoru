@@ -99,6 +99,32 @@ def test():
         with zipfile.ZipFile(out) as z:
             assert z.testzip() is None and len(z.namelist())==7
             assert "03_ONCEDEN_SECILEN_2048_TARAFSIZ_AILE.csv" in z.namelist()
+        # Crucial: a full 4/4 on day position 1 must NOT permanently kill
+        # the later (positions 2..13) fragment-only 12-draw episode. When the
+        # old full quartet rolls out of 12, the separated members can resume
+        # a valid no-4/4 family life.
+        restart=Path(td)/"restart.sqlite3"
+        restart_draws=[]
+        restart_draws.append(draw("2026-10-02",1,set(one)|set(others[:16])))
+        for position in range(2,14):
+            members=set(one[:2] if position%2==0 else one[2:])
+            extras=[n for n in others if n not in members][:18]
+            restart_draws.append(draw("2026-10-02",position,members|set(extras)))
+        replay(restart_draws,restart,include_partial=True)
+        restarted=run(restart)
+        assert restarted["completed_draws"]==13
+        with sqlite3.connect(restart) as con:
+            last=json.loads(con.execute(
+                "SELECT payload FROM v37c_step WHERE seq=13").fetchone()[0])
+            assert last["sample_12draw_fragment_eligible"]>=1
+            cards=[json.loads(t[0]) for t in con.execute(
+                "SELECT payload FROM v37c_family_events WHERE seq=13")]
+            renewed=[e for e in cards if e["family_numbers"]==
+                     "-".join(f"{n:02d}" for n in one)]
+            assert renewed, "A prior lifetime full4 must not block new window"
+            assert renewed[0]["previous_full4_seq"]==1
+            assert renewed[0]["full4_in_last12"]==0
+
         # Missing position cuts 12-draw history. A partial fragment must not
         # claim that unknown numbers failed to appear in the gap.
         gap=Path(td)/"gap.sqlite3"
