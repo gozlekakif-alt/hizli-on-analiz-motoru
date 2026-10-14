@@ -362,7 +362,8 @@ def study(draws,include_partial=False,progress=None):
       '15_GUNLUK_CIFT_KARAKTER_DAVRANISI.csv':csv_bytes(daily_rows),
       '16_OZET.json':json.dumps(summary,ensure_ascii=False,indent=2).encode('utf-8'),
       '17_VERI_UYARILARI.txt':('\n'.join(errors) or 'Sorun yok').encode('utf-8-sig')}
-    for name,data in files.items():z.writestr(name,data)
+    with zipfile.ZipFile(out,'a',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as final_zip:
+        for name,data in files.items():final_zip.writestr(name,data)
     return out.getvalue(),summary,classes,freq,selected
 
 
