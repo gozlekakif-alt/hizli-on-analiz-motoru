@@ -13,7 +13,7 @@ import json
 import math
 import random
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 START = date(2026, 10, 14)  # immutable prospective boundary
@@ -175,6 +175,16 @@ def candidates(day, idx):
     if idx >= 49:
         output["AILE_IKILI_ESLIK20"] = family_score(day, idx)
         output["AILE_UCLU_ESLIK20"] = family_score(day, idx, True)
+    # A 9-draw distance is 45 minutes only across real five-minute slots.
+    # The 01:02-to-07:02 closed period must NOT masquerade as an interval.
+    for lag, name in ((1, "LAG1_KONTROL20"),
+                      (9, "LAG9_45DK_CARRY20"),
+                      (12, "LAG12_KONTROL20")):
+        if name in output:
+            now = datetime.fromisoformat(day[idx]["day"]+"T"+day[idx]["time"])
+            before = datetime.fromisoformat(day[idx-lag]["day"]+"T"+day[idx-lag]["time"])
+            if now-before != timedelta(minutes=5*lag):
+                output.pop(name)
     for name, values in output.items():
         assert name in MODELS
         assert len(values) == MODELS[name] == len(set(values))
@@ -311,6 +321,9 @@ def selftest():
         modified[idx] = dict(modified[idx],nums=frozenset(range(1,21)))
         assert candidates(modified,idx)==originals, "LOOKAHEAD BUG"
         assert originals["RASTGELE20_KONTROL"]==candidates(day,idx)["RASTGELE20_KONTROL"]
+    assert "LAG9_45DK_CARRY20" not in candidates(day,13)
+    assert "LAG1_KONTROL20" not in candidates(day,13)
+    assert "LAG9_45DK_CARRY20" in candidates(day,22)
     assert hour_first6(day,11) is not None
     assert hour_first6(day,12) is None
     assert hour_first6(day,13) is None
