@@ -1,0 +1,37 @@
+name: V33 6-10 Bekleyen Sayi Siniflari
+on:
+  push:
+    paths:
+      - 'v33_bekleme_havuzlari.py'
+      - 'v33_bekleme_app.py'
+      - 'v33_selftest.py'
+      - 'v33_export_zip.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v33-check.yml'
+  workflow_dispatch:
+jobs:
+  v33:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V33 engine and integrated app
+        run: python -m py_compile v33_bekleme_havuzlari.py v33_bekleme_app.py v33_selftest.py v33_export_zip.py v10_app.py
+      - name: Verify waiting class and 20/60 transition semantics
+        run: python -u v33_selftest.py
+      - name: Check 72 full days and every report's ZIP integrity
+        run: python -u v33_selftest.py --full
+      - name: Generate V33 report ZIP for all available full days
+        run: python -u v33_export_zip.py
+      - name: Publish single ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V33_6_7_8_9_10_BEKLEYEN_HAVUZLAR_TEK_ZIP
+          path: V33_6_7_8_9_10_BEKLEYEN_HAVUZLAR_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
