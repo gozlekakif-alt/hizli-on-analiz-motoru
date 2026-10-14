@@ -59,7 +59,7 @@ Dondurulmuş 20'li listeler: **156.240** (10 yöntem × 15.624 gerçek çekiliş
 
 Gün blok ortalama fark **−0,01959 sayı/çekiliş**, yaklaşık %95 aralık **[−0,05952; +0,02471]**. Bu verilerle üstünlük görülmedi; 16/20 yok.
 
-Rapor: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38614969350/artifacts/11919445480
+Rapor: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38615430465/artifacts/11920195628
 
 ## Sıradaki mühendislik etapları
 
@@ -70,3 +70,9 @@ Aşama 2: Aile 2/3/4 tam ve parçalı yaşam olaylarını geçmişten t öncesin
 Aşama 3: Rastgele kontrolün kendisiyle de çoğul deneme yanlılığını denetle (birden fazla kolonda en iyi görüneni seçme yanlılığı). Sabit modelle hiç dokunulmamış yeni tarihler üzerinde sınama yap.
 
 Aşama 4: Başarı iddiası için birbirinden bağımsız yeni gerçek çekilişlerde tutarlı isabet üstünlüğü göster. **Adil RNG'nin gizli algoritmasının öğrenildiği veya 16/20 düzenli bulunabileceği bugüne kadar kanıtlanmadı.**
+
+## Veri sonrasındaki ilk 20'li listeler (V39 güncellemesi)
+
+GitHub'da doğrulanmış son sürüm, kaynak içindeki **son işlenen gerçek çekilişten sonraki 1. sıranın** her 10 yöntem için önceden seçilmiş 20 sayısını da ZIP'in **06_VERI_SONRASI_ILK_20_SAYI_LISTESI.csv** dosyasına ekler. Streamlit V39 sekmesi bu listeleri doğrudan gösterir. Bu özellik kaynak `veri.txt` eski olduğunda **gerçek şu anki geleceğe ait olamaz**; ekranda kaynağın son gün/sırası ve hesaplanan hedef gün/sıra açıkça yazılır. Sonuç görmeden yeni hedef için seçim yapılır; güncelliğini kullanıcı kontrol etmelidir. Böylece ZIP toplam **7 rapor dosyası** taşır.
+
+Son doğrulanmış workflow: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38615430465
