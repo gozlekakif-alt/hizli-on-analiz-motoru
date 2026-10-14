@@ -198,4 +198,5 @@ if __name__=='__main__':
         print('V36 H6 TEST',json.dumps([x for x in h if x['donem']=='TEST'],ensure_ascii=False))
         print('V36 WAIT TEST NEXT',json.dumps([x for x in r if x['donem']=='TEST' and x['gelecek_cekilis_ufku']==1],ensure_ascii=False))
         print('V36 HANDOVER TEST',json.dumps([x for x in p if x['donem']=='TEST'],ensure_ascii=False))
+        print('V36 LAGS TEST',json.dumps([x for x in r if x['donem']=='TEST' and x['A_H6_2PLUS_baglam']=='VAR_H6_2PLUS' and x['B_bekleme_sinifi'] in ('6PLUS_GENEL','9')],ensure_ascii=False))
         print('V36 FILE',filename,len(artifact),'bytes')
