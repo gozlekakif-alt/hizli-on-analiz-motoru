@@ -277,14 +277,13 @@ def run_study(raw):
                 cell[keycell]["pool"]+=z["counts"][cidx]
                 cell[keycell]["hit"]+=z["hits"][cidx]
                 cell[keycell]["expected"]+=z["counts"][cidx]*rate[cidx]
-        # Four legacy equal 20-ball temperature ranks, kept as reference.
-        numerals=sorted(range(1,81),key=lambda n:z["groups"][n]*3+z["trend"][n])
-        # LEGACY should use ACTUAL temperature score rank, not sorted by 6-group:
-        grp,_tr,score=classify_before(t,chosenL,chosenM,prefix,ewm)
-        twenty=sorted(range(1,81),key=lambda n:(score[n],n))
-        for q in range(4):
-            label=("20 en soğuk","20 soğuğa yakın","20 sıcağa yakın","20 en sıcak")[q]
-            values=twenty[q*20:(q+1)*20]
+        # Reconstruct the older documented S/OD/OY/YS FOUR x 20 ranks.
+        # This is NOT the newer experimental six-group classification.
+        # The legacy temperature score uses 12-draw half-life across ALL
+        # prior valid observed draws and is NEVER reset at midnight.
+        legacy_sorted=sorted(range(1,81),key=lambda n:(ewm[n][t],n))
+        for q,label in enumerate(("S","OD","OY","YS")):
+            values=legacy_sorted[q*20:(q+1)*20]
             shift[label]["n"]+=1
             shift[label]["hits"]+=sum(n in d["nums"] for n in values)
     cellrows=[]
@@ -341,7 +340,7 @@ def run_study(raw):
                       and z["Pencere çekiliş"]==chosenL
                       and z["Sıcaklık yöntemi"]==chosenM)
     meta={
-        "Motor":"V27 altı sıcaklık, 20 istatistiksel koltuk ve geçmiş uzunluğu",
+        "Motor":"V27 altı DENEYSEL sıcaklık, 20 istatistiksel koltuk ve geçmiş uzunluğu",
         "Tam gün":72,"Gözlenen geçerli tüm kayıt":len(chron),
         "Tam gün hedef":72*217,"İlk":list(phase)[0],"Son":list(phase)[-1],
         "Öğrenme gün":18,"Doğrulama gün":18,"Ayrı test gün":36,
@@ -354,6 +353,8 @@ def run_study(raw):
         "Ayrı test rastgele 20 isabet":finalsummary["Rastgele20 ortalama isabet"],
         "Sabit RNG Brier":.1875,
         "6 koltuk sırası":list(GROUPS),
+        "6 sınıfın kökeni":"YENİ DENEYSEL sıralama. Eski motorun özgün 6 eşik değeri depoda doğrulanamadı; 13/13/14/14/13/13 sabit havuzlu araştırma alternatifi.",
+        "Eski gerçek sıcaklık modeli":"S/OD/OY/YS dört adet 20'li havuz, yarı ömür 12 çekiliş, tüm geçmişten taşınan EWMA, gün başında sıfırlanmaz",
         "6 havuz üye sayısı":list(COUNTS),
         "Yön":"Son 6 görünüş - önceki 6 görünüş en az +2 yükselen, en fazla -2 düşen; aksi dengeli",
         "Sıcaklık bellek yarı ömrü":HALF_LIFE,
