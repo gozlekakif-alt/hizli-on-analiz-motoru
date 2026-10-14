@@ -335,13 +335,16 @@ def day_similarity(profiles):
     Adjacent only if both *calendar* days observed in full.
     Compare against all pairs at least 2 days apart, no cherry-picking.
     """
+    # Each H label occurs in 18 actual hours per complete day, not once.
+    # Center by 18*20*poolshare; otherwise near-constant base counts
+    # produce a spurious ~0.995 same-day 'correlation' for all day pairs.
     sig=profiles["daily_signature"]
     keys=sorted(d for d in sig if profiles["daily"][d]["N"]==217*80)
     pairs=[]
     for i,da in enumerate(keys):
-        a=[x-(20*[26/80,28/80,26/80][j%3]) for j,x in enumerate(sig[da])]
+        a=[x-(18*20*[26/80,28/80,26/80][j%3]) for j,x in enumerate(sig[da])]
         for db in keys[i+1:]:
-            b=[x-(20*[26/80,28/80,26/80][j%3]) for j,x in enumerate(sig[db])]
+            b=[x-(18*20*[26/80,28/80,26/80][j%3]) for j,x in enumerate(sig[db])]
             n=math.sqrt(sum(x*x for x in a)*sum(x*x for x in b))
             if not n:continue
             pear=sum(x*y for x,y in zip(a,b))/n
