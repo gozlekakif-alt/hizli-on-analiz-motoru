@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """V35 Streamlit tab: 11 real-draw binary signatures for 80 numbers."""
-import hashlib
+from v32_35_draw_fingerprint import draw_fingerprint
 import streamlit as st
 from v35_11_cekim_cift_karakter import study
 
@@ -25,7 +25,7 @@ def render_v35(draws):
     c.metric('Gerçek çekiliş',len(draws))
     partial=st.checkbox('Eksik günleri dahil et; 11 penceresini eksik yerde sıfırla',
         value=False,key='v35_partial')
-    signature=hashlib.sha256(str([(d['no'],d['day'],d['pos'],d['mask']) for d in draws]).encode()).hexdigest()
+    signature=draw_fingerprint(draws)
     if st.button('▶️ V35 — 80 SAYI × 11 ÇEKİLİŞ TÜM KARAKTERLERİ TARA',
                  type='primary',use_container_width=True,
                  disabled=not draws or (full==0 and not partial),key='v35_run'):
