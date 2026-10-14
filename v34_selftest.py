@@ -31,8 +31,8 @@ def basic():
     assert stats['8_bekleme_risk_kaydi']>0
     # Change the as-yet-unknown target, but never alter the source class.
     common=[draw(p) for p in range(1,9)]
-    left,_1,_2,_3,_4=run_study(common+[draw(9)])
-    right,_1,_2,_3,_4=run_study(common+[draw(9,range(61,81))])
+    left,_1,_2,_3,_4=run_study(common+[draw(9)],include_partial=True)
+    right,_1,_2,_3,_4=run_study(common+[draw(9,range(61,81))],include_partial=True)
     rl=[r for r in rows_from_v33(left) if r['kaynak_sira']=='8']
     rr=[r for r in rows_from_v33(right) if r['kaynak_sira']=='8']
     def keyed(a):
