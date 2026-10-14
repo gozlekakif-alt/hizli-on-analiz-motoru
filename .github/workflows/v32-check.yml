@@ -1,0 +1,25 @@
+name: V32 80 Sayi Tamamlama Analizi Kontrol
+on:
+  push:
+    paths:
+      - 'v32_80_tamamlama.py'
+      - 'v32_80_tamamlama_app.py'
+      - 'v32_selftest.py'
+      - 'v10_app.py'
+      - '.github/workflows/v32-check.yml'
+  workflow_dispatch:
+jobs:
+  v32:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile engine and app
+        run: python -m py_compile v32_80_tamamlama.py v32_80_tamamlama_app.py v32_selftest.py v10_app.py
+      - name: Verify draw schedule, cycle reset, missing positions and single ZIP
+        run: python -u v32_selftest.py
+      - name: Real veri.txt full-day replay and ZIP integrity
+        run: python -u v32_selftest.py --full
