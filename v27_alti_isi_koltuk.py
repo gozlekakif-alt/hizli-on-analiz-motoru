@@ -31,7 +31,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean
 from v11_arastirma import read_draws
-from v21_aile_yasam_dongusu import group_full_days, clock, csv_bytes
+from v21_aile_yasam_dongusu import group_full_days, clock, key, csv_bytes
 
 LOOKBACKS=(6,12,24,36,72,144,217,434,868,1519)
 METHODS=("Frekans","Yarı ömür 12")
