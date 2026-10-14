@@ -68,6 +68,7 @@ def setup(con):
     con.execute("PRAGMA foreign_keys=ON")
     con.execute("PRAGMA journal_mode=DELETE")
     con.execute("PRAGMA synchronous=NORMAL")
+    con.execute("PRAGMA cache_size=-64000")
     con.executescript("""
     CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS draw_ledger(
@@ -197,6 +198,7 @@ def replay(draws,db_path,include_partial=False,progress=None):
       with_new=seq[len(existing):]
       if not with_new:
           return summary(con,days,full,warnings,0)
+      batch_size=50 if len(with_new)>500 else 1
       for j,d in enumerate(with_new):
           day=d["day"];pos=d["pos"];draw_no=d["no"];source=digest(d)
           current_date=date.fromisoformat(day)
@@ -223,7 +225,7 @@ def replay(draws,db_path,include_partial=False,progress=None):
           assert Counter(after.values())==dict(zip(SIX,SIZE)), "Six heat seats mismatch"
           states=[];events=[];dialogues=[];lifelines=[]
           mask_hex=f"{mask:020x}"
-          con.execute("BEGIN")
+          if j % batch_size==0:con.execute("BEGIN")
           con.execute("INSERT INTO draw_ledger VALUES(?,?,?,?,?,?,?,?)",
                       (new_seq,draw_no,day,pos,on_slot(pos),mask_hex,source,gap_flag))
           for n in BALLS:
@@ -270,7 +272,7 @@ def replay(draws,db_path,include_partial=False,progress=None):
                        "WAIT_DAY":wait_class(day_wait),"WAIT_LIFE":wait_class(lw),
                        "FREQ11":str(count) if valid11 else "EKSIK",
                        "BAND":band,"HALF":half}
-              linked=[]
+              linked=[];linked_motors=[]
               for m in OPERATING:
                   before=bins[m];new=newbins[m]
                   if before!=new:
@@ -278,10 +280,11 @@ def replay(draws,db_path,include_partial=False,progress=None):
                       kind="GIRIS" if before is None else "DEGISIM"
                       events.append((eid,draw_no,n,m,before,new,kind,source))
                       linked.append(eid)
+                      linked_motors.append(m)
               if len(linked)>=2:
                   # A factual co-occurrence link, not a causal statement.
                   d_id=hashlib.sha256(f"V37_DIALOGUE|{draw_no}|{n}".encode()).hexdigest()[:32]
-                  related=sorted({item[3] for item in events if item[2]==n})
+                  related=sorted(linked_motors)
                   dialogues.append((d_id,draw_no,n,json.dumps(related),
                                     json.dumps(sorted(linked)),"ESZAMANLI_GERCEK_DEGISIM"))
               new_hit_seq=new_seq if hit else v[3]
@@ -301,7 +304,7 @@ def replay(draws,db_path,include_partial=False,progress=None):
           prefix=hashlib.sha256((prefix+"|"+source).encode()).hexdigest()
           con.execute("INSERT OR REPLACE INTO checkpoint VALUES(1,?,?,?,?,?,?,?)",
                       (new_seq,draw_no,day,pos,prefix,SCHEMA_VERSION,new_seq))
-          con.commit()
+          if j%batch_size==batch_size-1 or j==len(with_new)-1:con.commit()
           processed+=1
           prev_day=day;prev_pos=pos;prev_seq=new_seq;prior_mask=mask
           if progress and (j%60==0 or j==len(with_new)-1):
