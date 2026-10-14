@@ -13,6 +13,8 @@ import hashlib
 import io
 import json
 import math
+import os
+import tempfile
 import random
 import statistics
 import zipfile
@@ -79,17 +81,18 @@ def simple_csv(z,filename,rows,fields):
 
 
 def file_writer(z,filename,fields):
-    raw=z.open(filename,"w")
-    wrapper=io.TextIOWrapper(raw,encoding="utf-8-sig",newline="",write_through=True)
-    writer=csv.DictWriter(wrapper,fieldnames=fields,**CSV_OPTIONS,extrasaction="ignore")
+    # ZipFile permits only ONE write handle at a time. Stage three huge CSVs
+    # in separate temporary files, then append to ZIP sequentially.
+    raw=tempfile.NamedTemporaryFile(mode="w",encoding="utf-8-sig",
+                                    newline="",delete=False,suffix=".csv")
+    writer=csv.DictWriter(raw,fieldnames=fields,**CSV_OPTIONS,extrasaction="ignore")
     writer.writeheader()
-    return raw,wrapper,writer
+    return raw,raw,writer
 
 
 def close_writer(raw,wrapper):
     wrapper.flush()
-    wrapper.detach()
-    raw.close()
+    wrapper.close()
 
 
 def seed_for(day,pos,kind):
@@ -442,8 +445,14 @@ def run(draws,include_partial=False,progress=None):
             old_s=pos;old_m=winning;clone_previous=generated
         if progress:progress(day_index+1,len(days),"V36 çekiliş çekiliş klon hazneleri",day)
       finally:
-        for tup in [(raw_n,wrap_n),(raw_h,wrap_h),(raw_s,wrap_s)]:
-            close_writer(*tup)
+        for (raw,wrap,name) in [(raw_n,wrap_n,"01_80_SAYI_HER_ADIM_KARAKTER.csv"),
+                                 (raw_h,wrap_h,"02_HER_MOTOR_HAZNE_GIRIS_CIKIS.csv"),
+                                 (raw_s,wrap_s,"03_HER_CEKILIS_GERCEK_KLON_KARSILASTIRMA.csv")]:
+            close_writer(raw,wrap)
+            try:
+                z.write(raw.name,arcname=name)
+            finally:
+                os.unlink(raw.name)
       calrows=cal.report()
       simple_csv(z,"04_KALIBRASYON_HER_UZMAN_HAZNESI.csv",calrows,CAL_FIELDS)
       dayrows=[]
