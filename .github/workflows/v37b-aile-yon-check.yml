@@ -1,0 +1,36 @@
+name: V37B Ortak Hafiza Aile ve Isi Yon Uzmanlari
+on:
+  push:
+    paths:
+      - 'v37_aile_yon_uzmanlari.py'
+      - 'v37_aile_yon_selftest.py'
+      - 'v37_aile_yon_app.py'
+      - 'v37_aile_yon_export.py'
+      - 'v37_ortak_hafiza.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v37b-aile-yon-check.yml'
+  workflow_dispatch:
+jobs:
+  experts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile family and six-heat specialists plus Streamlit
+        run: python -m py_compile v37_aile_yon_uzmanlari.py v37_aile_yon_selftest.py v37_aile_yon_app.py v37_aile_yon_export.py v10_app.py
+      - name: Test first-cover paths, full family repetition, gaps and evidence
+        run: python -u v37_aile_yon_selftest.py
+      - name: Replay complete 72 days and attach families / heat to shared SQLite
+        run: python -u v37_aile_yon_export.py
+      - name: Publish compact seven-report expert ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V37B_AILE_ISI_YON_ORTAK_HAFIZA_TEK_ZIP
+          path: V37B_AILE_ISI_YON_ORTAK_HAFIZA_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
