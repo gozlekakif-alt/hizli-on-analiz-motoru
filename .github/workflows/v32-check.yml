@@ -5,6 +5,8 @@ on:
       - 'v32_80_tamamlama.py'
       - 'v32_80_tamamlama_app.py'
       - 'v32_selftest.py'
+      - 'v32_ileri_karakter.py'
+      - 'v32_ileri_selftest.py'
       - 'v32_export_zip.py'
       - 'veri.txt'
       - 'v10_app.py'
@@ -20,18 +22,20 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile engine and app
-        run: python -m py_compile v32_80_tamamlama.py v32_80_tamamlama_app.py v32_selftest.py v32_export_zip.py v10_app.py
+        run: python -m py_compile v32_80_tamamlama.py v32_80_tamamlama_app.py v32_selftest.py v32_ileri_karakter.py v32_ileri_selftest.py v32_export_zip.py v10_app.py
       - name: Verify draw schedule, cycle reset, missing positions and single ZIP
         run: python -u v32_selftest.py
       - name: Real veri.txt full-day replay and ZIP integrity
         run: python -u v32_selftest.py --full
+      - name: Verify no-lookahead features, 4-8-12 tests and single ZIP
+        run: python -u v32_ileri_selftest.py --full
       - name: Export current veri.txt to a single ZIP (30 RNG controls)
         run: python -u v32_export_zip.py
       - name: Publish downloadable V32 ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: V32_80_SAYI_TAMAMLANMA_TEK_RAPOR
-          path: V32_80_SAYI_TAMAMLANMA_TEK_RAPOR.zip
+          name: V32_4_8_12_TEK_ZIP
+          path: V32_4_8_12_TEK_ZIP.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
