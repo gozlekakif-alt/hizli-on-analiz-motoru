@@ -49,9 +49,15 @@ def check():
     assert results[-1]["previous_observed_draw_no"]==550016
     blob,meta,statistics,qc=study(first,True)
     with zipfile.ZipFile(io.BytesIO(blob)) as z:
-        assert z.testzip() is None and len(z.namelist())==6
+        assert z.testzip() is None and len(z.namelist())==7
         assert "01_CEKILIS_ONCESI_20_SAYILIK_DONDURULMUS_LISTELER.csv" in z.namelist()
     assert len(extract(blob,"02_EGITIM_TEST_HER_MOTOR_ISABET.csv"))==len(MODEL_NAMES) # one synthetic day is all TEST
+    fresh=meta["next_after_available_source"]
+    assert fresh["next_data_slot_pos"]==18
+    assert fresh["next_data_slot_day"]=="2026-10-01"
+    assert len(fresh["lists"])==len(MODEL_NAMES)
+    assert all(len(set(int(x) for x in line.split(",")))==20 for line in fresh["lists"].values())
+    assert len(extract(blob,"06_VERI_SONRASI_ILK_20_SAYI_LISTESI.csv"))==len(MODEL_NAMES)
     # Create 207 original V38-shaped columns, with two exact duplicate,
     # two constant and an explicit all-zero signal.
     cols=["E"+str(i).zfill(3) for i in range(207)]
