@@ -119,11 +119,39 @@ def _make_zip(rows,summary,selected_days):
                    _csv(summary,["model","coupon_size","full_days","targets",
                                  "mean_hits","fair_mean","delta_vs_fair",
                                  "positive_days","daily_CI95_descriptive"]))
+        z.writestr("03_SINYAL_KATALOGU.csv",
+                   _csv([{"model":key,
+                          "description":NAMES.get(key,key),
+                          "coupon_size":size,
+                          "fair_expected_hits":size/4,
+                          "status":"Aday; gelecek avantajı kanıtlanmadı"}
+                         for key,size in MODELS.items()],
+                        ["model","description","coupon_size",
+                         "fair_expected_hits","status"]))
+        z.writestr("04_72_GUN_GECMIS_BULGULAR.txt",
+                   "V45 - 72 GUN GECMISTEN GELEN SINYAL ADAYLARI\n"
+                   "Kaynak araligi: 01.08.2026 - 12.10.2026, 72 tam gun / 15.624 cekilis.\n"
+                   "Sinyal kesfi bu veri uzerinde yapildigi icin bagimsiz ileri kanit DEGILDIR.\n"
+                   "Son 36 gun: 9 cekilis/45 dakika gecikmede ortak sayi 5,0645/20;\n"
+                   "adil beklenti 5,0. Ilk 36 gunde yaklasik 4,9949/20 idi.\n"
+                   "Bu gecikme 40 farkli gecikme arasindan sonradan secilmistir.\n"
+                   "Saatin ilk 6 cekilisinden soguk 20'li: son 36 gun\n"
+                   "H7-H12 hedeflerinde ortalama 5,0617/20; adil beklenti 5,0.\n"
+                   "Saatin ilk 6 cekilisinden sicak 10'lu: 2,5129/10;\n"
+                   "adil beklenti 2,5.\n"
+                   "V44 72-gunluk onceden kilitli elemede 19 adaydan 0 kabul.\n"
+                   "Eski 72 gunde yuksek gorunen adaylari yeni kanit diye okumayin.\n"
+                   "Yeni 14 tam gun tamamlanmadan sinyal onayi verilmeyecek.\n")
         z.writestr("00_TEK_SAYFA_SONUC.txt",
-                   "V45 Sinyal Merkezi - yeni tam gün incelemesi\n"
-                   "10 sayı için teorik isabet 2,5; 20 sayı için 5.\n"
-                   "Üstünlük doğrulanmadı. Tüm rakamlar hedef öncesinden seçildi.\n"
-                   +"\n".join(
+                   "V45 Sinyal Merkezi - YENI TAM GUN testi\n"
+                   f"Yeni tam gun sayisi: {len(selected_days)}/{TARGET_DAYS}\n"
+                   "10 sayi icin teorik isabet 2,5; 20 sayi icin 5.\n"
+                   "Hedefe karsi guvenilir ustunluk dogrulanmadi.\n"
+                   + ("Yeni tam gun olmadigi icin henuz isabet tablosu bos.\n"
+                      if not selected_days else
+                      "Listeler hedef acilmadan once hesaplanmistir.\n")
+                   + "Gecmis 72 gun bulgulari ayri dosyadadir, yeni test degildir.\n"
+                   + "\n".join(
                        f"{NAMES.get(r['model'],r['model'])}: "
                        f"{r['mean_hits']}/{r['coupon_size']}"
                        for r in summary
@@ -189,8 +217,15 @@ def render_v45(draws):
     st.markdown("#### Gerçek yeni gün testi")
     if not chosen:
         st.info("14 Ekim ve sonrası 217/217 tam gün henüz bulunmuyor. "
-                "Yeni günleri veri.txt dosyasına eklediğinde rapor oluşacak.")
-        st.link_button("GitHub V45 otomatik raporu",WORKFLOW_URL)
+                "Şimdilik geçmiş sinyal bulgularını ve 18 yöntem kataloğunu "
+                "tek ZIP olarak indirebilirsin. Yeni tam günler geldikçe "
+                "ayrıca gerçek isabet tabloları eklenecek.")
+        st.download_button("⬇️ V45 TEK RAPOR ZIP İNDİR — BANA GÖNDER",
+            data=_make_zip([], [], []),
+            file_name="V45_SINYAL_MERKEZI_TEK_RAPOR.zip",
+            mime="application/zip",key="v45_download_waiting",
+            type="primary",use_container_width=True)
+        st.caption("Bu düğme başka bir siteye gitmez; ZIP doğrudan telefonuna iner.")
         return
     normalized=tuple((d.isoformat(),tuple(
         (r["id"],r["time"],tuple(sorted(r["nums"]))) for r in day
@@ -218,11 +253,11 @@ def render_v45(draws):
         "Ortalama isabet":r["mean_hits"],"Adil":r["fair_mean"],
         "Fark":r["delta_vs_fair"]
     } for r in summary],hide_index=True,use_container_width=True)
-    st.download_button("⬇️ V45 SİNYALLERİ TEK ZIP İNDİR",
+    st.download_button("⬇️ V45 TEK RAPOR ZIP İNDİR — BANA GÖNDER",
         _make_zip(rows,summary,[d.isoformat() for d,_ in chosen]),
         file_name="V45_SINYAL_MERKEZI_TEK_RAPOR.zip",
         mime="application/zip",key="v45_download",type="primary",
         use_container_width=True)
     st.caption("Tüm modeller deneysel; çoklu denemelerde rastlantısal "
                "yüksek sonuçlar kanıtlı tahmin başarısı değildir.")
-    st.link_button("GitHub V45 otomatik çalışma",WORKFLOW_URL)
+    st.caption("Rapor doğrudan bu sayfadan indirilir; GitHub'a gitmen gerekmez.")
