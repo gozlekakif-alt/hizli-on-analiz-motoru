@@ -1,0 +1,31 @@
+name: V27 6 Isi 20 Koltuk Gecmis Testi
+on:
+  push:
+    paths:
+      - 'v27_alti_isi_koltuk.py'
+      - 'v27_heat_app.py'
+      - 'v27_selftest.py'
+      - '.github/workflows/v27-check.yml'
+  workflow_dispatch:
+jobs:
+  v27:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile source and streamlit integration
+        run: python -m py_compile v27_alti_isi_koltuk.py v27_selftest.py v27_heat_app.py v10_app.py
+      - name: No-peeking temperature ranks, full history/20 seats audit
+        run: python -u v27_selftest.py
+      - name: Evaluate 6 to 1519 historical draw lookbacks and old 4x20 comparison
+        run: python -u v27_alti_isi_koltuk.py --output V27_ALTI_ISI_20_KOLTUK_72_GUN_TAM.zip
+      - name: Upload one 7-file report archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: V27-72-Gun-6Isili-20Koltuk-Sicaklik
+          path: V27_ALTI_ISI_20_KOLTUK_72_GUN_TAM.zip
+          retention-days: 30
+          if-no-files-found: error
