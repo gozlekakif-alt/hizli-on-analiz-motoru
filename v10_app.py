@@ -32,6 +32,7 @@ from v27_heat_app import render_v27
 from v28_dijital_kaplan_app import render_v28
 from v29_family_app import render_v29
 from v30_bant_isi_yon_app import render_v30
+from v31_ayna_simetri_app import render_v31
 from v17_karakter_app import render_v17
 from v16_rng_salinim import analyze as v16_analyze
 from v15_kupon_motoru import (fit_models as v15_fit,
@@ -982,7 +983,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön","🪞 V31 Ayna Bant Kardeşliği"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -3263,3 +3264,7 @@ with tabs[23]:
 
 with tabs[24]:
     render_v30(draws)
+
+
+with tabs[25]:
+    render_v31(draws)
