@@ -86,7 +86,7 @@ def ordered_phases(full):
     return {day:("Öğrenme" if i<36 else "Test") for i,day in enumerate(d)}
 
 
-def profile(draws, eligible, detailed=True, forecast=False):
+def profile(draws, eligible, detailed=True, forecast=False, progress=None):
     """Single streaming pass, no backwards target knowledge.
 
     Returns aggregate counts plus optional per-ball hour profiles and
@@ -289,6 +289,10 @@ def profile(draws, eligible, detailed=True, forecast=False):
         three_previous=macro
         previous=d
         valid_processed+=1
+        # Report completion of each REAL full day; never advance the counter
+        # for an incomplete day or for a nonexistent overnight draw.
+        if progress is not None and pos==217 and day in eligible:
+            progress(day)
     if detailed and previous is not None:
         for n in BALLS:
             if streak[n]>=12:
@@ -634,7 +638,7 @@ def test_forecast(raw_draws, phases):
     }]
 
 
-def run(raw_text, rng_reps=RNG_REPS, detailed=True):
+def run(raw_text, rng_reps=RNG_REPS, detailed=True, progress=None):
     draws,errors=read_draws(raw_text)
     full,incomplete=group_full_days(draws)
     phase=ordered_phases(full)
@@ -642,13 +646,28 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
     # valid incomplete-day data as historical context.
     last_day=sorted(phase)[-1]
     before=[d for d in draws if d["day"]<=last_day]
+    # One continuous run. Progress callback is optional and only called from
+    # inside a real Streamlit user interaction; command-line works unchanged.
+    phase_days=set(phase)
+    finished=[0]
+    total=len(phase_days)*(rng_reps+1)+4
+    def advance(stage,day=""):
+        finished[0]+=1
+        if progress is not None:
+            progress(finished[0],total,stage,day)
+    if progress is not None:
+        progress(0,total,"Analiz hazırlanıyor","")
     # Comparisons only on same full days and after first144 observed draws.
-    observed=profile(before,set(phase),detailed=detailed)
+    observed=profile(before,phase_days,detailed=detailed,
+                     progress=lambda day:advance("Gerçek veri",day))
     null=[]
     for i in range(rng_reps):
         null.append(profile(make_cache(before,seed=284011+i*99173),
-                            set(phase),detailed=False))
+                            phase_days,detailed=False,
+                            progress=lambda day,i=i:advance(
+                                f"RNG kontrol {i+1}/{rng_reps}",day)))
         print("V28_NULL",i+1,"/",rng_reps,flush=True)
+    advance("RNG kontrolleri tamamlandı")
     macro=transition_table(observed,null,"macro_trans",True)
     six=transition_table(observed,null,"six_trans",False)
     hour_macro=transition_table(observed,null,"hour_macro_trans",True)
@@ -665,7 +684,9 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
     sim["6 RNG tekrar max fark"]=round(max(null_gap),6)
     sim["RNG dışına çıktı mı (kesin kanıt değil)"]=(obs_gap<min(null_gap) or obs_gap>max(null_gap)) if isinstance(obs_gap,float) else False
     long=extract_hourly_6to6_probes(observed)
+    advance("Sıcaklık / koltuk / saatlik geçişler tamamlandı")
     forecast,forecast_detail,forecast_ci=test_forecast(before,phase)
+    advance("20 sayı ileriye dönük test tamamlandı")
     if len(observed["hourly"])!=72*18*80:raise AssertionError("Missing H1..H12 daily profiles")
     if sum(v["counts"]["targets"]["total"] for v in null)==0:raise AssertionError("No null targets")
     if len(forecast_detail)!=36*18*4:raise AssertionError("Expected 36 days *18 hours*4 coupon methods")
@@ -728,6 +749,7 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
         "36gun_butun_saatler_H7_H12_isabetleri.csv":csv_bytes(forecast_detail),
         "36gun_gunluk_guven_araligi.csv":csv_bytes(forecast_ci),
     }
+    advance("ZIP için tüm raporlar oluşturuldu")
     return reports,meta,macro,durations,forecast,forecast_ci
 
 
