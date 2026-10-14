@@ -292,8 +292,8 @@ def study(draws,include_partial=False,progress=None):
              'aktif_gun':len(daily_rows),
              'yogun_artik_ornek':sum(x['enaz6_gorulen_toplam'] for x in daily_rows),
              '6plus_bekleyen_ornek':sum(x['enaz6_bekleyen_toplam'] for x in daily_rows),
-             'yogun_ortalama_kesit':round(sum(x['enaz6_gorulen_toplam'] for x in daily_rows)/len(window_rows),5),
-             'bekleyen_ortalama_kesit':round(sum(x['enaz6_bekleyen_toplam'] for x in daily_rows)/len(window_rows),5)})
+             'yogun_ortalama_kesit':round((sum(x['enaz6_gorulen_toplam'] for x in daily_rows)/len(window_rows) if window_rows else 0),5),
+             'bekleyen_ortalama_kesit':round((sum(x['enaz6_bekleyen_toplam'] for x in daily_rows)/len(window_rows) if window_rows else 0),5)})
     tables={}
     classes=group_report({k[1:]:v for k,v in pool_stats.items() if k[0]=='KARAKTER'},
                          ['donem','karakter'])
