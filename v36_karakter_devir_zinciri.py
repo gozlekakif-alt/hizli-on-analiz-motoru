@@ -43,7 +43,7 @@ def analyze(draws, include_partial=False):
     risk=defaultdict(lambda:[0,0])
     pairs=defaultdict(lambda:[0,0,0,0,0.])
     daily=[]
-    examples=[]
+    examples=[]  # ALL A2+B pair states; no sampling or favorable-outcome filtering
     for day in days:
         phase='EGITIM' if day<divider else 'TEST'
         bypos=byday[day]
@@ -107,7 +107,7 @@ def analyze(draws, include_partial=False):
                         v[2]+=a_exits
                         v[3]+=int(a_exits and b_returns)
                         v[4]+=RNG_A0_B1 if requires_next_hit else 0
-                    if len(examples)<500 and (a_exits or b_returns):
+                    if True:  # all pairs, including both-negative controls
                         examples.append({'gun':day,'donem':phase,'sira':t,
                           'saat':clock(t),'H6_A':a,'H6_suren_pencere':h6_age[a],
                           'H6_A_11de_kac':sig[a].bit_count(),'bekleyen_B':b,
@@ -167,7 +167,7 @@ def analyze(draws, include_partial=False):
         write_csv(z,'02_H6_SURME.csv',hrows,list(hrows[0]) if hrows else ['donem'])
         write_csv(z,'03_B_GERI_DONUS_UFKU.csv',rrows,list(rrows[0]) if rrows else ['donem'])
         write_csv(z,'04_A_DUSERKEN_B_GELME.csv',prows,list(prows[0]) if prows else ['donem'])
-        write_csv(z,'05_SAYI_SAYI_ORNEKLER.csv',examples,list(examples[0]) if examples else ['gun'])
+        write_csv(z,'05_TUM_SAYI_SAYI_DEVIRLER.csv',examples,list(examples[0]) if examples else ['gun'])
         z.writestr('06_OZET.json',json.dumps(overview,ensure_ascii=False,indent=2))
         z.writestr('07_VERI_HATALARI.txt','\n'.join(errors) or 'Yok')
     return out.getvalue(),overview,hrows,rrows,prows
