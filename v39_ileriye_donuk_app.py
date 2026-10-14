@@ -72,6 +72,19 @@ def render_v39(draws):
                 str(diff["mean_hits_ensemble_minus_rng"])+" sayı. Gün blok %95 aralığı: "+
                 str(diff["day_bootstrap_95"])+".")
     st.dataframe(table,hide_index=True,use_container_width=True)
+    upcoming=meta.get("next_after_available_source")
+    if upcoming:
+        st.markdown("#### Yüklenen veriden sonraki ilk kayıtlı olmayan sıra")
+        st.caption("Son veri: "+upcoming["last_observed_day"]+" / "+
+            str(upcoming["last_observed_pos"])+". Sonraki hedef sıra: "+
+            upcoming["next_data_slot_day"]+" "+
+            upcoming["next_data_slot_clock"]+". "
+            "Kaynak güncel değilse bu saat geride kalmış olabilir; "
+            "gerçek zamanlı rezervasyon veya kazanma iddiası değildir.")
+        st.text("Uzman paneli 20 sayı: "+upcoming["lists"][ENSEMBLE])
+        with st.expander("Sekiz uzman ve RNG kontrolünün veri sonrası 20'li listeleri"):
+            st.dataframe([{"Uzman":k,"20 sayı":v} for k,v in
+                upcoming["lists"].items()],hide_index=True,use_container_width=True)
     if qc:
         st.markdown("#### Gerçek V38 207 uzman kalite kontrolü")
         a,b,c=st.columns(3)
