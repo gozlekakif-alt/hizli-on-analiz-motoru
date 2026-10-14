@@ -21,7 +21,7 @@ def main():
     dest=Path("V39_20_SAYI_GERCEK_ILERI_TEST_TEK_ZIP.zip")
     dest.write_bytes(blob)
     with zipfile.ZipFile(dest) as z:
-        assert z.testzip() is None and len(z.namelist())==6
+        assert z.testzip() is None and len(z.namelist())==7
     print("V39 REAL DATA PASS:",json.dumps({
        "complete_draws":meta["draw_count"],
        "days":meta["studied_days"],
