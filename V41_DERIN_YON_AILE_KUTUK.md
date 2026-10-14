@@ -62,3 +62,31 @@ Bütün özellikler `t) çekilişi görülmeden önce `t-1,t-2,...` verisinden �
 - `.github/workflows/v41-derin-yon-check.yml`: GitHub Actions ve ZIP.
 
 **Asıl sonuç ve V41 başarı durumu yalnız 72 gün çalışması başarılı olup gerçek rakamlar kontrol edildikten sonra rapora eklenecektir.** Hedef 16/20 araştırılabilir ama bu veya herhangi bir motorla mümkün olduğu henüz gösterilmedi.
+
+## Tamamlanan 72 günün GERÇEK test sonucu — 14 Ekim 2026
+
+**GitHub Actions başarılı:** https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38624210433
+
+**Tek ZIP (39,3 MB):** https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38624210433/artifacts/11923870930
+
+- 72 tam gün, **15.624** gerçek çekiliş. İlk çekiliş hayat hafızasını başlatır, sonraki **15.623** çekilişten önce **1.249.840** sayı-yön kartı üretildi.
+- Dokuz yöntemin tümünden toplam **140.607** çekiliş öncesi dondurulmuş 20'li liste test edildi.
+- Son 36 günün ayrık testi: **7.812 çekiliş**.
+
+| Son 36 gün karşılaştırması | Ortalama isabet /20 | En yüksek tek çekiliş | 16/20+ |
+|---|---:|---:|---:|
+| **V41 yön birleşimi — ön kayıtlı ana yöntem** | **4,98886** | 12/20 | 0 |
+| Rastgele 20 | **5,02061** | 12/20 | 0 |
+| Önceki V39 birleşimi | **4,99373** | 11/20 | 0 |
+| Yön birleşimi (ilk 36 günde eğitilip dondurulmuş) | **4,99949** | 14/20 | 0 |
+
+**Çiftler halinde gün-blok kıyası:**
+- V41 online − rastgele: **−0,031746 sayı/çekiliş**; 36 günlük bootstrap %95 aralığı **[−0,085637, +0,020737]**. Aralık sıfırı içerir; V41 üstünlüğü gösterilmedi.
+- V41 online − V39: **−0,004864**; %95 aralık **[−0,053763, +0,045059]**.
+- V41 online − ilk 36 gün dondurulmuş yön modeli: **−0,010625**; %95 aralık **[−0,049027, +0,028546]**.
+
+**Olasılık kalibrasyonu:** Son 36 gün 624.960 sayı-adımında V41 birleşim Brier **0,18750231**, %25 referans **0,18750000**. Yani model çok küçük farkla daha yüksek hata verdi; **isabet avantajı yok.**
+
+Bir yöntemde rastlantısal olarak 14/20 görülmesi (testte dondurulmuş yön kolunda bir kez) bütün yaklaşımın başarılı olduğu anlamına gelmez. Aynı anda çok sayıda alternatif denendiği için en yüksek görünen sonucu seçip hedef başarısı ilan etmek yanlıştır.
+
+**Sonraki yöntemsel adım:** Yalnız gerçek ileri dönemde doğrulanan yön alt gruplarını ilerlet. Önce 207 uzman içindeki sabit/tekrar sütunlarını ayıkla; canlı yeni günlerde kör test yap. Geçmişte farklı yön karakterlerinin bulunması, rastgele RNG'nin gizli algoritmasının çözüldüğünü göstermez.
