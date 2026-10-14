@@ -1,0 +1,21 @@
+name: V37 Aile ve Isı Yönü Sentetik Denetimi
+on:
+  push:
+    paths:
+      - 'v37_aile_yon_uzmanlari.py'
+      - 'v37_aile_yon_selftest.py'
+      - '.github/workflows/v37-family-unit.yml'
+  workflow_dispatch:
+jobs:
+  v37_family_unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V37 family-direction engine
+        run: python -m py_compile v37_aile_yon_uzmanlari.py v37_aile_yon_selftest.py v37_ortak_hafiza.py
+      - name: Verify staged quartets and SQLite dialogue
+        run: python -u v37_aile_yon_selftest.py
