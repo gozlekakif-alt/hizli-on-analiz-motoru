@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """V34 UI: compare 8-wait cold unseen vs other 8-wait, 6-11+ grid."""
-import hashlib
+from v32_35_draw_fingerprint import draw_fingerprint
 import streamlit as st
 from v34_bekleme_isi_v32_kesisim import run_cross
 
@@ -24,7 +24,7 @@ def render_v34(draws):
                         value=False,key='v34_partial')
     reps=st.select_slider('Gün temelli belirsizlik tekrarı',options=[400,1000,2000,4000],
                           value=2000,key='v34_reps')
-    signature=hashlib.sha256(str([(d['no'],d['day'],d['pos'],d['mask']) for d in draws]).encode()).hexdigest()
+    signature=draw_fingerprint(draws)
     if st.button('▶️ V34 SOĞUK–BEKLEME–DÖNGÜ DERİN ÇAPRAZ ANALİZİ',
                  type='primary',use_container_width=True,
                  disabled=not draws or (not partial and complete==0),key='v34_run'):
