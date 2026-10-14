@@ -64,9 +64,6 @@ def six_pattern(counts):
 
 
 def band_phase(numbers_first6):
-    counts=tuple(len(set(d["nums"])&set(range(10*b+1,10*b+11)))
-                 for d in numbers_first6 for b in ())
-    # Above intentionally not used; compute one pass for each 5-min draw.
     series=[[0]*6 for _ in range(8)]
     for j,d in enumerate(numbers_first6):
         for n in d["nums"]:
@@ -357,7 +354,7 @@ def rates_table(events):
 def snapshot_bands(events):
     """One row for EACH band/hour, occupancy counts and first6 +/- texture."""
     rows=[]
-    numberpanel=defaultdict(lambda:[0]*80)
+    numberpanel=defaultdict(lambda:[0]*18)
     cell=defaultdict(Counter)
     for day,start,arr in events:
         phase=arr[0]["Dönem"]
@@ -530,8 +527,12 @@ def run_study(txt,progress=None,band_null_reps=199):
     def stage_progress(done,total,label,day):
         if progress:progress(min(done,72),75,label,day)
     events=generate_rows(observed,phases,progress=stage_progress)
-    if len(events)!=72*18:
-        raise AssertionError(f"Expected 72x18 complete hours; got {len(events)}")
+    # Without any earlier draw history, the first evaluated day may lose its
+    # earliest hour snapshots to the 144-draw warmup. The 36 heldout days,
+    # however, must be complete and are never trimmed.
+    if not events or sum(1 for d,s,rs in events
+                         if phases[d]==TEST_LABEL)!=36*18:
+        raise AssertionError("Missing a heldout full 36-day / 18-hour panel")
     pressure=pressure_snapshots(observed,phases)
     enrich(events,pressure)
     if progress:progress(72,75,"Bant yönleri ve +/− salınımları hazır","")
