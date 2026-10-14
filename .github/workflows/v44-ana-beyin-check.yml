@@ -1,0 +1,34 @@
+name: V44 Ana Beyin 19 Uzman Kilitli Eleme
+on:
+  push:
+    paths:
+      - 'v44_ana_beyin_uzman_elemesi.py'
+      - 'v44_ana_beyin_selftest.py'
+      - 'v44_ana_beyin_app.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v44-ana-beyin-check.yml'
+  workflow_dispatch:
+jobs:
+  expert_brain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile full V44 integrated app and engine
+        run: python -m py_compile v44_ana_beyin_uzman_elemesi.py v44_ana_beyin_selftest.py v44_ana_beyin_app.py v10_app.py
+      - name: Verify no target leakage, five pool quotas, expert gate, 20 unique numbers
+        run: python -u v44_ana_beyin_selftest.py
+      - name: Test all 72 complete days, 18/18/36 sealed expert selection
+        run: python -u v44_ana_beyin_uzman_elemesi.py
+      - name: Downloadable ZIP of all expert tickets, quota and gate decisions
+        uses: actions/upload-artifact@v4
+        with:
+          name: V44_ANA_BEYIN_ELEME_72_GUN_TEK_ZIP
+          path: V44_ANA_BEYIN_ELEME_72_GUN_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
