@@ -1,0 +1,35 @@
+name: V40 Alti Isi Havuzu Yon Aile Test
+on:
+  push:
+    paths:
+      - 'v40_alti_isi_yon_havuzlari.py'
+      - 'v40_isi_havuzlari_app.py'
+      - 'v40_isi_havuzlari_selftest.py'
+      - 'v40_isi_havuzlari_export.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v40-isi-havuzlari-check.yml'
+  workflow_dispatch:
+jobs:
+  v40:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V40 and Streamlit entrypoint
+        run: python -m py_compile v40_alti_isi_yon_havuzlari.py v40_isi_havuzlari_app.py v40_isi_havuzlari_selftest.py v40_isi_havuzlari_export.py v10_app.py
+      - name: Test six seats, chronological state, target invariance and random control
+        run: python -u v40_isi_havuzlari_selftest.py
+      - name: Replay all complete days, actual heat pool contributions vs 25 percent
+        run: python -u v40_isi_havuzlari_export.py
+      - name: Publish single all-heat reservoir study ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V40_ALTI_ISI_YON_AILE_BANT_TEK_ZIP
+          path: V40_ALTI_ISI_YON_AILE_BANT_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
