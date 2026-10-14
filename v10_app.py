@@ -46,6 +46,7 @@ from v39_ileriye_donuk_app import render_v39
 from v40_isi_havuzlari_app import render_v40
 from v41_derin_yon_app import render_v41
 from v42_bes_havuz_kota_app import render_v42
+from v44_ana_beyin_app import render_v44
 from v17_karakter_app import render_v17
 from v16_rng_salinim import analyze as v16_analyze
 from v15_kupon_motoru import (fit_models as v15_fit,
@@ -996,7 +997,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön","🪞 V31 Ayna Bant Kardeşliği","🔁 V32 80 Sayı Döngüsü","⏳ V33 6–10 Bekleme Havuzları","🔬 V34 8 Bekleme Çapraz Test","🧬 V35 11 Çekiliş İmza Motoru","🧠 V36 RNG Davranış Klonu","🗃️ V37 Ortak Yaşam Hafızası","🧩 V37B Aile + Yön Uzmanları","🧩 V37C Sessiz Parçalı Aileler","🧠 V38 207 Uzman","🎯 V39 20 Sayı İleri Test","🌡️ V40 6 Isı Havuzu Yön","↗️↘️ V41 Derin Yön ve Aile","🎯 V42 5 Havuz Kota"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön","🪞 V31 Ayna Bant Kardeşliği","🔁 V32 80 Sayı Döngüsü","⏳ V33 6–10 Bekleme Havuzları","🔬 V34 8 Bekleme Çapraz Test","🧬 V35 11 Çekiliş İmza Motoru","🧠 V36 RNG Davranış Klonu","🗃️ V37 Ortak Yaşam Hafızası","🧩 V37B Aile + Yön Uzmanları","🧩 V37C Sessiz Parçalı Aileler","🧠 V38 207 Uzman","🎯 V39 20 Sayı İleri Test","🌡️ V40 6 Isı Havuzu Yön","↗️↘️ V41 Derin Yön ve Aile","🎯 V42 5 Havuz Kota","🧠 V44 Ana Beyin"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -3333,3 +3334,7 @@ with tabs[37]:
 
 with tabs[38]:
     render_v42(draws)
+
+
+with tabs[39]:
+    render_v44(draws)
