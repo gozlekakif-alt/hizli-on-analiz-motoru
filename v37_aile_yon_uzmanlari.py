@@ -111,6 +111,7 @@ def first_coverage_paths(cur_set, history, pos):
                 next_cur=int(used_current or (t==pos and take>0))
                 new[(next_comp,next_cur)]+=number*math.comb(cnt,take)
         staged=dict(new)
+    new_path=Counter()
     prior=0
     for (composition,used_current),count in staged.items():
         if sum(composition)!=4:continue
