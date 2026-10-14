@@ -78,6 +78,14 @@ def init_db(db):
     CREATE INDEX IF NOT EXISTS idx_v37_family_seq ON v37_family_step(seq);
     CREATE INDEX IF NOT EXISTS idx_v37_family_examples_draw ON v37_family_examples(draw_no);
     """)
+    db.executemany("INSERT OR IGNORE INTO motor_registry VALUES(?,?,?,?)", [
+        ("FAMILY.PAIR_12",1,"CALISIYOR_V37_B","12'li kayan pencerede tam ikili aile tekrari"),
+        ("FAMILY.TRIPLE_12",1,"CALISIYOR_V37_B","12'li kayan pencerede tam uclu aile tekrari"),
+        ("FAMILY.QUARTET_12",1,"CALISIYOR_V37_B","12'li kayan pencerede tam dortlu aile tekrari"),
+        ("FAMILY.QUARTET_COVER_PATH",1,"CALISIYOR_V37_B","Dortlunun 12'li ilk gorulme tamamlanma kompozisyonu"),
+        ("DIRECTION.HEAT_6X6",1,"CALISIYOR_V37_B","6 isi sinifi 36 hucreli gecis matrisi"),
+        ("DIALOGUE.FAMILY_HEAT",1,"CALISIYOR_V37_B","Yeniden birlesen aile ve uyelerinin isi yonu ortak olay delili"),
+    ])
     db.commit()
 
 
@@ -92,26 +100,6 @@ def first_coverage_paths(cur_set, history, pos):
         for n in cur_set & old["wins"]:
             if first[n]==pos:first[n]=old["pos"]
     bin_counts=Counter(first.values())
-    dp={():1}
-    for t,cnt in sorted(bin_counts.items()):
-        new=defaultdict(int)
-        for path,count in dp.items():
-            remaining=4-sum(path)
-            for take in range(min(cnt,remaining)+1):
-                nxt=path+(take,) if take else path
-                new[nxt]+=count*math.comb(cnt,take)
-        dp=dict(new)
-    total={"+".join(map(str,path)):n for path,n in dp.items() if sum(path)==4}
-    # Count paths with a current-draw first-appearing member by excluding
-    # all families whose four members already appeared during history.
-    new_path=Counter()
-    have_last_bin=pos in bin_counts
-    if have_last_bin:
-        past_times={t for t in bin_counts if t<pos}
-        for path,n in dp.items():
-            if sum(path)!=4:continue
-            # A time bin with zero selected members is omitted from composition,
-            # so we track current membership through an explicit DP variant below.
     # Exact stage compositions with timestamp-aware state:
     staged={((),0):1}
     for t,cnt in sorted(bin_counts.items()):
