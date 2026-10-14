@@ -49,6 +49,8 @@ assert len(ob["daypair"])==1
 assert ob["daypair"][0]["Geçiş"]=="23:57→00:02"
 assert ob["counts"]["targets"]["total"]==434-144
 assert all(len(r["H1..H12 makro yolları"])==12 for r in ob["hourly"])
+assert all(len(r["H1..H12 altı sıcaklık yolları"])==12 for r in ob["hourly"])
+assert all(sum(r[f"{name} H sayısı"] for name in HEAT_SIX)==12 for r in ob["hourly"])
 assert all(r["Soğukta H"]+r["Ilıkta H"]+r["Sıcakta H"]==12 for r in ob["hourly"])
 assert all(r["Soğuk en uzun H kalış"]<=12 for r in ob["hourly"])
 assert len(extract_hourly_6to6_probes(ob))>=3
@@ -60,7 +62,7 @@ a=transition_table(ob,[null],"macro_trans",True)
 b=transition_table(ob,[null],"six_trans",False)
 assert len(a)==9 and len(b)==36
 assert len(hslot_table(ob,[null]))==39
-assert len(sustained_table(ob,[null]))==24
+assert len(sustained_table(ob,[null]))==72
 assert sum(x["Gerçek geçiş"] for x in a)==sum(ob["counts"]["macro_trans"].values())
 assert sum(x["Gerçek geçiş"] for x in b)==sum(ob["counts"]["six_trans"].values())
 assert len(day_similarity(ob)[1])==0  # first full day only 73 of 217 targets after warmup
