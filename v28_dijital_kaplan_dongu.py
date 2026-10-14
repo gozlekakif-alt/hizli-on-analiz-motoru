@@ -118,6 +118,8 @@ def profile(draws, eligible, detailed=True, forecast=False):
     snapshots={}
     valid_processed=0
     last_evaluated_t=None
+    last_hour_macro=[None]*81
+    last_hour_day=[None]*81
     def finalize_hour(key,r):
         if not detailed:return
         date,hour=key
@@ -215,6 +217,26 @@ def profile(draws, eligible, detailed=True, forecast=False):
                 r["hit"][n]+=int(n in ns)
                 r["macro"][(g,n)]+=1
             if h=="H12":
+                # H1..H12 above: twelve 5-minute DRAW positions in this hour.
+                # The next level below tracks actual chronological HOURS.
+                for n in BALLS:
+                    path=r["paths"][n]
+                    if len(path)!=12:
+                        raise AssertionError("Incomplete hourly macro path")
+                    dominant=max(range(3),key=lambda g:(
+                        path.count(g),int(g==path[-1]),-g))
+                    old_state=last_hour_macro[n]
+                    old_day=last_hour_day[n]
+                    if old_state is not None and (
+                        old_day==day or day_consecutive(old_day,day)
+                    ):
+                        counts["hour_macro_trans"][(old_state,dominant)]+=1
+                        if old_day==day:
+                            counts["hour_macro_same_day"][(old_state,dominant)]+=1
+                        else:
+                            counts["hour_macro_next_day"][(old_state,dominant)]+=1
+                    last_hour_macro[n]=dominant
+                    last_hour_day[n]=day
                 finalize_hour(key,r)
                 if forecast:
                     snapshots[key]=(tuple(six),tuple(macro),tuple(scores))
@@ -363,6 +385,54 @@ def sustained_table(obs,nulls):
                 "Not":"Altı basamakta kalış, hafıza hesabının doğal kalıcılığıyla karşılaştırılır."
             })
     return rows
+
+
+def hour_12_lifecycle(hour_rows):
+    """Twelve ACTUAL HOURS (not twelve five-minute draws).
+
+    18 full draw-hours/day: 00:02, 07:02,...,23:02; 01:02
+    is a solitary draw, not a 12-draw hour. For every number and every
+    12-consecutive-observed-hour window within each complete day,
+    record macro dwell, transitions and 12 labeled H1..H12 hour states.
+    """
+    hours=["00:02"]+[f"{h:02d}:02" for h in range(7,24)]
+    by=defaultdict(dict)
+    for r in hour_rows:
+        by[(r["Tarih"],int(r["Sayı"]))][r["Saat"]]=r
+    results=[]
+    for (day,n),found in sorted(by.items()):
+        if len(found)!=18:continue
+        states=[]
+        for hour in hours:
+            r=found[hour]
+            counts=[r["Soğukta H"],r["Ilıkta H"],r["Sıcakta H"]]
+            last=HEAT_MACRO.index(r["H12 sınıf"])
+            dominant=max(range(3),key=lambda g:(counts[g],int(g==last),-g))
+            states.append(dominant)
+        for k in range(7):
+            sub=states[k:k+12]
+            transitions=sum(sub[j]!=sub[j-1] for j in range(1,12))
+            d={"Tarih":day,"Sayı":n,"Başlangıç saat":hours[k],
+               "Bitiş saat":hours[k+11],
+               "12 saatlik sıcaklık yolu":"".join(str(x+1) for x in sub),
+               "H1 durum":HEAT_MACRO[sub[0]],
+               "H12 durum":HEAT_MACRO[sub[-1]],
+               "H1-H12 saat sınıf değişimi":transitions,
+               "İlk ve son aynı":int(sub[0]==sub[-1]),
+               "Saat dilimi örnekleri":"|".join(hours[k:k+12]),
+               "Not":"Her H bir saatlik 12 çekiliş bloğudur; 01:02 tek çekiliştir"}
+            for g,name in enumerate(HEAT_MACRO):
+                current=longest=0
+                for state in sub:
+                    current=current+1 if state==g else 0
+                    longest=max(current,longest)
+                d[f"{name} saat sayısı"]=sub.count(g)
+                d[f"{name} kesintisiz en fazla saat"]=longest
+            for j,st in enumerate(sub,1):
+                d[f"H{j} saat"]=hours[k+j-1]
+                d[f"H{j} durum"]=HEAT_MACRO[st]
+            results.append(d)
+    return results
 
 
 def day_similarity(profiles):
@@ -581,6 +651,9 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
         print("V28_NULL",i+1,"/",rng_reps,flush=True)
     macro=transition_table(observed,null,"macro_trans",True)
     six=transition_table(observed,null,"six_trans",False)
+    hour_macro=transition_table(observed,null,"hour_macro_trans",True)
+    hour_macro_days=transition_table(observed,null,"hour_macro_same_day",True)
+    rolling_hour=hour_12_lifecycle(observed["hourly"]) if detailed else []
     h=hslot_table(observed,null)
     durations=sustained_table(observed,null)
     sim,adjacent=day_similarity(observed)
@@ -617,7 +690,9 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
         "Valid kaydedilmiş çekiliş":len(before),
         "Gerçek hedef çekiliş":observed["counts"]["targets"]["total"],
         "Saat":72*18,"Saat içi 80 sayı profili":len(observed["hourly"]),
-        "H1..H12":"Bir GERÇEK saat içindeki sıralı on iki çekiliş, yoksa 12 ayrı saat değil",
+        "12 gerçek saatlik 80 sayı profili":len(rolling_hour),
+        "H1..H12 çekiliş düzeyi":"Bir GERÇEK saat içindeki sıralı on iki çekiliş (5 dakika aralık)",
+        "H1..H12 saat düzeyi":"Ayrı 12 saatlik kaydırmalı pencereler, 00:02+07:02..23:02 içindeki 18 gerçek saat bloğundan 12 tanesi, 01:02 tek çekiliş ayrı",
         "01:02":"Ayrı 13. tek gece çekilişi, H13 gibi etiketlenmez",
         "Günler":"Gece 23:57→00:02 sadece takvimde arka arkaya tam günlerde çapraz gün kıyası",
         "Döngü tanımı":"ÖNCE görülen sıcaklık etiketinin yeni çekiliş öncesindeki etiketle 3x3 ve 6x6 geçişi",
@@ -640,6 +715,9 @@ def run(raw_text, rng_reps=RNG_REPS, detailed=True):
         "6x6_alti_sicaklik_tum_gecisler.csv":csv_bytes(six),
         "H1_H12_saat_ici_gecisler.csv":csv_bytes(step_rows),
         "H1_H12_koltuk_gercek20.csv":csv_bytes(h),
+        "saatten_saate_3x3_sicaklik_gecisleri_RNG.csv":csv_bytes(hour_macro),
+        "sadece_aynigun_saatten_saate_gecis_RNG.csv":csv_bytes(hour_macro_days),
+        "her_sayi_12_gercek_saat_H1_H12_yolculuk.csv":csv_bytes(rolling_hour) if detailed else b"",
         "kalma_sureleri_RNG_karsilastirma.csv":csv_bytes(durations),
         "her_sayi_her_saat_H1_H12_yolculuk.csv":csv_bytes(observed["hourly"]) if detailed else b"",
         "12_ve_uzeri_ardisik_sinif_kalislari.csv":csv_bytes(observed["runs"]) if detailed else b"",
