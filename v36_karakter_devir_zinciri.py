@@ -71,6 +71,10 @@ def analyze(draws, include_partial=False):
             highs=[n for n in range(1,81) if h6_age[n]>=1]
             absent=[n for n in range(1,81) if gaps[n]>=6]
             context='VAR_H6_2PLUS' if persist else 'YOK_H6_2PLUS'
+            count_context=('EN_AZ_IKI_H6_2PLUS_SAYI' if len(persist)>=2 else
+                ('TEK_H6_2PLUS_SAYI' if len(persist)==1 else 'HIC_H6_2PLUS_SAYI_YOK'))
+            simultaneous_context=('EN_AZ_IKI_H6_SAYI' if len(highs)>=2 else
+                ('TEK_H6_SAYI' if len(highs)==1 else 'HIC_H6_SAYI_YOK'))
             found['persist_windows']+=bool(persist)
             found['persist_numbers']+=len(persist)
             found['waiting_numbers']+=len(absent)
@@ -87,7 +91,7 @@ def analyze(draws, include_partial=False):
                     v[0]+=1;v[1]+=hit;v[2]+=stays;v[3]+=nullstay
             for b in absent:
                 first_return=next((h for h,drawn in enumerate(future,1) if b in drawn),None)
-                for ctx in (context,'TUM_BAGLAMLAR'):
+                for ctx in (context,count_context,simultaneous_context,'TUM_BAGLAMLAR'):
                     for wait in (wc(gaps[b]),'6PLUS_GENEL'):
                         for horizon in HORIZONS:
                             v=risk[(phase,ctx,wait,horizon)]
@@ -199,4 +203,5 @@ if __name__=='__main__':
         print('V36 WAIT TEST NEXT',json.dumps([x for x in r if x['donem']=='TEST' and x['gelecek_cekilis_ufku']==1],ensure_ascii=False))
         print('V36 HANDOVER TEST',json.dumps([x for x in p if x['donem']=='TEST'],ensure_ascii=False))
         print('V36 LAGS TEST',json.dumps([x for x in r if x['donem']=='TEST' and x['A_H6_2PLUS_baglam']=='VAR_H6_2PLUS' and x['B_bekleme_sinifi'] in ('6PLUS_GENEL','9')],ensure_ascii=False))
+        print('V36 TWO-NUMBER TEST',json.dumps([x for x in r if x['donem']=='TEST' and x['gelecek_cekilis_ufku']==1 and x['B_bekleme_sinifi'] in ('6PLUS_GENEL','9') and x['A_H6_2PLUS_baglam'] in ('EN_AZ_IKI_H6_SAYI','TEK_H6_SAYI','EN_AZ_IKI_H6_2PLUS_SAYI','TEK_H6_2PLUS_SAYI')],ensure_ascii=False))
         print('V36 FILE',filename,len(artifact),'bytes')
