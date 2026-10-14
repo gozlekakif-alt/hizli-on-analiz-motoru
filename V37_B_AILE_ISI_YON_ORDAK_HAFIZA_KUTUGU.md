@@ -34,3 +34,20 @@ Bir aile hiç 4/4 değilse ama üç üyesi farklı çekilişlerde çıkmışsa '
 2. Bir aile tam 4/4 olmadan ayrı çekilişlerde parçalı gelişini sürdüren **kalıcı aile epizodu** motoru ekle.
 3. Aile–bekleme–ısı–bant zincirlerini tarihsel örneklem ve yeni zaman sıralı testle karşılaştır.
 4. Sürekli akort edilen klonun kendi aile olaylarının gerçek dağılımlara ne kadar benzediğini göster; gelecekte sayı kimliği tahmini ayrı denetimdir.
+
+## 72 gün gerçek veri: ilk başarılı tam replay (14 Ekim 2026)
+
+72×217 = **15.624** gerçek çekiliş; ilk 36 gün + son 36 gün ayrı. GitHub Actions başarılı ilk çalışma: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38590465591
+
+| Gösterge (çekiliş başına) | İlk 36 gün | Son 36 gün | Bağımsız 20/80 günlük teorik referans |
+|---|---:|---:|---:|
+| Önceki 11 gerçek çekilişte görülüp aynı çekilişte tekrar bir araya gelen **ikili** | 91,61777 | 91,66244 | 91,61455 |
+| Aynı tanımla **üçlü** | 158,11444 | 158,38287 | 158,02833 |
+| Aynı tanımla **dörtlü** | 156,93164 | 156,83884 | 156,36268 |
+| Araya çekiliş girdikten sonra yeniden birleşen dörtlü | 141,56260 | 142,36354 | — |
+| Isı koltuğu yükselen sayılar | 15,33295 | 15,25806 | — |
+| Isı koltuğu düşen sayılar | 18,51831 | 18,39107 | — |
+
+Günlük teorik aile tekrarı hesabı: büyüklük k için `C(20,k) × [1 − (1 − (20)_k/(80)_k)^{min(11,p−1)}]`; p=1..217 ortalaması alınır. Bu hesap her çekilişin bağımsız, adil, 20 benzersiz sayıdan oluştuğu varsayımına dayanır. **Aile tekrarlarının ortalaması adil RNG beklentisine yakın; gelecek 20'yi bildiğimiz kanıtı değildir.**
+
+Kayda alınmış **123.920** örnek dörtlü olayından **123.306** uzman-yön diyalog olayı üretilmiştir. **274.205** ayrı görülen ısı koltuğu geçiş hücresi kaydı bulunmaktadır. Bunlar her adımın eksiksiz 80 sayılık ısı hareketlerinden hesaplanmıştır. 2/3/4 tekrar toplamları tamdır; dörtlü kişisel örnekler bir çekilişte en fazla 8 aile ile sınırlandırılmıştır.
