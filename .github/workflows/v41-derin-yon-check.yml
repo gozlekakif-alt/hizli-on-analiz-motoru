@@ -1,0 +1,37 @@
+name: V41 Derin Yon Aile Isabet Test
+on:
+  push:
+    paths:
+      - 'v41_derin_yon_gecis_motoru.py'
+      - 'v41_derin_yon_selftest.py'
+      - 'v41_derin_yon_app.py'
+      - 'v41_derin_yon_export.py'
+      - 'v40_alti_isi_yon_havuzlari.py'
+      - 'v39_onceden_dondurulmus_uzman_paneli.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v41-derin-yon-check.yml'
+  workflow_dispatch:
+jobs:
+  direction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V41 and Streamlit
+        run: python -m py_compile v41_derin_yon_gecis_motoru.py v41_derin_yon_selftest.py v41_derin_yon_app.py v41_derin_yon_export.py v10_app.py
+      - name: Test frozen future-blind direction and family mechanics
+        run: python -u v41_derin_yon_selftest.py
+      - name: Run 72 complete-day V41 historical out-of-sample test
+        run: python -u v41_derin_yon_export.py
+      - name: Publish one ZIP including all direction study results
+        uses: actions/upload-artifact@v4
+        with:
+          name: V41_DERIN_YON_HIZ_IVME_AILE_TEK_ZIP
+          path: V41_DERIN_YON_HIZ_IVME_AILE_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
