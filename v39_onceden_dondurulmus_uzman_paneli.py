@@ -263,6 +263,23 @@ def make_rows(draws,include_partial=False,progress=None):
                 progress(processed,total,"V39 önceden dondurulan 20 sayılar",day)
     summary=statistics_for(rows)
     comparison=block_difference(rows)
+    last_observed_day=day
+    last_observed_pos=d["pos"]
+    next_day=day if last_observed_pos<217 else (
+        date.fromisoformat(day)+timedelta(days=1)).isoformat()
+    next_pos=last_observed_pos+1 if last_observed_pos<217 else 1
+    # A fresh list is made AFTER the last available actual draw, but
+    # before any subsequently recorded target is read. If the source
+    # is old, this may be a HISTORICAL next slot, not the current future.
+    upcoming,_=panel.frozen(next_day,next_pos)
+    next_record={"last_observed_day":last_observed_day,
+                 "last_observed_pos":last_observed_pos,
+                 "last_observed_draw_no":d["no"],
+                 "next_data_slot_day":next_day,
+                 "next_data_slot_pos":next_pos,
+                 "next_data_slot_clock":on_slot(next_pos),
+                 "lists":{name:show(numbers) for name,numbers in upcoming.items()},
+                 "not_verified_as_future":True}
     meta={"version":VERSION,"full_days_in_source":full,
           "studied_days":len(days),"draw_count":processed,
           "individual_models":list(MODEL_NAMES),
@@ -273,7 +290,8 @@ def make_rows(draws,include_partial=False,progress=None):
           "methodology":"Features at t use only draws <t; frozen 20 numbers evaluated against t; after evaluation states update.",
           "v38_quality_status":"207 descriptive fields are not directly used as per-number predictive features; separate QC report identifies duplicates/constant columns.",
           "target_16plus_guarantee":False,"fair_20_overlap_expected":5,
-          "test_ensemble_vs_rng":comparison}
+          "test_ensemble_vs_rng":comparison,
+          "next_after_available_source":next_record}
     return rows,summary,meta
 
 
@@ -343,6 +361,18 @@ def package(rows,summary,meta,quality=None,quality_stats=None):
             json.dumps(meta["test_ensemble_vs_rng"],ensure_ascii=False,indent=2).encode())
         csvout(z,"04_V38_207_UZMAN_KALITE_KONTROLU.csv",
                QC_COLS,quality or [])
+        upcoming=meta["next_after_available_source"]
+        csvout(z,"06_VERI_SONRASI_ILK_20_SAYI_LISTESI.csv",
+            ("after_day","after_pos","target_day","target_pos",
+             "target_clock","method","frozen_20","source_warning"),
+            [{"after_day":upcoming["last_observed_day"],
+              "after_pos":upcoming["last_observed_pos"],
+              "target_day":upcoming["next_data_slot_day"],
+              "target_pos":upcoming["next_data_slot_pos"],
+              "target_clock":upcoming["next_data_slot_clock"],
+              "method":m,"frozen_20":v,
+              "source_warning":"Bu kaynak dosyasi eskiyse hedef saati coktan gecmis olabilir"}
+              for m,v in upcoming["lists"].items()])
         z.writestr("05_KAYNAK_VE_DOGRULAMA.json",
                    json.dumps({**meta,"v38_quality_audit":quality_stats},
                      ensure_ascii=False,indent=2).encode())
