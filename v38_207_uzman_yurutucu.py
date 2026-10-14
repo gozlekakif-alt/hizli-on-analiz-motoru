@@ -420,7 +420,7 @@ def calculate(s,seq,no,day,pos,now,lookbehind,old_map):
         sum(n in newcomers and n not in s.clock20 for n in win),
         abs(counts[0]-counts[7])+abs(counts[1]-counts[6]),
         sum(s.last_events),multiple_movements,
-        sum(s.last_events[-3:]),
+        sum(list(s.last_events)[-3:]),
         qdirs,len(wl)+len(reps[4])])
     # TWIN data are descriptive benchmarks not a cloned random seed.
     auto_overlap=len(win&sim_aut)
