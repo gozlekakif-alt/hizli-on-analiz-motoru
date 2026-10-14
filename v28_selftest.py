@@ -6,7 +6,7 @@ from v28_dijital_kaplan_dongu import (
     BALLS,HEAT_SIX,HEAT_MACRO,SIX_SIZES,HEAT_MAP,DECAY,
     HOUR_STARTS,hour_info,state_before,make_cache,profile,
     transition_table,hslot_table,sustained_table,extract_hourly_6to6_probes,
-    day_similarity
+    day_similarity,hour_12_lifecycle
 )
 
 
@@ -66,6 +66,17 @@ assert len(sustained_table(ob,[null]))==72
 assert sum(x["Gerçek geçiş"] for x in a)==sum(ob["counts"]["macro_trans"].values())
 assert sum(x["Gerçek geçiş"] for x in b)==sum(ob["counts"]["six_trans"].values())
 assert len(day_similarity(ob)[1])==0  # first full day only 73 of 217 targets after warmup
+# H1..H12 means 12 consecutive REAL hourly blocks in these NEW files,
+# distinct from one-hour 12 five-minute results.
+hour_rows=hour_12_lifecycle(ob["hourly"])
+assert len(hour_rows)==2*80*7
+assert len({r["Sayı"] for r in hour_rows})==80
+assert all(sum(r[f"{g} saat sayısı"] for g in HEAT_MACRO)==12 for r in hour_rows)
+assert all(r["H1 saat"]!=r["H12 saat"] for r in hour_rows)
+assert sum(ob["counts"]["hour_macro_trans"].values())==35*80
+assert sum(ob["counts"]["hour_macro_same_day"].values())==34*80
+assert sum(ob["counts"]["hour_macro_next_day"].values())==80
+
 
 # Perturb ONLY future outcomes; all scores at an earlier cutoff remain equal.
 before=[0.]*81
