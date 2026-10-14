@@ -1,0 +1,37 @@
+name: V34 8 Bekleme Soguk V32 Capraz Analiz
+on:
+  push:
+    paths:
+      - 'v34_bekleme_isi_v32_kesisim.py'
+      - 'v34_bekleme_app.py'
+      - 'v34_selftest.py'
+      - 'v34_export_zip.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v34-check.yml'
+  workflow_dispatch:
+jobs:
+  v34:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V34 scripts and Streamlit
+        run: python -m py_compile v34_bekleme_isi_v32_kesisim.py v34_bekleme_app.py v34_selftest.py v34_export_zip.py v10_app.py
+      - name: Verify 8-wait intersections and no-lookahead
+        run: python -u v34_selftest.py
+      - name: Verify real full days and ZIP integrity
+        run: python -u v34_selftest.py --full
+      - name: Create single V34 + V33 ZIP, 2000 day-bootstrap repetitions
+        run: python -u v34_export_zip.py
+      - name: Publish ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: V34_8_BEKLEME_SOGUK_V32_KESISIM_TEK_ZIP
+          path: V34_8_BEKLEME_SOGUK_V32_KESISIM_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
