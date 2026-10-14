@@ -34,6 +34,20 @@
 
 Bu testte **belirgin bir kupon üstünlüğü tespit edilmedi**. Gün içinde geçişler gerçekten yaşanıyor; ancak oranlar, adil 20/80 modelinin ürettiği doğal geçişlerle oldukça uyumlu. Tek sayı–pencere ve farklı sayı çifti kayıtları birbirinden bağımsız değildir. Bu tablolardaki büyük olay sayıları tek başına anlamlılık kanıtı sayılamaz.
 
+## İki farklı 6+ sayı aynı anda bulunuyorsa (ayrı kontrol)
+
+Tek bir sayının üst üste iki kayan pencerede H6 olması ile **aynı anda iki farklı sayının H6 olması** ayrı olaylar olarak test edildi.
+
+| Son 36 günlük durum | B6+ ertesi çekilişte çıktı | B9 ertesi çekilişte çıktı |
+|---|---:|---:|
+| Aynı anda en az iki farklı H6 sayı var | **%25,0153** (20508/81982) | **%24,9158** (2144/8605) |
+| Aynı anda tek bir H6 sayı var | **%25,0734** (3760/14996) | **%25,5266** (412/1614) |
+| Aynı anda en az iki farklı sayı H6'da iki veya daha fazla pencere kalmış | **%25,1119** (15032/59860) | **%24,6739** (1551/6286) |
+| Aynı anda yalnız bir sayı H6'da iki veya daha fazla pencere kalmış | **%24,8453** (7147/28766) | **%24,9672** (761/3048) |
+| RNG referansı | **%25** | **%25** |
+
+Bu ayrım da sınama döneminde belirgin bir ileriye dönük isabet üstünlüğü göstermedi. Yüzdeler farkı doğrudan kazanma avantajı olarak yorumlanmamalı; aynı gün ve pencereler arasında bağlılık bulunur.
+
 ## Bir sonraki çekilişte H6'dan düşme ne zaman mümkün?
 
 Şimdiki 11-bit pencereye yeni çekilişin sonucu eklendiğinde en eski bit çıkar. A'nın mevcut sayısı 6 ise ve en eski bit **1** ise, en eski 1 düşünce 5 kalır: A sonraki 20'de **çıkmazsa** H6'dan düşer. En eski bit 0 ise ya da o bit çıkarılınca 6 veya daha fazla 1 kalıyorsa A **bir sonraki çekiliş ne olursa olsun H6'da kalır**. Bu, pencerelerin örtüşmesinden gelen matematiksel kuraldır; sonraki 20 sayıyı tahmin etmek değildir.
@@ -41,8 +55,8 @@ Bu testte **belirgin bir kupon üstünlüğü tespit edilmedi**. Gün içinde ge
 ## Üretilen program ve raporlar
 
 - Kod: [v36_karakter_devir_zinciri.py](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/blob/main/v36_karakter_devir_zinciri.py)
-- [GitHub Actions çalışması](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38562189651)
-- [Tek ZIP — tüm A/B sayı bazlı devir kayıtları, günlük özet ve 1/2/3/6/9 geri dönüş tabloları](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38562189651/artifacts/11892891488)
+- [GitHub Actions çalışması](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38562435329)
+- [Tek ZIP — tüm A/B sayı bazlı devir kayıtları, günlük özet ve 1/2/3/6/9 geri dönüş tabloları](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38562435329/artifacts/11892861968)
 - ZIP 8 dosya; tam sayı–sayı geçişleri **05_TUM_SAYI_SAYI_DEVIRLER.csv** içerisinde.
 
 **Araştırmanın sınırı:** Bu V36 tanımı “iki ardışık *kayan 11 çekilişlik pencere* H6” anlamındadır. Eğer kastedilen ardışık iki ayrı 11 çekilişlik blokta 6+ çıkmasıysa bu başka ve daha nadir bir olaydır; ayrı analiz gerektirir. Aynı şekilde sayıya özel zamansal devir ilişkilerinin geleceğe taşınması, yeni günler üzerinde önceden sabitlenmiş kurallarla sınanmalıdır.
