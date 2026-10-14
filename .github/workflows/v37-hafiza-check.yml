@@ -1,0 +1,35 @@
+name: V37 Ortak 80 Sayi Yasam Hafizasi
+on:
+  push:
+    paths:
+      - 'v37_ortak_hafiza.py'
+      - 'v37_hafiza_app.py'
+      - 'v37_hafiza_selftest.py'
+      - 'v37_export_zip.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v37-hafiza-check.yml'
+  workflow_dispatch:
+jobs:
+  shared_life_ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax V37 core and integrated Streamlit
+        run: python -m py_compile v37_ortak_hafiza.py v37_hafiza_app.py v37_hafiza_selftest.py v37_export_zip.py v10_app.py
+      - name: Verify 80 cards, append-only, life memory and delilli dialogue
+        run: python -u v37_hafiza_selftest.py
+      - name: Replay all complete historical days into SQLite and one ZIP
+        run: python -u v37_export_zip.py
+      - name: Publish auditable single SQLite and report ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V37_ORTAK_80_SAYI_YASAM_HAFIZASI_TEK_ZIP
+          path: V37_ORTAK_80_SAYI_YASAM_HAFIZASI_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
