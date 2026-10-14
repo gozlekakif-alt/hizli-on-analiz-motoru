@@ -26,7 +26,7 @@ Bu ailelerin kombinasyonları **tam sayılır**, her birini 72 gün boyunca bell
 Her gerçek çekilişte:
 - Dörtlünün 0, 1, 2, 3 veya 4 üyesi var mı?
 - Son 12 gerçek çekilişin birleşiminde 4 farklı üyenin tamamı görüldü mü?
-- Bu sayıların hepsi aynı tek çekilişte **henüz hiç 4/4** yapmamış mı?
+- Bu sayıların hepsi **son 12 gerçek çekilişlik parçada** aynı tek çekilişte hiç 4/4 yapmamış mı? Önceki dönemlerde 4/4 yapmış olması yeni parçalı yaşamı engellemez.
 - Parçalı tamamlanma daha önce oldu mu; sessizlik bitiminde tekrar oldu mu?
 - Dörtlünün **bütün üyeleri** kaç gerçek çekiliş üst üste çıkmadı?
 - Üyelerin sıcaklık havuzu yönleri ne, aynı çekilişte ne yönde hareket ettiler?
@@ -53,3 +53,7 @@ Günlük/çekilişlik örneklem sayımları **2.048 ailenin tamamını** kapsar;
 Bütün 207 tasarım dalı tamamlanmadı; bu sürüm iki/üç adımlık parçalı oluşum uzmanlarını ve 12 adımlık **örneklem aile hafızasını** çalıştırır. 72 günlük geçmişteki desenleri açıklamak ile rastgele RNG'nin gizli durumunu çözmek **farklı iddialardır**. Gelecek 20'nin kimliği bilinmiyor. Bu rapor **öncelikle betimsel**, bağımsız gelecekte kupon isabet üstünlüğü kanıtı değildir.
 
 **GitHub Streamlit V10 sekmesi:** `🧩 V37C Sessiz Parçalı Aileler` — tek tuşla aynı ortak SQLite üzerine kayıtlar, tek ZIP.
+
+## Araştırmada bulunan önemli metodolojik düzeltme (V37C v2)
+
+72 gün boyunca hiç **bir kez bile** 4/4 yapmamış sabit dörtlü aileler üzerinden yaşam aramak yanlış bir eşik: 2.048 tarafsız örnek ailenin tamamı ilk 36 günde en az bir defa aynı çekilişte 4/4 görmüştür. Bu nedenle V37C'nin ilk tarihsel denemesinde ikinci 36 gün için yeni parçalı aile olayı kalmamıştı. **V37C v2 bu hatalı sert ömürlük eşiği kaldırır:** Ailelerin *son 12 gerçek çekilişte* tam 4/4 yapmamışken üyelerini parçalı biçimde tamamlamasını, eski yıllarda/çekilişlerde 4/4 yapmış olsa bile yeni bir epizod olarak kaydeder. Geçmişteki toplam 4/4 sayısı ayrıca korunur. Bu değişiklik gizli RNG'ye erişim değildir; doğru yaşam-evre tanımıdır.
