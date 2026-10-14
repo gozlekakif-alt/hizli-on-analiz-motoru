@@ -51,7 +51,7 @@ def check():
     with zipfile.ZipFile(io.BytesIO(blob)) as z:
         assert z.testzip() is None and len(z.namelist())==6
         assert "01_CEKILIS_ONCESI_20_SAYILIK_DONDURULMUS_LISTELER.csv" in z.namelist()
-    assert len(extract(blob,"02_EGITIM_TEST_HER_MOTOR_ISABET.csv"))==2*len(MODEL_NAMES)
+    assert len(extract(blob,"02_EGITIM_TEST_HER_MOTOR_ISABET.csv"))==len(MODEL_NAMES) # one synthetic day is all TEST
     # Create 207 original V38-shaped columns, with two exact duplicate,
     # two constant and an explicit all-zero signal.
     cols=["E"+str(i).zfill(3) for i in range(207)]
