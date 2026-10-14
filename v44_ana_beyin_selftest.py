@@ -83,8 +83,8 @@ def main():
         cats=("soguk","serin","notr","ilik","sicak")
         s=[int(r["aday_"+x]) for x in cats]
         p=[int(r["tahmin_"+x]) for x in cats]
-        a=[int(r["gercek_"+x]) for x in cats]
-        assert sum(s)==80 and sum(p)==sum(a)==20
+        actual_five=[int(r["gercek_"+x]) for x in cats]
+        assert sum(s)==80 and sum(p)==sum(actual_five)==20
         assert all(0<=pi<=si for pi,si in zip(p,s))
         assert 0<=float(r["rng_tum5_artieksi1_beklenen"])<=1
     # A synthetic strong predeclared expert can qualify; other weak ones
