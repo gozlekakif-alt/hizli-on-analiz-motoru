@@ -1,0 +1,31 @@
+name: V28 Dijital Kaplan 72 Gun Dongu Testi
+on:
+  push:
+    paths:
+      - 'v28_dijital_kaplan_dongu.py'
+      - 'v28_dijital_kaplan_app.py'
+      - 'v28_selftest.py'
+      - '.github/workflows/v28-check.yml'
+  workflow_dispatch:
+jobs:
+  v28:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V28 and Streamlit integration
+        run: python -m py_compile v28_dijital_kaplan_dongu.py v28_dijital_kaplan_app.py v28_selftest.py v10_app.py
+      - name: Audit 80-number heat state and H1-H12 time safety
+        run: python -u v28_selftest.py
+      - name: Replay 72 days 3/6 heat transitions and six RNG-control simulations
+        run: python -u v28_dijital_kaplan_dongu.py --null 6 --output V28_DIJITAL_KAPLAN_72_GUN_DONGU_ANALIZ.zip
+      - name: Upload fourteen research reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: V28-72-Gun-Dijital-Kaplan-Dongu
+          path: V28_DIJITAL_KAPLAN_72_GUN_DONGU_ANALIZ.zip
+          retention-days: 30
+          if-no-files-found: error
