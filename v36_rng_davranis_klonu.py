@@ -14,6 +14,7 @@ import io
 import json
 import math
 import os
+import shutil
 import tempfile
 import random
 import statistics
@@ -450,7 +451,10 @@ def run(draws,include_partial=False,progress=None):
                                  (raw_s,wrap_s,"03_HER_CEKILIS_GERCEK_KLON_KARSILASTIRMA.csv")]:
             close_writer(raw,wrap)
             try:
-                z.write(raw.name,arcname=name)
+                entry=zipfile.ZipInfo(name,date_time=(2026,10,14,0,0,0))
+                entry.compress_type=zipfile.ZIP_DEFLATED
+                with open(raw.name,"rb") as infile,z.open(entry,"w") as outfile:
+                    shutil.copyfileobj(infile,outfile,length=1024*1024)
             finally:
                 os.unlink(raw.name)
       calrows=cal.report()
