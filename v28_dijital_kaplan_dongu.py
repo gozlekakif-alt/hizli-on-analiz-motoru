@@ -101,11 +101,13 @@ def profile(draws, eligible, detailed=True, forecast=False):
     streak_start=[None]*81
     streak_day=[None]*81
     prevstate=[None]*81
+    six_streak=[0]*81
+    six_prevstate=[None]*81
     counts=defaultdict(Counter)
     hourly=defaultdict(lambda:{"macro":Counter(),"six":Counter(),
          "hit":Counter(),"switches":Counter(),"initial":{},
          "end":{},"last":{},"longest":Counter(),"localrun":{},
-         "paths":defaultdict(list),"n":0})
+         "paths":defaultdict(list),"sixpaths":defaultdict(list),"n":0})
     per_hour_rows=[]
     runrows=[]
     daypair=[]
@@ -121,10 +123,13 @@ def profile(draws, eligible, detailed=True, forecast=False):
         date,hour=key
         for n in BALLS:
             path=r["paths"][n]
-            if len(path)!=12:continue
+            path6=r["sixpaths"][n]
+            if len(path)!=12 or len(path6)!=12:continue
             table={
                 "Tarih":date,"Saat":hour,"Sayı":n,
                 "H1..H12 makro yolları":"".join(str(x+1) for x in path),
+                "H1..H12 altı sıcaklık yolları":"".join(str(x+1) for x in path6),
+                "Altı sıcaklık sınıf geçiş":sum(path6[i]!=path6[i-1] for i in range(1,12)),
                 "H1 sınıf":HEAT_MACRO[path[0]],
                 "H12 sınıf":HEAT_MACRO[path[-1]],
                 "H1→H12 değişti":int(path[0]!=path[-1]),
@@ -140,6 +145,13 @@ def profile(draws, eligible, detailed=True, forecast=False):
                     length=length+1 if x==j else 0
                     maxlen=max(maxlen,length)
                 table[f"{name} en uzun H kalış"]=maxlen
+            for j,level in enumerate(HEAT_SIX):
+                run6=longest6=0
+                for x in path6:
+                    run6=run6+1 if x==j else 0
+                    longest6=max(longest6,run6)
+                table[f"{level} H sayısı"]=path6.count(j)
+                table[f"{level} en uzun H kalış"]=longest6
             per_hour_rows.append(table)
 
     for t,d in enumerate(draws):
@@ -199,6 +211,7 @@ def profile(draws, eligible, detailed=True, forecast=False):
             for n in BALLS:
                 g=macro[n]
                 r["paths"][n].append(g)
+                r["sixpaths"][n].append(six[n])
                 r["hit"][n]+=int(n in ns)
                 r["macro"][(g,n)]+=1
             if h=="H12":
@@ -212,6 +225,8 @@ def profile(draws, eligible, detailed=True, forecast=False):
             if last_evaluated_t is not None and t-last_evaluated_t>1:
                 streak=[0]*81
                 prevstate=[None]*81
+                six_streak=[0]*81
+                six_prevstate=[None]*81
             last_evaluated_t=t
             # Streaks are transitions at pretarget state time, not sequences
             # of actual ball appearances (those are separately reported).
@@ -233,6 +248,15 @@ def profile(draws, eligible, detailed=True, forecast=False):
                     streak_start[n]=dt
                     streak_day[n]=day
                 prevstate[n]=g
+                s=six[n]
+                if six_prevstate[n]==s:
+                    six_streak[n]+=1
+                else:
+                    six_streak[n]=1
+                six_prevstate[n]=s
+                for threshold in (2,3,6,12,24,48,96,217):
+                    if six_streak[n]==threshold:
+                        counts["runs_six_threshold"][(s,threshold)]+=1
                 counts["runs_observation"][(g,"pozisyon")]+=1
                 for threshold in (2,3,6,12,24,48,96,217):
                     if streak[n]==threshold:
@@ -326,6 +350,17 @@ def sustained_table(obs,nulls):
                 "RNG kontrol ortalama":round(mean(values),3),
                 "RNG en düşük":min(values),"RNG en yüksek":max(values),
                 "Not":"H1-H12 çekilişlerindeki sınıf hafızası, otomatik olarak uzun kalış oluşturabilir.",
+            })
+    for j in range(6):
+        for threshold in (2,3,6,12,24,48,96,217):
+            values=[v["counts"]["runs_six_threshold"][(j,threshold)] for v in nulls]
+            rows.append({
+                "Sınıf":HEAT_SIX[j],"Sınıf sistemi":"Altılı",
+                "Aralıksız >= çekiliş":threshold,
+                "Gerçek böyle uzun kalışa erişen":obs["counts"]["runs_six_threshold"][(j,threshold)],
+                "RNG kontrol ortalama":round(mean(values),3),
+                "RNG en düşük":min(values),"RNG en yüksek":max(values),
+                "Not":"Altı basamakta kalış, hafıza hesabının doğal kalıcılığıyla karşılaştırılır."
             })
     return rows
 
