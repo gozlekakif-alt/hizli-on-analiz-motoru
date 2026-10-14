@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """V33 waiting 6..10+ classes: daily counts, live pools and one ZIP."""
-import hashlib
+from v32_35_draw_fingerprint import draw_fingerprint
 import streamlit as st
 from v33_bekleme_havuzlari import run_study
 
@@ -34,14 +34,14 @@ def render_v33(draws):
         with st.spinner('72 günlük veri dahil tüm seçilen çekilişler inceleniyor...'):
             try:
                 result=run_study(draws,include_partial=partial,progress=progress)
-                digest=hashlib.sha256(str([(r['no'],r['day'],r['pos'],r['mask']) for r in draws]).encode()).hexdigest()
+                digest=draw_fingerprint(draws)
                 st.session_state['v33_ready']=(digest,partial,*result)
                 bar.progress(1.,text='V33 tek ZIP hazır')
             except Exception as exc:st.error(f'V33 hatası: {exc}')
     saved=st.session_state.get('v33_ready')
     if not saved:return
     digest,was_partial,zipped,summary,matrix,placements,daily=saved
-    now=hashlib.sha256(str([(r['no'],r['day'],r['pos'],r['mask']) for r in draws]).encode()).hexdigest()
+    now=draw_fingerprint(draws)
     if was_partial!=partial or now!=digest:
         st.warning('ZIP önceki veri veya seçeneklerle hazırlanmıştır; yeniden analiz başlat.')
     st.download_button('⬇️ V33 6–10 BEKLEYEN TÜM HAVUZLAR TEK ZIP',
