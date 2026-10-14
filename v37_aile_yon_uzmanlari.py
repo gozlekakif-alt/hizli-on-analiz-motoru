@@ -153,11 +153,11 @@ def build(db_path,progress=None):
         history=deque(maxlen=WINDOW-1)
         prev=None
         prev_heat={}
-        day_count=0
         added=0
         cutoff=con.execute("SELECT day FROM draw_ledger ORDER BY day LIMIT 1 OFFSET ?",
                           (steps//2,)).fetchone()
         midpoint=cutoff[0] if cutoff else ""
+        batch_size=50 if steps>500 else 1
         total_summaries=[]
         for d in _read_draws(con):
             pos=d["pos"];day=d["day"];seq=d["seq"];no=d["draw_no"]
@@ -237,16 +237,16 @@ def build(db_path,progress=None):
                  "warning":"KILAVUZ: Parçalı yollar yalnız mevcut 4/4'ün 12 adımlık ilk kapsama izidir"}
             for key in PARTIAL_PATHS:
                 row["quartet_path_"+key]=paths.get(key,0)
-            con.execute("BEGIN")
+            if added%batch_size==0:con.execute("BEGIN")
             con.execute("INSERT INTO v37_family_step VALUES(?,?,?,?,?,?)",
                         (no,seq,day,pos,json.dumps(row,ensure_ascii=False,sort_keys=True),ENGINE_VERSION))
             con.executemany("INSERT INTO v37_heat_transition VALUES(?,?,?,?)",
                             [(no,a,b,c) for (a,b),c in old_to_new.items()])
             con.executemany("INSERT INTO v37_family_examples VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",examples)
             con.executemany("INSERT INTO v37_family_heat_dialogue VALUES(?,?,?,?,?,?,?,?)",dialogues)
-            con.commit()
             total_summaries.append(row)
             added+=1
+            if added%batch_size==0 or seq==steps:con.commit()
             history.append(d)
             prev=d
             prev_heat=d["heat"]
