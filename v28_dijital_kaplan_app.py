@@ -4,11 +4,15 @@
 Uses pre-draw temperature score, no lookahead at future unobserved draws.
 Old S/OD/OY/YS 4x20 is a separate historical reference, never relabeled.
 """
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import datetime
+from hashlib import sha256
+from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 import streamlit as st
 from v21_aile_yasam_dongusu import HOUR_STARTS,clock,csv_bytes
 from v28_dijital_kaplan_dongu import (
-    BALLS,HEAT_MACRO,HEAT_SIX,DECAY,state_before,hour_info
+    BALLS,HEAT_MACRO,HEAT_SIX,DECAY,state_before,hour_info,run
 )
 
 
@@ -110,7 +114,81 @@ def render_v28(draws):
                            csv_bytes(rows),file_name="V28_80_SAYI_H1_H12.csv",
                            mime="text/csv",key="v28_download")
     st.divider()
-    st.caption("GitHub Actions V28 Dijital Kaplan 72 Gun Dongu Testi: "
-               "72 tam gün, 80×18×72 saat profili, 3×3 ve 6×6 tüm "
-               "geçişler, 12+ çekiliş kalışlar, 6 RNG denetimi, "
-               "H6 sonrası H7–H12 gerçek 20'li tahmin karşılaştırması.")
+    st.markdown("### 🔬 72 günlük tüm analizi Streamlit'te çalıştır")
+    st.caption(
+        "İki ayrı zaman ölçeği: bir saatin 12 çekilişi ve 12 ardışık "
+        "GERÇEK saat. Her sayı için kalışlar, 6 sıcaklık sınıfı geçişleri, "
+        "günler arası döngüler, RNG karşılaştırması ve 20 sayı sınaması."
+    )
+    complete=[x for x,pos in days.items()
+              if len(pos)==217 and set(pos)==set(range(1,218))]
+    col1,col2,col3=st.columns(3)
+    col1.metric("Tam gün",len(complete))
+    col2.metric("Çekiliş",len(complete)*217)
+    col3.metric("80 sayı × saat",min(72,len(complete))*18*80)
+    nulls=st.select_slider(
+        "Rastgele RNG denetimi kaç tekrar?",
+        options=[3,6,12,24],value=6,key="v28_null_repetitions")
+    if len(complete)<72:
+        st.warning("Bu analizin sabit 36+36 karşılaştırması için en az 72 tam gün gerekir.")
+    if st.button("🐅 TÜM 72 GÜNÜ ANALİZ ET",
+                 disabled=len(complete)<72,key="v28_run_all"):
+        with st.spinner("Gerçek çekilişler ve aynı saatlerde rastgele kontrol akışları hesaplanıyor..."):
+            try:
+                raw=_v28_source_as_txt(draws)
+                digest=sha256(raw.encode("utf-8")).hexdigest()
+                payload,meta,macro,forecast,ci=_v28_cached_full_run(raw,int(nulls))
+                st.session_state["v28_completed"]=(digest,int(nulls),payload,meta,macro,forecast,ci)
+            except Exception as exc:
+                st.error("V28 analiz hatası: "+str(exc))
+    saved=st.session_state.get("v28_completed")
+    if saved:
+        digest,reps,payload,meta,macro,forecast,ci=saved
+        st.success("V28 tam rapor hazır.")
+        if reps!=int(nulls):
+            st.warning("Bu sonuç önceki RNG tekrar sayısına aittir.")
+        st.download_button(
+            "⬇️ TÜM V28 ANALİZİNİ TEK ZIP İNDİR",
+            data=payload,
+            file_name="V28_DIJITAL_KAPLAN_72_GUN_TAM_ANALIZ.zip",
+            mime="application/zip",
+            key="v28_all_zip")
+        st.caption(f"{meta.get('Tam gün','?')} tam gün · "
+                   f"{meta.get('Saat','?')} gerçek saat · "
+                   f"{meta.get('Saat içi 80 sayı profili','?')} sayı-saat kaydı · "
+                   f"{reps} RNG benzetimi")
+        with st.expander("🎯 36 günlük 20 sayı tahmin ve rastgele kontrol",expanded=True):
+            st.dataframe(forecast,hide_index=True,use_container_width=True)
+            st.dataframe(ci,hide_index=True,use_container_width=True)
+        with st.expander("🔄 Soğuk–ılık–sıcak 3×3 bütün geçişler"):
+            st.dataframe(macro,hide_index=True,use_container_width=True)
+        with st.expander("📅 Günler arasında süren döngüler"):
+            st.json(meta.get("Ardışık gün benzerliği",{}))
+        st.caption("ZIP içinde sayıların bir saatteki 12 çekilişi, "
+                   "ayrıca 12 GERÇEK SAAT boyunca H1-H12 yolculuğu, "
+                   "tüm kalışlar ve RNG denetimleri ayrı CSV dosyalarındadır.")
+    st.caption("Büyük analiz yalnız düğmeye bastığında çalışır; "
+               "GitHub veri.txt ve eski motorları değiştirmez.")
+
+
+def _v28_source_as_txt(draws):
+    """Export valid fetched draws to the original milli piyango raw format
+    without writing to the repository."""
+    ordered=sorted(draws,key=lambda d:(d["day"],int(d["pos"])))
+    return "\n".join(
+        f"{int(d['no'])};{datetime.fromisoformat(str(d['dt'])).strftime('%d.%m.%Y %H:%M')};"
+        +",".join(str(int(n)) for n in d["nums"])
+        for d in ordered
+    )
+
+
+@st.cache_data(show_spinner=False,max_entries=2)
+def _v28_cached_full_run(data_text,null_reps):
+    """Only explicit user button triggers heavy 72-day execution."""
+    reports,meta,macro,_durations,forecast,ci=run(
+        data_text,rng_reps=int(null_reps),detailed=True)
+    buffer=BytesIO()
+    with ZipFile(buffer,"w",compression=ZIP_DEFLATED,compresslevel=6) as archive:
+        for filename,blob in reports.items():
+            archive.writestr(filename,blob)
+    return buffer.getvalue(),meta,macro,forecast,ci
