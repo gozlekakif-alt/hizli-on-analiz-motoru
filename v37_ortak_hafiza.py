@@ -214,7 +214,7 @@ def replay(draws,db_path,include_partial=False,progress=None):
           after=dict()
           for n in BALLS:
               v=life[n]
-              scores[n]=v[7]*DECAY+int(n in win)
+              scores[n]=v[6]*DECAY+int(n in win)
           ranking=sorted(BALLS,key=lambda n:(scores[n],n))
           index=0
           for rank,amount in enumerate(SIZE):
@@ -244,7 +244,6 @@ def replay(draws,db_path,include_partial=False,progress=None):
               valid11=int(valid>=11)
               bitstr=f"{bits:011b}" if valid11 else ""
               count=bits.bit_count() if valid11 else None
-              old_seat=v[8] if False else v[7+1]  # overwritten below
               old_seat=v[7] if isinstance(v[7],str) else "UNKNOWN"
               new_seat=after[n]
               ixold=SIX.index(old_seat) if old_seat in SIX else SIX.index(new_seat)
