@@ -173,10 +173,10 @@ def generate_rows(draws,phase,progress=None):
             post_six,post_macro=state_before(scores)
             # The current decision state is post-H6/pre-H7; update streak to it,
             # NOT to any future state. This counts one decision snapshot.
-            new_macro=[streak_macro[n]+1 if post_macro[n]==pre_macro[n] else 1
-                       for n in BALLS]
-            new_six=[streak_six[n]+1 if post_six[n]==pre_six[n] else 1
-                     for n in BALLS]
+            new_macro=[0]+[streak_macro[n]+1 if post_macro[n]==pre_macro[n] else 1
+                           for n in BALLS]
+            new_six=[0]+[streak_six[n]+1 if post_six[n]==pre_six[n] else 1
+                         for n in BALLS]
             histories=inside_hour[(draw["day"],hour_start)]
             if len(histories)!=6:
                 raise AssertionError("Hour first-six history incomplete")
