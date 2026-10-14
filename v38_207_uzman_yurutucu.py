@@ -166,16 +166,13 @@ def calculate(s,seq,no,day,pos,now,lookbehind,old_map):
     prev=s.recent[-1] if s.recent and contiguous else frozenset()
     older=s.recent[-2] if len(s.recent)>=2 and contiguous else frozenset()
     old3=s.recent[-3] if len(s.recent)>=3 and contiguous else frozenset()
-    win=set(now)
-    newcomers=win-set(prev);returners=win&set(prev)
-    stop=set(prev)-win
+    # 'now' holds exactly 80 current cards. Freeze current winners before
+    # calculating previous-wait exits; never include the 60 missing balls.
+    rows=now
+    win=frozenset(n for n,r in rows.items() if r["hit"])
+    newcomers=win-set(prev);returners=win&set(prev);stop=set(prev)-win
     wait_exits={n for n in win if old_map and old_map[n]["life_wait"] is not None
                 and old_map[n]["life_wait"]>=6}
-    old_seat={n:old_map[n]["heat_seat"] if old_map else None for n in range(1,81)}
-    new_seat={n:now[n]["heat_seat"] for n in range(1,81)} if isinstance(now,dict) else None
-    # source draw identity is a SET, while 'now' represents 80 current cards
-    rows=now;win=frozenset(n for n,r in rows.items() if r["hit"])
-    newcomers=win-set(prev);returners=win&set(prev);stop=set(prev)-win
     old_h={n:old_map[n]["heat_seat"] if old_map else None for n in range(1,81)}
     new_h={n:rows[n]["heat_seat"] for n in range(1,81)}
     heat_ix={n:SIX.index(new_h[n]) for n in range(1,81)}
@@ -217,13 +214,13 @@ def calculate(s,seq,no,day,pos,now,lookbehind,old_map):
     up_weak=sum((n in asc and rows[n]["life_wait"] is not None and rows[n]["life_wait"]>0)
                 for n in range(1,81))
     # 80/80 renewal counters are independent from a number's absent streak.
+    before_cycle=set(s.clock20)
     s.clock20.update(win)
     s.clock60.update(set(range(1,81))-win)
     s.clock_len20+=1;s.clock_len60+=1
     done20=int(len(s.clock20)==80)
     done60=int(len(s.clock60)==80)
     rem20=80-len(s.clock20);rem60=80-len(s.clock60)
-    before_cycle=set(s.clock20)-set(win)
     # Clone: independently generated 20 out of 80; conditioned clone's
     # weights derive solely from t-1 cards, never from current t.
     base_seed=int(hashlib.sha256(f"V38|{day}|{pos}|RNG".encode()).hexdigest()[:16],16)
@@ -303,7 +300,7 @@ def calculate(s,seq,no,day,pos,now,lookbehind,old_map):
     add("RETURN",[
         len(wait_exits),sum(x>=8 for x in return_ages.values()),
         sum(x>=10 for x in return_ages.values()),
-        len(returners&wait_exits),len(return1),
+        len(win&set(s.last_return)),len(return1),
         sum(n in win and old_map and old_map[n]["life_wait"]==2 for n in win),
         sum(rows[n]["life_run"]>=3 for n in win),
         len(stop&set(s.last_return)),
