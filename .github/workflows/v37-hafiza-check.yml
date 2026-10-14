@@ -6,6 +6,8 @@ on:
       - 'v37_hafiza_app.py'
       - 'v37_hafiza_selftest.py'
       - 'v37_export_zip.py'
+      - 'v37_aile_yon_uzmanlari.py'
+      - 'v37_aile_yon_selftest.py'
       - 'v10_app.py'
       - 'veri.txt'
       - '.github/workflows/v37-hafiza-check.yml'
@@ -20,9 +22,11 @@ jobs:
         with:
           python-version: '3.11'
       - name: Syntax V37 core and integrated Streamlit
-        run: python -m py_compile v37_ortak_hafiza.py v37_hafiza_app.py v37_hafiza_selftest.py v37_export_zip.py v10_app.py
+        run: python -m py_compile v37_ortak_hafiza.py v37_hafiza_app.py v37_hafiza_selftest.py v37_export_zip.py v37_aile_yon_uzmanlari.py v37_aile_yon_selftest.py v10_app.py
       - name: Verify 80 cards, append-only, life memory and delilli dialogue
         run: python -u v37_hafiza_selftest.py
+      - name: Test linked family and direction motors
+        run: python -u v37_aile_yon_selftest.py
       - name: Replay all complete historical days into SQLite and one ZIP
         run: python -u v37_export_zip.py
       - name: Publish auditable single SQLite and report ZIP
@@ -30,6 +34,14 @@ jobs:
         with:
           name: V37_ORTAK_80_SAYI_YASAM_HAFIZASI_TEK_ZIP
           path: V37_ORTAK_80_SAYI_YASAM_HAFIZASI_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+      - name: Publish family direction small dedicated ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V37_AILE_VE_ISI_YON_UZMANLARI_TEK_ZIP
+          path: V37_AILE_VE_ISI_YON_UZMANLARI_TEK_ZIP.zip
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
