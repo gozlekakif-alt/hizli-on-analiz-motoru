@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """V32 Streamlit: exact 80/80 cycles plus 4/8/12 no-lookahead research."""
-import hashlib
+from v32_35_draw_fingerprint import draw_fingerprint
 import streamlit as st
 from v32_ileri_karakter import run_deep
 
@@ -25,7 +25,7 @@ def render_v32(draws):
     repeats=st.select_slider('Bağımsız RNG kontrol tekrarı',options=[0,10,30,100],value=30,key='v32_rng')
     st.caption('Tam günlerden önceki yarı EGITIM; sonraki yarı TEST olarak ayrı raporlanır. '
                'Eksik veri karşılaştırmalarda negatif sonuç sayılmaz. RNG üstünlüğü kanıtı değildir.')
-    signature=hashlib.sha256(str([(r['no'],r['day'],r['pos'],r['mask']) for r in draws]).encode()).hexdigest()
+    signature=draw_fingerprint(draws)
     saved=st.session_state.get('v32_ready')
     if saved and saved[0]!=signature:
         st.warning('Yeni çekiliş verisi gelmiş; ZIP önceki veriye ait. Yeniden analiz başlat.')
