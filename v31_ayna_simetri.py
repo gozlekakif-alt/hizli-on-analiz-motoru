@@ -87,7 +87,7 @@ def preparing(draws,phases,progress=None):
     events=generate_rows(draws,phases,progress=announce)
     pressure=pressure_snapshots(draws,phases)
     enrich(events,pressure)
-    assert sum(rows[0]["Dönem"]=="Sınama36" for _,_,rows in events)==36*18
+    assert sum(rows[0]["Dönem"]=="Sınama36" for _,_,rows in events)==(sum(v=="Sınama36" for v in phases.values())*18)
     detail=[]
     band_detail=[]
     # Loop across complete 12-draw hours only. All first-half features
