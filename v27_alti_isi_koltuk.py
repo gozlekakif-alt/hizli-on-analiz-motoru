@@ -151,7 +151,10 @@ def evaluate_target(t,draw,p,e,L,method,rate,detail=False):
     expected_bins=[counts[c]*rate[c] for c in range(18)]
     predicted_seats=largest_remainder(expected_bins,members)
     actual_seats=[sum(hits[g*3+j] for j in range(3)) for g in range(6)]
-    plain=[20*c/80 for c in COUNTS]
+    # FAIR control: use exactly 20 INTEGER seats with unconditional .25,
+    # not fractional expected 3.25/3.5 that cannot be submitted as seats.
+    # Same largest-remainder rounding as the trained model.
+    plain=largest_remainder([counts[c]*BASE for c in range(18)],members)
     mae=sum(abs(predicted_seats[g]-actual_seats[g]) for g in range(6))/6
     null_mae=sum(abs(plain[g]-actual_seats[g]) for g in range(6))/6
     selection=tuple(sorted(range(1,81),key=lambda n:(-arr[n-1],-score[n],n))[:20])
@@ -361,6 +364,7 @@ def run_study(raw):
         "Kayıtlı geçmiş":"Son X geçerli gerçek çekiliş; gece ve eksik günün olmayan çekilişleri uydurulmaz",
         "Eğitim/test yapısı":"İlk18 hücre frekansları, ikinci18 pencere doğrulaması, sonraki36 sabit bağımsız test",
         "Yorum":"Önceden sınıflandırılmış 80 sayı hedefte 20 sayının grup sandalye sayısını verir, resmi çekiliş sırası değildir.",
+        "Koltuk karşılaştırması":"Öğrenilmiş 20 TAM SAYI koltuk kotası ile aynı en-büyük-kalan yuvarlamasını kullanan RNG tabanlı 20 TAM SAYI koltuk kotası karşılaştırılır.",
         "Veri hataları":errors,"Eksik günler":incomplete,
     }
     report={
