@@ -310,11 +310,24 @@ def paired_days(rows,a,b,phase="KOR_TEST",iterations=1000):
                        round(bvals[int(.975*(len(bvals)-1))],6)]}
 
 def study(draws,include_partial=False,progress=None):
-    days,full,warnings=sorted_draws(draws,include_partial)
+    # Lock the original 72 COMPLETE dates. Older incomplete dates must not
+    # infiltrate fitting/validation just because an app checkbox changes.
+    if include_partial:
+        loaded,full,warnings=sorted_draws(draws,True)
+        complete_dates=sorted(full)
+        if len(complete_dates)>=72:
+            seal=complete_dates[71]
+            days=[(day,group) for day,group in loaded
+                  if day in full or day>seal]
+        else:
+            days=loaded
+    else:
+        days,full,warnings=sorted_draws(draws,False)
+        complete_dates=sorted(full)
     if len(days)<8:raise ValueError("V44 en az 8 gun, ideal 72 tam gun ister")
-    fit_end=days[18][0] if len(days)>=36 else days[max(1,len(days)//4)][0]
-    validation_end=days[36][0] if len(days)>=37 else days[max(2,len(days)//2)][0]
-    beyond=days[72][0] if len(days)>=73 else None
+    fit_end=complete_dates[18] if len(complete_dates)>=36 else days[max(1,len(days)//4)][0]
+    validation_end=complete_dates[36] if len(complete_dates)>=37 else days[max(2,len(days)//2)][0]
+    beyond=(date.fromisoformat(complete_dates[71])+timedelta(days=1)).isoformat() if len(complete_dates)>=72 else None
     brain=Brain()
     tickets=[];quota_rows=[];validation=[]
     gates=[];admitted=None;duplicates={}
