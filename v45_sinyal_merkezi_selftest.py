@@ -42,10 +42,17 @@ def go():
     assert all(0<=r["hits"]<=r["size"] for r in rows)
     report=_make_zip(rows,stats,[d.isoformat() for d,_ in days])
     with ZipFile(BytesIO(report)) as archive:
-        assert len(archive.namelist())==4
+        assert len(archive.namelist())==6
+        assert "04_72_GUN_GECMIS_BULGULAR.txt" in archive.namelist()
         meta=json.loads(archive.read("00_DURUM.json").decode())
         assert meta["predictive_edge_proven"] is False
         assert meta["target"]==14
+    waiting=_make_zip([], [], [])
+    with ZipFile(BytesIO(waiting)) as z:
+        assert len(z.namelist())==6
+        assert len(z.read("03_SINYAL_KATALOGU.csv").decode().splitlines())==19
+        assert b"0/14" in z.read("00_TEK_SAYFA_SONUC.txt")
+        assert b"72" in z.read("04_72_GUN_GECMIS_BULGULAR.txt")
     print("PASS: V45 Streamlit tab, 2 full + 1 incomplete days, lag overnight guard, future blindness, report ZIP")
 
 
