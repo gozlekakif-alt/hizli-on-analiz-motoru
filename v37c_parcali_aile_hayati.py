@@ -414,6 +414,30 @@ def export(db_path,zip_path):
             "on_new_draw_incremental":True,
             "source":"same V37A SQLite shared draw ledger",
             "rng_hidden_state_recovered":False},ensure_ascii=False,indent=2).encode())
+        blob_row=con.execute("SELECT state_zlib FROM v37c_checkpoint WHERE id=1").fetchone()
+        latest=_decode_state(blob_row[0] if blob_row else None)
+        family_lives=[]
+        for i,(members,state) in enumerate(zip(CATALOG,latest)):
+            sig,cover,everfull,fragonce,fragcount,fullcount,quiet,qlong,lastfrag,lastfull,everseen=state
+            family_lives.append({
+                "sample_id":i+1,
+                "family": "-".join(f"{n:02d}" for n in members),
+                "fragment_ever":int(fragonce),"still_never_4of4":int(not everfull),
+                "fragment_reactivations":max(0,fragcount-1),
+                "fragment_events":fragcount,"same_draw_4of4_events":fullcount,
+                "longest_all_members_absent":max(qlong,quiet),
+                "current_all_members_absent":quiet,
+                "last_fragment_seq":lastfrag if lastfrag else "",
+                "last_full4_seq":lastfull if lastfull else "",
+                "covered_in_latest_12":int(cover),
+                "ever_seen_member_count":everseen.bit_count()
+            })
+        csvout("07_2048_AILENIN_OMURLUK_KARAKTER_KARTI.csv",
+            ("sample_id","family","fragment_ever","still_never_4of4",
+             "fragment_reactivations","fragment_events","same_draw_4of4_events",
+             "longest_all_members_absent","current_all_members_absent",
+             "last_fragment_seq","last_full4_seq","covered_in_latest_12",
+             "ever_seen_member_count"),family_lives)
       with zipfile.ZipFile(str(zip_path)) as z:
           assert z.testzip() is None and len(z.namelist())==7
       return periods
