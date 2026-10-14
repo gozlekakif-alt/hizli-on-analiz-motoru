@@ -1,0 +1,35 @@
+name: V42 Five Moving Pool Quotas and Exact20 Repeats
+on:
+  push:
+    paths:
+      - 'v42_bes_hareketli_havuz_kota.py'
+      - 'v42_bes_havuz_kota_app.py'
+      - 'v42_bes_havuz_selftest.py'
+      - 'v42_bes_havuz_kota_export.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v42-bes-havuz-kota-check.yml'
+  workflow_dispatch:
+jobs:
+  v42:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax verify engine, app and main Streamlit
+        run: python -m py_compile v42_bes_hareketli_havuz_kota.py v42_bes_havuz_kota_app.py v42_bes_havuz_selftest.py v42_bes_havuz_kota_export.py v10_app.py
+      - name: Regression for target leakage, dynamic bins, fair hypergeometric odds
+        run: python -u v42_bes_havuz_selftest.py
+      - name: Real 72-day five quota versus baseline and exact 20 repeats
+        run: python -u v42_bes_havuz_kota_export.py
+      - name: Archive each complete pool/quota/number identity test
+        uses: actions/upload-artifact@v4
+        with:
+          name: V42_BES_HAVUZ_KOTA_OLUSUM_TEK_ZIP
+          path: V42_BES_HAVUZ_KOTA_OLUSUM_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
