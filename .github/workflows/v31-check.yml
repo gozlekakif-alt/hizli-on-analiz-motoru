@@ -1,0 +1,24 @@
+name: V31 Ayna Bant Kardesligi Otomatik Testi
+on:
+  push:
+    paths:
+      - 'v31_ayna_simetri.py'
+      - 'v31_ayna_simetri_app.py'
+      - 'v31_selftest.py'
+      - '.github/workflows/v31-check.yml'
+  workflow_dispatch:
+jobs:
+  v31:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V31 symmetry engine and Streamlit tabs
+        run: python -m py_compile v31_ayna_simetri.py v31_ayna_simetri_app.py v31_selftest.py v10_app.py
+      - name: Verify mirror identities, H6 cutoff and 10/20 tickets
+        run: python -u v31_selftest.py
+      - name: Full 72-day synthetic replay and single ZIP integrity test
+        run: python -u v31_selftest.py --full
