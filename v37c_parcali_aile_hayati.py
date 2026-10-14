@@ -44,7 +44,7 @@ FIELDS=("seq","day","pos","draw_no","global_4_family_universe",
         "bounded_event_examples","warning")
 EVENT_FIELDS=("event_id","seq","draw_no","day","pos","family_numbers",
               "event_type","path","silence_before","previous_fragment_seq",
-              "four_number_11bit_history","heat_directions",
+              "four_number_12bit_history","heat_directions",
               "linked_heat_event_ids","last_lookback_source_draws")
 CSV_OPTS=dict(delimiter=";",lineterminator="\n")
 
@@ -242,6 +242,7 @@ def run(db_path,progress=None):
         initial=not adjacent
         summary=Counter()
         interesting=[]
+        heat_moves=None
         fragment_count=0
         sample_cover_count=0
         for idx,family in enumerate(CATALOG):
@@ -257,13 +258,16 @@ def run(db_path,progress=None):
                 qlong=max(qlong,quiet)
             q_before=quiet if hit==0 else state[6]
             if hit>0:quiet=0
-            if not everfull:summary["sample_current_no_4ever"]+=1
             sig=((sig<<1)&SHIFT_MASK)|INSERT[bits]
             cover=all(sig&lane for lane in LANE_MASKS)
             if cover:sample_cover_count+=1
             # This family has never produced a 4/4 at any actual step so far.
             first_fragment=bool(cover and not coverprev and hit<4 and not everfull)
             if first_fragment:
+                if heat_moves is None:
+                    heat_moves=dict(con.execute("SELECT num,heat_move FROM ball_step WHERE draw_no=?",(no,)))
+                summary["sample_heat_up_on_first_fragment"]+=sum(heat_moves[n]=="YUKSELIS" for n in family)
+                summary["sample_heat_down_on_first_fragment"]+=sum(heat_moves[n]=="DUSUS" for n in family)
                 path=_shape(family,sig)
                 kind="FRAGMENT_FIRST" if not fragonce else "FRAGMENT_REAPPEARED"
                 if not fragonce:summary["sample_current_first_fragment"]+=1
@@ -277,6 +281,7 @@ def run(db_path,progress=None):
                          state[8] if state[8] else 0,sig))
             if hit==4:
                 everfull=True;fullcount+=1;lastfull=seq
+            if not everfull:summary["sample_current_no_4ever"]+=1
             if quiet>=3:summary["sample_silence_3plus"]+=1
             states[idx]=[sig,cover,everfull,fragonce,fragcount,fullcount,
                          quiet,qlong,lastfrag,lastfull,everseen|bits]
@@ -296,15 +301,13 @@ def run(db_path,progress=None):
             "sample_silence_3plus":summary["sample_silence_3plus"],
             "source_sample_size":SAMPLE,
             "bounded_event_examples":len(interesting),
-            "sample_heat_up_on_first_fragment":0,
-            "sample_heat_down_on_first_fragment":0,
+            "sample_heat_up_on_first_fragment":summary["sample_heat_up_on_first_fragment"],
+            "sample_heat_down_on_first_fragment":summary["sample_heat_down_on_first_fragment"],
             "warning":"Two/three step fragment counts exact; 12-step family life SAMPLE only."}
         for k in range(5):day_result[f"sample_{k}_4"]=summary[f"sample_{k}_4"]
         evidence=[]
         for idx,family,path,kind,quiet_before,prev_frag_seq,sig in interesting:
             move,parents=_heat_directions(con,no,family)
-            day_result["sample_heat_up_on_first_fragment"]+=sum(x=="YUKSELIS" for x in move)
-            day_result["sample_heat_down_on_first_fragment"]+=sum(x=="DUSUS" for x in move)
             prior_draws=[r[0] for r in con.execute(
                 "SELECT draw_no FROM draw_ledger WHERE seq BETWEEN ? AND ? AND day=? ORDER BY seq",
                 (max(1,seq-LOOKBACK+1),seq,day))]
@@ -314,7 +317,7 @@ def run(db_path,progress=None):
                 "event_id":eventid,"seq":seq,"draw_no":no,"day":day,"pos":pos,
                 "family_numbers":family_txt,"event_type":kind,"path":path,
                 "silence_before":quiet_before,"previous_fragment_seq":prev_frag_seq,
-                "four_number_11bit_history":format(sig,"048b"),
+                "four_number_12bit_history":format(sig,"048b"),
                 "heat_directions":json.dumps(move,ensure_ascii=False),
                 "linked_heat_event_ids":json.dumps(parents),
                 "last_lookback_source_draws":json.dumps(prior_draws)
