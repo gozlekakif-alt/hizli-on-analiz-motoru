@@ -42,6 +42,7 @@ from v37_hafiza_app import render_v37
 from v37_aile_yon_app import render_v37b
 from v37c_parcali_app import render_v37c
 from v38_207_uzman_app import render_v38
+from v39_ileriye_donuk_app import render_v39
 from v17_karakter_app import render_v17
 from v16_rng_salinim import analyze as v16_analyze
 from v15_kupon_motoru import (fit_models as v15_fit,
@@ -992,7 +993,7 @@ else:
                "GitHub ana dosyasında veya başarılı kayıt onayında mevcut.")
 if bad: st.caption(f"{bad} hatali/mukerrer satir gecmise alinmadi.")
 
-tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön","🪞 V31 Ayna Bant Kardeşliği","🔁 V32 80 Sayı Döngüsü","⏳ V33 6–10 Bekleme Havuzları","🔬 V34 8 Bekleme Çapraz Test","🧬 V35 11 Çekiliş İmza Motoru","🧠 V36 RNG Davranış Klonu","🗃️ V37 Ortak Yaşam Hafızası","🧩 V37B Aile + Yön Uzmanları","🧩 V37C Sessiz Parçalı Aileler","🧠 V38 207 Uzman"])
+tabs=st.tabs(["📥 Canlı giriş","🎯 Hedef & Kupon","🔁 Aile Sırası","📊 İsabet","💾 Yedek & Kayıt","🔮 Geliyorum","🔥 6’lı Ritim","🧠 V11 Araştırma","🗼 80 Sayı Kulesi","🌡️ V13 Hareketli Havuz","🔄 V14 Geçiş Ağı","🎟️ V15 Kupon Motoru","🎲 V16 RNG Salınımı","🧬 V17 Karakter Motoru","🌓 V18 Çift Havuz","🌳 V21 Aile Yaşam Döngüsü","🌱 V22 Aile Üçüncü Geliş","🔎 V23 Aile İlk İki Tam Çıkış","🌾 V24 Aile İkinci Çıkış Tahmini","🧬 V25 Aile DNA Kupon","🔀 V26 Karma Sıcak Soğuk","🌡️ V27 Koltuk Isı Hafızası","🐅 V28 Dijital Kaplan Döngü","🔍 V29 Kalış ve Hedef 20","🐅 V30 Bant Isı Yön","🪞 V31 Ayna Bant Kardeşliği","🔁 V32 80 Sayı Döngüsü","⏳ V33 6–10 Bekleme Havuzları","🔬 V34 8 Bekleme Çapraz Test","🧬 V35 11 Çekiliş İmza Motoru","🧠 V36 RNG Davranış Klonu","🗃️ V37 Ortak Yaşam Hafızası","🧩 V37B Aile + Yön Uzmanları","🧩 V37C Sessiz Parçalı Aileler","🧠 V38 207 Uzman","🎯 V39 20 Sayı İleri Test"])
 
 with tabs[0]:
     # PIN is required once per Streamlit session, not per submitted draw.
@@ -3313,3 +3314,7 @@ with tabs[33]:
 
 with tabs[34]:
     render_v38(draws)
+
+
+with tabs[35]:
+    render_v39(draws)
