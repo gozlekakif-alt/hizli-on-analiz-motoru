@@ -1,0 +1,35 @@
+name: V39 Gercek Ileri Test ve 207 Uzman Kalite
+on:
+  push:
+    paths:
+      - 'v39_onceden_dondurulmus_uzman_paneli.py'
+      - 'v39_ileriye_donuk_app.py'
+      - 'v39_onceden_dondurulmus_selftest.py'
+      - 'v39_ileri_test_export.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v39-ileri-test.yml'
+  workflow_dispatch:
+jobs:
+  v39:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax test engine and Streamlit
+        run: python -m py_compile v39_onceden_dondurulmus_uzman_paneli.py v39_ileriye_donuk_app.py v39_onceden_dondurulmus_selftest.py v39_ileri_test_export.py v10_app.py
+      - name: Test strict no-future outcome, random controls and quality audit
+        run: python -u v39_onceden_dondurulmus_selftest.py
+      - name: Replay full veri.txt with ten frozen 20-ball plans each draw
+        run: python -u v39_ileri_test_export.py
+      - name: Publish exact frozen tickets and first/second-half audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: V39_20_SAYI_GERCEK_ILERI_TEST_TEK_ZIP
+          path: V39_20_SAYI_GERCEK_ILERI_TEST_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
