@@ -321,6 +321,16 @@ def study(draws,include_partial=False,progress=None):
             # replace it for two-distinct-ball joint outcomes.
             r['rng_yuzde']=round(RNG_JOINT*100,5)
             r['rng_fark_puan']=round(r['rng_iki_sayi_fark_puan'],5)
+    # Each high/absent pair is counted exactly once in the 8-band matrix.
+    for period in ('EGITIM','TEST'):
+        pairs=sum(a[0] for key,a in band_pair.items() if key[0]==period)
+        joint=sum(a[1] for key,a in band_pair.items() if key[0]==period)
+        summary['zıt_cift_'+period.lower()]={
+            'farkli_sayi_cifti_olayi':pairs,
+            'sonraki_20de_birlikte_cikti':joint,
+            'gercek_yuzde':round(100*joint/pairs,5) if pairs else None,
+            'rng_iki_sayi_yuzde':round(RNG_JOINT*100,5)}
+    summary['ayni_anda_yogun_ve_bekleyen_kesit']=sum(x['ikisi_birden_mevcut'] for x in window_rows)
     summary['sinif_test']=[r for r in classes if r['donem']=='TEST']
     summary['imza_11_egitimden_secilen']=len(selected)
     guide=("V35 — 80 SAYI ICIN 11 CEKILIS CIFT KARAKTER YOLCULUGU\n"
