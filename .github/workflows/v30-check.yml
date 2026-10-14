@@ -1,0 +1,24 @@
+name: V30 Bant Isi Yon Otomatik Motor Testi
+on:
+  push:
+    paths:
+      - 'v30_bant_isi_yon.py'
+      - 'v30_bant_isi_yon_app.py'
+      - 'v30_selftest.py'
+      - '.github/workflows/v30-check.yml'
+  workflow_dispatch:
+jobs:
+  v30:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V30, Streamlit app and existing tabs
+        run: python -m py_compile v30_bant_isi_yon.py v30_bant_isi_yon_app.py v30_selftest.py v10_app.py
+      - name: Independent 80-ball H6-before-future unit tests
+        run: python -u v30_selftest.py
+      - name: One-click 72 FULL simulated-day ZIP smoke test
+        run: python -u v30_selftest.py --full
