@@ -1,5 +1,5 @@
 # V40 — Altı Sıcaklık Havuzunun Gerçek 20 Sayıya Katkısı
-**Tarih:** 14 Ekim 2026 · Durum: kodlandı, küçük regresyon testleri geçti, tam veri otomatik çalıştırma GitHub Actions üzerinde sürüyor.
+**Tarih:** 14 Ekim 2026 · Durum: kodlandı, 72 tam günlük veri ve sentetik zamansal sızıntı testleri başarıyla geçti.
 
 ## Amaç
 
@@ -65,3 +65,38 @@ ZIP dosyaları:
 ## Tamamlanma şartı
 
 **GitHub Actions tam gerçek veri testi, hata olmadan ZIP yüklemesi ve sonuçların kontrolü gerçekleşmeden nihai başarı açıklaması yapılmaz.** Mevcut V38/V39 motorları değiştirilmez. V40, ilk aşamada **betimsel ısı yolculuğu ve kalibrasyon** araştırmasıdır; gelecek 20 için 16/20 garantisi değildir.
+
+## 72 tam günlük gerçek çalışma sonucu — 14 Ekim 2026
+
+**Başarılı GitHub Actions:** https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38622763751
+
+**İndirilebilir V40 tek ZIP (28,3 MB):** https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38622763751/artifacts/11922677826
+
+- Resmi kaynak: 72 tam gün, 15.624 gerçek çekiliş; girdi metninde iki hatalı/mükerrer kaynak satırı ayrıca dışlandı.
+- İlk gerçek çekiliş geçmişi kurmak için kullanıldı; `15.623 × 80 = 1.249.840` sayı-çekiliş öncesi özellik ve sonraki çıkan20 karşılaştırma kartı saklandı.
+- 6 sıcaklık koltuğu her çekilişte 13+13+14+14+13+13=80 numara olarak kalıyor.
+- Son 36 günde (7.812 gerçek çekiliş) havuz başına sonraki gerçek20'ye geliş:
+
+| Havuz | Önceki havuz üyeliği gözlemi | Gerçek çıkan20'ye girdi | %25 RNG beklentisi | Gerçek oran |
+|---|---:|---:|---:|---:|
+| SOGUK | 101.556 | 25.278 | 25.389 | %24,89070 |
+| SOGUGA_YAKIN | 101.556 | 25.555 | 25.389 | %25,16346 |
+| ORTA | 109.368 | 27.129 | 27.342 | %24,80524 |
+| ILIK | 109.368 | 27.419 | 27.342 | %25,07040 |
+| SICAGA_YAKIN | 101.556 | 25.347 | 25.389 | %24,95864 |
+| SICAK | 101.556 | 25.512 | 25.389 | %25,12112 |
+
+**Bağımsız 20/80 kontrolü:** Sabit her sayı %25, Brier 0,18750000.
+
+**V40 çevrimiçi ısı×yön kalibrasyonu:**
+
+| Dönem | Gün | Hedef gerçek çekiliş | V40 Brier | Basit RNG Brier | V40 − RNG |
+|---|---:|---:|---:|---:|---:|
+| İlk yarı | 36 | 7.811 | 0,18752253 | 0,18750000 | +0,00002253 |
+| Son yarı | 36 | 7.812 | 0,18750446 | 0,18750000 | +0,00000446 |
+
+Son 36 gün farkının günlük blok bootstrap %95 aralığı **[+0,0000018, +0,0000073]**. Brier daha küçük daha iyi olduğu için bu nokta tahminleri V40'ın %25 referansından **çok az daha kötü** olasılık tahmini verdiğini gösteriyor. Bu, kural tabanlı bu motorun gerçek RNG'deki her türlü yapıyı dışladığı anlamına gelmez; **bu araştırma kolu henüz öngörü avantajını kanıtlamadı**.
+
+Kesişim tablosu `03_SICAKLIK_YON_AILE_BANT_KALIS_SONUCLARI.csv` gerçek çekilişte aynı anda meydana gelen ısı-yön-bant-aile geçişlerini ayrıntılandırır. Bu tarama aşamasındaki çapraz sayımlar birbirinden bağımsız deneme değildir. Daha derin alt motorlar yalnız sonraki bağımsız günlerde tekrarlanan etkiler olursa gerekçeli olarak çoğaltılmalıdır.
+
+**Kaynak doğrulama:** GitHub Actions kontrol testleri 20/60 toplamını, altı havuz kapasitesini, 01:02→07:02 sahte çekiliş üretmeme kuralını ve `hedef t` değişse de `t` öncesi özellik kartının değişmemesini doğruladı. Bu başarı gizli RNG tohumunun çözüldüğü anlamına gelmez.
