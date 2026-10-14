@@ -1,0 +1,37 @@
+name: V35 11 Cekilis Cift Karakter 80 Sayi
+on:
+  push:
+    paths:
+      - 'v35_11_cekim_cift_karakter.py'
+      - 'v35_11_karakter_app.py'
+      - 'v35_selftest.py'
+      - 'v35_export_zip.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v35-check.yml'
+  workflow_dispatch:
+jobs:
+  v35:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V35 and main Streamlit app
+        run: python -m py_compile v35_11_cekim_cift_karakter.py v35_11_karakter_app.py v35_selftest.py v35_export_zip.py v10_app.py
+      - name: Check 11-bit DNA, dual cohorts and no-lookahead
+        run: python -u v35_selftest.py
+      - name: Test all 72 complete days and single ZIP
+        run: python -u v35_selftest.py --full
+      - name: Produce final 18-file 11-draw character ZIP
+        run: python -u v35_export_zip.py
+      - name: Publish one downloadable report
+        uses: actions/upload-artifact@v4
+        with:
+          name: V35_11_CEKILIS_80_SAYI_CIFT_KARAKTER_TEK_ZIP
+          path: V35_11_CEKILIS_80_SAYI_CIFT_KARAKTER_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
