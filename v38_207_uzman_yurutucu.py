@@ -301,7 +301,7 @@ def calculate(s,seq,no,day,pos,now,lookbehind,old_map):
         len(wait_exits),sum(x>=8 for x in return_ages.values()),
         sum(x>=10 for x in return_ages.values()),
         len(win&set(s.last_return)),len(return1),
-        sum(n in win and old_map and old_map[n]["life_wait"]==2 for n in win),
+        sum(bool(old_map) and old_map[n]["life_wait"]==2 for n in win),
         sum(rows[n]["life_run"]>=3 for n in win),
         len(stop&set(s.last_return)),
         len(wait_exits&asc),sum(c(len(wait_exits),2)>0 for _ in [0]),
