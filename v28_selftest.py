@@ -38,7 +38,7 @@ for day in ("2026-10-01","2026-10-02"):
     rows.extend(draw(day,pos,rng.sample(BALLS,20)) for pos in range(1,218))
 temps=[0.]*81
 six,macro=state_before(temps)
-assert sum(six[n]==g for n in BALLS)==SIX_SIZES[0]
+assert sum(six[n]==0 for n in BALLS)==SIX_SIZES[0]
 assert tuple(sum(six[n]==g for n in BALLS) for g in range(6))==SIX_SIZES
 assert tuple(sum(macro[n]==g for n in BALLS) for g in range(3))==(26,28,26)
 assert abs(DECAY**12-.5)<1e-12
