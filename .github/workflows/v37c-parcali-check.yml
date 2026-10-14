@@ -1,0 +1,36 @@
+name: V37C Parcali Dortlu Aile ve Sessizlik
+on:
+  push:
+    paths:
+      - 'v37c_parcali_aile_hayati.py'
+      - 'v37c_parcali_selftest.py'
+      - 'v37c_parcali_app.py'
+      - 'v37c_parcali_export.py'
+      - 'v37_ortak_hafiza.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v37c-parcali-check.yml'
+  workflow_dispatch:
+jobs:
+  v37c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V37C standalone and Streamlit
+        run: python -m py_compile v37c_parcali_aile_hayati.py v37c_parcali_selftest.py v37c_parcali_app.py v37c_parcali_export.py v10_app.py
+      - name: Validate exact paths and lifelong fragment-only 4-family evidence
+        run: python -u v37c_parcali_selftest.py
+      - name: Replay 72 full days through shared V37 ledger and V37C expert
+        run: python -u v37c_parcali_export.py
+      - name: Publish independent fragment-family study
+        uses: actions/upload-artifact@v4
+        with:
+          name: V37C_PARCALI_DORTLU_AILE_YASAM_TEK_ZIP
+          path: V37C_PARCALI_DORTLU_AILE_YASAM_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
