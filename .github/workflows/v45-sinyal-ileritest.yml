@@ -6,6 +6,9 @@ on:
     paths:
       - 'veri.txt'
       - 'v45_sinyal_kor_test.py'
+      - 'v45_sinyal_merkezi_app.py'
+      - 'v45_sinyal_merkezi_selftest.py'
+      - 'v10_app.py'
       - '.github/workflows/v45-sinyal-ileritest.yml'
 
 permissions:
@@ -22,6 +25,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Python and tab syntax check
+        run: python -m py_compile v10_app.py v45_sinyal_kor_test.py v45_sinyal_merkezi_app.py v45_sinyal_merkezi_selftest.py
+      - name: Install Streamlit for V45 UI fixture
+        run: pip install 'streamlit>=1.39,<2'
+      - name: Test V45 Streamlit panel and frozen predictions
+        run: python v45_sinyal_merkezi_selftest.py
       - name: Check frozen time slots and future blindness
         run: python v45_sinyal_kor_test.py --selftest
       - name: Evaluate only complete days after 13 October 2026
