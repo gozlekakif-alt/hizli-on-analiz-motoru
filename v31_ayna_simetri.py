@@ -375,7 +375,7 @@ def ring_tables(events,band_detail):
             st[4]+=overlap
             st[5]+=sum(left[f"H{h} hedefte"] or right[f"H{h} hedefte"]
                        for h in range(7,13))
-    T=36*18*6
+    T=sum(rows[0]["Dönem"]=="Sınama36" for _,_,rows in events)*6
     expected=T*(20*19)/(80*79)
     for n in range(1,41):
         hits=mirror_counts[n]
