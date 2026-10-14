@@ -1,0 +1,33 @@
+name: V29 Sicaklik Kalis Hedef20 Kod Testi
+on:
+  push:
+    paths:
+      - 'v29_sicaklik_kalis_hedef.py'
+      - 'v29_selftest.py'
+      - 'v29_family_app.py'
+      - '.github/workflows/v29-check.yml'
+  workflow_dispatch:
+jobs:
+  v29:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile source and Streamlit application
+        run: python -m py_compile v29_sicaklik_kalis_hedef.py v29_selftest.py v29_family_app.py v10_app.py
+      - name: Verify no H7-H12 leak and frozen H6 state, 20/80 constraints
+        run: python -u v29_selftest.py
+      - name: Optional GitHub 72-day report (only manually launched)
+        if: github.event_name == 'workflow_dispatch'
+        run: python -u v29_sicaklik_kalis_hedef.py --output V29_SICAKLIK_KALIS_HEDEF_72_GUN.zip
+      - name: Optional artifact upload
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: V29-72-Gun-80-Sayi-Kalis-Ve-Hedef20
+          path: V29_SICAKLIK_KALIS_HEDEF_72_GUN.zip
+          retention-days: 30
+          if-no-files-found: error
