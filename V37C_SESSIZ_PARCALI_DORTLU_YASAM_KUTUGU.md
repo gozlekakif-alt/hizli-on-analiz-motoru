@@ -57,3 +57,19 @@ Bütün 207 tasarım dalı tamamlanmadı; bu sürüm iki/üç adımlık parçal�
 ## Araştırmada bulunan önemli metodolojik düzeltme (V37C v2)
 
 72 gün boyunca hiç **bir kez bile** 4/4 yapmamış sabit dörtlü aileler üzerinden yaşam aramak yanlış bir eşik: 2.048 tarafsız örnek ailenin tamamı ilk 36 günde en az bir defa aynı çekilişte 4/4 görmüştür. Bu nedenle V37C'nin ilk tarihsel denemesinde ikinci 36 gün için yeni parçalı aile olayı kalmamıştı. **V37C v2 bu hatalı sert ömürlük eşiği kaldırır:** Ailelerin *son 12 gerçek çekilişte* tam 4/4 yapmamışken üyelerini parçalı biçimde tamamlamasını, eski yıllarda/çekilişlerde 4/4 yapmış olsa bile yeni bir epizod olarak kaydeder. Geçmişteki toplam 4/4 sayısı ayrıca korunur. Bu değişiklik gizli RNG'ye erişim değildir; doğru yaşam-evre tanımıdır.
+
+## 72 günlük başarılı tam araştırma, V37C v2
+
+GitHub Actions **başarılı**: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38598125256
+
+Tek 7 dosyalı ZIP (yaklaşık 10,1 MB): https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38598125256/artifacts/11913016372
+
+- 72 tam gün, 15.624 gerçek çekiliş, ortak SQLite'dan 1.249.920 sayı kartı.
+- 1.581.580 olası dörtlünün iki/üç ardışık çekiliş içindeki *parçalı oluşum olayları* tam sayıldı. Benzersiz aile sayısı değildir.
+- İki çekiliş penceresi olayları: 1+3 = **115.286.052**, 2+2 = **298.680.433**, 3+1 = **262.741.377**.
+- Üç çekiliş penceresi olayları: 1+1+2 = **260.485.056**, 1+2+1 = **363.034.038**, 2+1+1 = **488.103.316**.
+- Sonuçlardan bağımsız 2.048 ön kayıtlı dörtlünün 12 gerçek çekilişlik parçalı yaşamı kaydedildi.
+- İlk 36 günde parçalı yeniden oluşum olayları: **527.296**; son 36 günde **524.952**. Bunlar kayan pencere boyunca birden fazla sayılan **olaylardır**, benzersiz aileler değildir.
+- Delili bireysel saklanan sınırlı örnek olay: **134.041** (her çekilişte en çok 12 ön sıralı olay; toplam olayların tamamı değildir).
+- Önceki katı «ömrü boyunca hiç 4/4 yapmasın» şartı kaldırıldı; son **12 gerçek çekilişte** tam 4/4 yapmamışsa daha önce yaşamış 4/4 olayına rağmen yeni parçalı hayat evresi olarak izlenir.
+- Hem ilk hem son 36 günün özel aile ve yön kayıtları üretilir; bu sonuçlar **gerçek gelecek 20'yi daha iyi bilme kanıtı değildir**.
