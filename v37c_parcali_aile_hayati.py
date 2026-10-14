@@ -25,7 +25,7 @@ import zipfile
 from collections import Counter
 from itertools import combinations
 
-VERSION=1
+VERSION=2
 SAMPLE=2048
 LOOKBACK=12
 EVENT_CAP=12
@@ -39,12 +39,14 @@ FIELDS=("seq","day","pos","draw_no","global_4_family_universe",
         "sample_0_4","sample_1_4","sample_2_4","sample_3_4","sample_4_4",
         "sample_current_no_4ever","sample_current_first_fragment",
         "sample_fragment_reactivation","sample_fragment_cover_now",
-        "sample_silence_3plus","sample_heat_up_on_first_fragment",
+        "sample_silence_3plus","sample_12draw_fragment_eligible",
+        "sample_heat_up_on_first_fragment",
         "sample_heat_down_on_first_fragment","source_sample_size",
         "bounded_event_examples","warning")
 EVENT_FIELDS=("event_id","seq","draw_no","day","pos","family_numbers",
               "event_type","path","silence_before","previous_fragment_seq",
-              "four_number_12bit_history","heat_directions",
+              "four_number_12bit_history","previous_full4_seq","full4_in_last12",
+              "heat_directions",
               "linked_heat_event_ids","last_lookback_source_draws")
 CSV_OPTS=dict(delimiter=";",lineterminator="\n")
 
@@ -161,13 +163,13 @@ def _make_catalogue(con):
 def _init_states():
     # sig: 4 packed 12-bit draw histories; prev_cover and ever_full distinguish
     # 4 members seen across draws from same-draw family reunion.
-    return [[0,False,False,False,0,0,0,0,0,0,0] for _ in range(SAMPLE)]
+    return [[0,False,False,False,0,0,0,0,0,0,0,0] for _ in range(SAMPLE)]
 
 
 def _decode_state(stateblob):
     if not stateblob:return _init_states()
     states=pickle.loads(zlib.decompress(stateblob))
-    if len(states)!=SAMPLE or any(len(s)!=11 for s in states):
+    if len(states)!=SAMPLE or any(len(s)!=12 for s in states):
         raise ValueError("Mismatched family state catalogue")
     return states
 
@@ -247,8 +249,8 @@ def run(db_path,progress=None):
         sample_cover_count=0
         for idx,family in enumerate(CATALOG):
             state=states[idx]
-            sig,coverprev,everfull,fragonce,fragcount,fullcount,quiet,qlong,lastfrag,lastfull,everseen=state
-            if initial:sig=0;coverprev=False;quiet=0
+            sig,coverprev,everfull,fragonce,fragcount,fullcount,quiet,qlong,lastfrag,lastfull,everseen,full_sig=state
+            if initial:sig=0;full_sig=0;coverprev=False;quiet=0
             on=tuple(bool(ballmask&(1<<(n-1))) for n in family)
             bits=sum((1<<k) for k,b in enumerate(on) if b)
             hit=bits.bit_count()
@@ -258,11 +260,18 @@ def run(db_path,progress=None):
                 qlong=max(qlong,quiet)
             q_before=quiet if hit==0 else state[6]
             if hit>0:quiet=0
+            # Lifelong everfull is retained for historical facts, but does
+            # NOT permanently disqualify a family from a later silent episode.
+            # A fragment-only window requires no 4/4 IN THE ROLLING 12,
+            # not no 4/4 in its entire historical life.
+            old_eligible=bool(coverprev and full_sig==0)
             sig=((sig<<1)&SHIFT_MASK)|INSERT[bits]
+            full_sig=((full_sig<<1)|int(hit==4))&0xFFF
             cover=all(sig&lane for lane in LANE_MASKS)
+            window_fragment=bool(cover and full_sig==0)
             if cover:sample_cover_count+=1
-            # This family has never produced a 4/4 at any actual step so far.
-            first_fragment=bool(cover and not coverprev and hit<4 and not everfull)
+            if window_fragment:summary["sample_12draw_fragment_eligible"]+=1
+            first_fragment=bool(window_fragment and not old_eligible)
             if first_fragment:
                 if heat_moves is None:
                     heat_moves=dict(con.execute("SELECT num,heat_move FROM ball_step WHERE draw_no=?",(no,)))
@@ -278,13 +287,13 @@ def run(db_path,progress=None):
                 # pre-registered catalogue index (no favorable outcome filter).
                 if len(interesting)<EVENT_CAP:
                     interesting.append((idx,family,path,kind,qlong,
-                         state[8] if state[8] else 0,sig))
+                         state[8] if state[8] else 0,sig,lastfull))
             if hit==4:
                 everfull=True;fullcount+=1;lastfull=seq
             if not everfull:summary["sample_current_no_4ever"]+=1
             if quiet>=3:summary["sample_silence_3plus"]+=1
             states[idx]=[sig,cover,everfull,fragonce,fragcount,fullcount,
-                         quiet,qlong,lastfrag,lastfull,everseen|bits]
+                         quiet,qlong,lastfrag,lastfull,everseen|bits,full_sig]
         if sample_cover_count>2048:raise AssertionError("sample overflow")
         day_result={
             "seq":seq,"day":day,"pos":pos,"draw_no":no,
@@ -299,6 +308,7 @@ def run(db_path,progress=None):
             "sample_fragment_reactivation":summary["sample_fragment_reactivation"],
             "sample_fragment_cover_now":sample_cover_count,
             "sample_silence_3plus":summary["sample_silence_3plus"],
+            "sample_12draw_fragment_eligible":summary["sample_12draw_fragment_eligible"],
             "source_sample_size":SAMPLE,
             "bounded_event_examples":len(interesting),
             "sample_heat_up_on_first_fragment":summary["sample_heat_up_on_first_fragment"],
@@ -306,7 +316,7 @@ def run(db_path,progress=None):
             "warning":"Two/three step fragment counts exact; 12-step family life SAMPLE only."}
         for k in range(5):day_result[f"sample_{k}_4"]=summary[f"sample_{k}_4"]
         evidence=[]
-        for idx,family,path,kind,quiet_before,prev_frag_seq,sig in interesting:
+        for idx,family,path,kind,quiet_before,prev_frag_seq,sig,lastfull in interesting:
             move,parents=_heat_directions(con,no,family)
             prior_draws=[r[0] for r in con.execute(
                 "SELECT draw_no FROM draw_ledger WHERE seq BETWEEN ? AND ? AND day=? ORDER BY seq",
@@ -318,6 +328,8 @@ def run(db_path,progress=None):
                 "family_numbers":family_txt,"event_type":kind,"path":path,
                 "silence_before":quiet_before,"previous_fragment_seq":prev_frag_seq,
                 "four_number_12bit_history":format(sig,"048b"),
+                "previous_full4_seq":lastfull if lastfull else "",
+                "full4_in_last12":0,
                 "heat_directions":json.dumps(move,ensure_ascii=False),
                 "linked_heat_event_ids":json.dumps(parents),
                 "last_lookback_source_draws":json.dumps(prior_draws)
@@ -418,7 +430,7 @@ def export(db_path,zip_path):
         latest=_decode_state(blob_row[0] if blob_row else None)
         family_lives=[]
         for i,(members,state) in enumerate(zip(CATALOG,latest)):
-            sig,cover,everfull,fragonce,fragcount,fullcount,quiet,qlong,lastfrag,lastfull,everseen=state
+            sig,cover,everfull,fragonce,fragcount,fullcount,quiet,qlong,lastfrag,lastfull,everseen,full_sig=state
             family_lives.append({
                 "sample_id":i+1,
                 "family": "-".join(f"{n:02d}" for n in members),
@@ -430,6 +442,7 @@ def export(db_path,zip_path):
                 "last_fragment_seq":lastfrag if lastfrag else "",
                 "last_full4_seq":lastfull if lastfull else "",
                 "covered_in_latest_12":int(cover),
+                "fragment_eligible_latest12":int(cover and full_sig==0),
                 "ever_seen_member_count":everseen.bit_count()
             })
         csvout("07_2048_AILENIN_OMURLUK_KARAKTER_KARTI.csv",
@@ -437,6 +450,7 @@ def export(db_path,zip_path):
              "fragment_reactivations","fragment_events","same_draw_4of4_events",
              "longest_all_members_absent","current_all_members_absent",
              "last_fragment_seq","last_full4_seq","covered_in_latest_12",
+             "fragment_eligible_latest12",
              "ever_seen_member_count"),family_lives)
       with zipfile.ZipFile(str(zip_path)) as z:
           assert z.testzip() is None and len(z.namelist())==7
