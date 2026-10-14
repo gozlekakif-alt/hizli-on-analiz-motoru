@@ -115,6 +115,7 @@ def profile(draws, eligible, detailed=True, forecast=False):
     forecast_rows=[]
     snapshots={}
     valid_processed=0
+    last_evaluated_t=None
     def finalize_hour(key,r):
         if not detailed:return
         date,hour=key
@@ -206,6 +207,12 @@ def profile(draws, eligible, detailed=True, forecast=False):
                     snapshots[key]=(tuple(six),tuple(macro),tuple(scores))
                 del hourly[key]
         if eligible_target:
+            # Include incomplete-day draws in EWMA memory, not in contiguous
+            # evaluation-run lengths; restart runs across untested positions.
+            if last_evaluated_t is not None and t-last_evaluated_t>1:
+                streak=[0]*81
+                prevstate=[None]*81
+            last_evaluated_t=t
             # Streaks are transitions at pretarget state time, not sequences
             # of actual ball appearances (those are separately reported).
             for n in BALLS:
@@ -329,7 +336,7 @@ def day_similarity(profiles):
     Compare against all pairs at least 2 days apart, no cherry-picking.
     """
     sig=profiles["daily_signature"]
-    keys=sorted(sig)
+    keys=sorted(d for d in sig if profiles["daily"][d]["N"]==217*80)
     pairs=[]
     for i,da in enumerate(keys):
         a=[x-(20*[26/80,28/80,26/80][j%3]) for j,x in enumerate(sig[da])]
