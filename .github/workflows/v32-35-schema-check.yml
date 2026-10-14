@@ -1,0 +1,25 @@
+name: V32-V35 Streamlit Draw Schema Regression
+on:
+  push:
+    paths:
+      - 'v32_35_draw_fingerprint.py'
+      - 'v32_35_signature_selftest.py'
+      - 'v32_80_tamamlama_app.py'
+      - 'v33_bekleme_app.py'
+      - 'v34_bekleme_app.py'
+      - 'v35_11_karakter_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v32-35-schema-check.yml'
+  workflow_dispatch:
+jobs:
+  schema_regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile affected Streamlit modules
+        run: python -m py_compile v32_35_draw_fingerprint.py v32_80_tamamlama_app.py v33_bekleme_app.py v34_bekleme_app.py v35_11_karakter_app.py v10_app.py
+      - name: Verify schema without mask and deterministic dataset signatures
+        run: python -u v32_35_signature_selftest.py
