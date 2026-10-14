@@ -20,6 +20,7 @@ V29–V43 tarihsel bulgularını birden fazla anlatı olmaktan çıkarıp ortak 
 - **Gün 19–36 — UZMAN_ELEME:** 19 ayrı adayın hepsi hedef gerçek 20 açılmadan önce 20 farklı sayı belirler. Bir uzman ancak aşağıdaki kapıları aynı anda geçerse kabul edilir.
 - **Gün 37–72 — KOR_TEST:** Seçilmiş uzman listesi kilitlidir; başarısız görünse de son test verisi ile tekrar uzman seçilmez.
 - **Daha sonraki tam günler** son 36 tarihlerin dışındaki `YENI_GUN` olarak etiketlenir; ilk 36 günün sınırı asla ileri kaymaz. Sonradan gelecek 14 gün böyle eklenebilir; gerçek dünya ileri testinde puan alır.
+- **Güncel ekleme koruması (son düzeltme):** İlk 72 tam gün sınırları geriye dönük sabitlenmiştir. Kullanıcı 'eksik günleri de işle' seçse bile ilk 72 tam günün **öncesi veya arasındaki eksik günler** eleme penceresine girmez; yalnız bu dönemin *sonrasına* gelen eksik ve yeni kayıtlar `YENI_GUN` olur. Böylece eski eksik saatleri sonradan eklemek eleme tarihlerini oynatmaz.
 
 Kapılar (hepsi **yalnız gün 19–36** üzerinde hesaplanır):
 1. Ortalama 20 sayılık isabet **adil teorik 5/20'yi en az +0,10** aşmalıdır.
@@ -61,9 +62,9 @@ Streamlit: V10 → **🧠 V44 Ana Beyin**.
 
 ## 5. Doğrulanan gerçek test — 14 Ekim 2026
 
-GitHub Actions: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38635034090
+GitHub Actions: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38635465472
 
-9 dosyalı indirilebilir ZIP: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38635034090/artifacts/11927838224
+9 dosyalı indirilebilir ZIP: https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38635465472/artifacts/11926949242
 
 **Sonuç: iş akışı başarılı; 19 adaydan hiçbirinin gerçek öngörü üstünlüğü kanıtlanamadı.**
 
