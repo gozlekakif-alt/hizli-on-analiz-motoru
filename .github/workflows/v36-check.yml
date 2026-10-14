@@ -1,0 +1,31 @@
+name: V36 H6 Surme ve Bekleme Devir Zinciri
+on:
+  push:
+    paths:
+      - 'v36_karakter_devir_zinciri.py'
+      - '.github/workflows/v36-check.yml'
+      - 'veri.txt'
+  workflow_dispatch:
+jobs:
+  v36:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and synthetic sequence test
+        run: |
+          python -m py_compile v36_karakter_devir_zinciri.py
+          python -u v36_karakter_devir_zinciri.py
+      - name: Actual 72-day sequential transition research
+        run: python -u v36_karakter_devir_zinciri.py --full
+      - name: Produce downloadable 8-file ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V36_KARAKTER_DEVIR_ZINCIRI_72_GUN_TEK_ZIP
+          path: V36_KARAKTER_DEVIR_ZINCIRI_72_GUN_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
