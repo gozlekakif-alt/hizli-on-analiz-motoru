@@ -321,6 +321,7 @@ class Learner:
     def report(self):
         ans=[]
         for (m,lab),(cnt,hits) in sorted(self.count.items()):
+            if cnt==0:continue  # unseen bins can be initialized when scoring
             ans.append({"motor":m,"hazne":lab,"gozlem":cnt,
                        "sonraki_20de_cikti":hits,
                        "sonraki_isabet_yuzde":round(100*hits/cnt,4),
