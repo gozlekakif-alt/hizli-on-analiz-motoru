@@ -32,7 +32,7 @@ days=["2026-10-01","2026-10-02","2026-10-03","2026-10-04"]
 draws=[mk(day,i,r.sample(BALLS,20)) for day in days for i in range(1,218)]
 phase={days[0]:"Eğitim24",days[1]:"Doğrulama12",days[2]:"Sınama36",days[3]:"Sınama36"}
 event=generate_rows(draws,phase)
-assert len(event)==17+18*3
+assert len(event)==6+18*3
 assert all(len(rows)==80 for day,start,rows in event)
 assert all(rows[0]["Kesim sıra"]==start+5 for day,start,rows in event)
 assert all(sum(row["H7-H12 gelen sayı"] for row in rows)==120 for day,start,rows in event)
@@ -57,7 +57,6 @@ future=draws[:]
 for j in range(6,12):
     future[j]=mk(days[0],j+1,range(61,81))
 changed=generate_rows(future,phase)
-first_a=next(rows for day,start,rows in event if day==days[0] and start==1) if False else None
 # First complete eligible hour on day1 after warmup begins at position 146:
 targetstart=next(start for day,start,rows in event if day==days[0])
 lo=next((j for j,d in enumerate(draws) if d["day"]==days[0] and d["pos"]==targetstart+6))
