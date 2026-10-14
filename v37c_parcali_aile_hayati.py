@@ -7,7 +7,8 @@ A) EXACT counts across all 1,581,580 possible 4-families of first-appearance
    observed 2- or 3-draw fragment. Combinatorics, no family enumeration.
 B) Lifetimes of a PRE-REGISTERED, outcome-blind 2048-quartet simple random
    sample: 0/1/2/3/4 seen per draw, silent episodes, last-12-draw rolling
-   fragmented coverage without any earlier SAME-DRAW 4/4, sample reactivation.
+   fragmented coverage with NO same-draw 4/4 INSIDE the current window.
+   An older full 4/4 does not permanently disqualify later quiet episodes.
 Sample family identities and state are persisted in compressed checkpoints;
 no cherry-picked winners, no future leakage, no claims of hidden RNG cloning.
 """
@@ -161,8 +162,8 @@ def _make_catalogue(con):
 
 
 def _init_states():
-    # sig: 4 packed 12-bit draw histories; prev_cover and ever_full distinguish
-    # 4 members seen across draws from same-draw family reunion.
+    # sig: 4 packed 12-bit per-member histories; full_sig separately tracks
+    # full same-draw 4/4 history within last 12. ever_full is lifelong metadata.
     return [[0,False,False,False,0,0,0,0,0,0,0,0] for _ in range(SAMPLE)]
 
 
@@ -410,8 +411,9 @@ def export(db_path,zip_path):
           "ORN EKLEM: 80'den 4 = 1.581.580 farkli dortluden, resmi sonuclara\n"
           "hic bakilmadan rastgele secilmis 2.048 sabit aile; her cekilis\n"
           "0/1/2/3/4 gorunme, son 12 gercek cekilis birlesimi, 3+ sessizlik,\n"
-          "birinci/tekrar parçalı kapama; tarihte henüz ayni cekiliste 4/4\n"
-          "olmamış aileleri geleceği okumadan izler.\n"
+          "birinci/tekrar parcali tamamlama; son 12 gercek cekiliste\n"
+          "hic ayni cekiliste 4/4 yapmamis aileyi izler. Daha eski bir\n"
+          "4/4, sonradan yeni parcali sessiz evre dogmasina engel DEGIL.\n"
           "Örnek ailelerin ayirt edici ayrintilari her adim ilk 12 olayla\n"
           "sinirlidir; tam örnek küme üye listesi 03 raporundadır.\n"
           "HIC 4/4 olmayan 1.58 milyon ailenin TAM OMURLUK defteri YOK.\n"
@@ -422,7 +424,9 @@ def export(db_path,zip_path):
             "catalogue_size":SAMPLE,"catalogue_sha":CATALOG_SHA,
             "family_universe":UNIVERSE,"two_step_exact":True,
             "three_step_exact":True,"all_72day_4family_lifetime_exact":False,
-            "lookback_draws":LOOKBACK,"sample_evidence_limit_per_draw":EVENT_CAP,
+            "lookback_draws":LOOKBACK,"fragment_window_no_full4":True,
+            "lifelong_never_4of4_required":False,
+            "sample_evidence_limit_per_draw":EVENT_CAP,
             "on_new_draw_incremental":True,
             "source":"same V37A SQLite shared draw ledger",
             "rng_hidden_state_recovered":False},ensure_ascii=False,indent=2).encode())
