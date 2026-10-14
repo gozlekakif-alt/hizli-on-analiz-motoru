@@ -82,39 +82,8 @@ def render_v28(draws):
         if pos:
             days[day][pos]=d
     dates=sorted(days)
-    day=st.selectbox("Gün",dates,index=len(dates)-1,key="v28_date")
-    positions=days[day]
-    starts=[p for p in HOUR_STARTS if p in positions]
-    if not starts:
-        st.warning("Günün ilk saat çekilişi henüz yok.")
-        return
-    start=st.selectbox("Hangi 12 çekilişlik saat?",starts,index=len(starts)-1,
-                       format_func=lambda p:clock(p)[0]+"–"+clock(p+11)[0],
-                       key="v28_start")
-    if st.button("🐅 80 sayının saatlik yolculuğunu göster",key="v28_go"):
-        with st.spinner("Geçmişi günler arasında kesmeden 12 yarı ömürle işliyorum"):
-            rows=inspect_hour(draws,day,start)
-        st.session_state["v28_hour"]=(day,start,rows)
-    saved=st.session_state.get("v28_hour")
-    if saved and saved[:2]==(day,start):
-        rows=saved[2]
-        selected=st.select_slider("İlgilendiğin H pozisyonu",
-                                   options=list(range(1,13)),value=6,
-                                   key="v28_h")
-        known=sum(bool(r[f"H{selected}"]) for r in rows)
-        st.caption(f"H{selected}: {known} sayı için o anın durumu gözlenmiştir.")
-        st.markdown("#### Her sayının H1–H12 sıcaklık yolu")
-        st.dataframe(rows,hide_index=True,use_container_width=True)
-        num=st.number_input("Tek sayının yolculuğu",min_value=1,max_value=80,
-                            value=19,step=1,key="v28_one")
-        match=next((r for r in rows if r["Sayı"]==num),None)
-        if match:
-            st.write(match)
-        st.download_button("⬇️ 80 sayı, H1–H12 tam saatlik TXT/CSV",
-                           csv_bytes(rows),file_name="V28_80_SAYI_H1_H12.csv",
-                           mime="text/csv",key="v28_download")
     st.divider()
-    st.markdown("### 🔬 72 günlük tüm analizi Streamlit'te çalıştır")
+    st.markdown("### 🤖 Otomatik Tarama — 72 gün × 18 saat")
     st.caption(
         "İki ayrı zaman ölçeği: bir saatin 12 çekilişi ve 12 ardışık "
         "GERÇEK saat. Her sayı için kalışlar, 6 sıcaklık sınıfı geçişleri, "
@@ -131,13 +100,23 @@ def render_v28(draws):
         options=[3,6,12,24],value=6,key="v28_null_repetitions")
     if len(complete)<72:
         st.warning("Bu analizin sabit 36+36 karşılaştırması için en az 72 tam gün gerekir.")
-    if st.button("🐅 TÜM 72 GÜNÜ ANALİZ ET",
-                 disabled=len(complete)<72,key="v28_run_all"):
-        with st.spinner("Gerçek çekilişler ve aynı saatlerde rastgele kontrol akışları hesaplanıyor..."):
+    if st.button("▶️ OTOMATİK ANALİZİ BAŞLAT — 72 GÜN / TÜM SAATLER",
+                 disabled=len(complete)<72,key="v28_run_all",
+                 type="primary",use_container_width=True):
+        bar=st.progress(0,text="72 günlük otomatik çalışma hazırlanıyor")
+        status=st.empty()
+        def progress(done,total,stage,day):
+            fraction=min(1.0,done/max(1,total))
+            bar.progress(fraction,text=f"%{100*fraction:.1f} — {stage}")
+            status.caption(f"Adım {done}/{total} · Gün: {day or 'Hazırlık'}")
+        with st.spinner("Bütün gün ve saatler otomatik ilerliyor. Sekmeyi açık tut."):
             try:
                 raw=_v28_source_as_txt(draws)
                 digest=sha256(raw.encode("utf-8")).hexdigest()
-                payload,meta,macro,forecast,ci=_v28_cached_full_run(raw,int(nulls))
+                payload,meta,macro,forecast,ci=_v28_cached_full_run(
+                    raw,int(nulls),_progress=progress)
+                bar.progress(1.0,text="%100 — Araştırma ve tek ZIP hazır")
+                status.caption("72 günün tamamı ve RNG kontrolleri bitti.")
                 st.session_state["v28_completed"]=(digest,int(nulls),payload,meta,macro,forecast,ci)
             except Exception as exc:
                 st.error("V28 analiz hatası: "+str(exc))
@@ -167,8 +146,43 @@ def render_v28(draws):
         st.caption("ZIP içinde sayıların bir saatteki 12 çekilişi, "
                    "ayrıca 12 GERÇEK SAAT boyunca H1-H12 yolculuğu, "
                    "tüm kalışlar ve RNG denetimleri ayrı CSV dosyalarındadır.")
-    st.caption("Büyük analiz yalnız düğmeye bastığında çalışır; "
-               "GitHub veri.txt ve eski motorları değiştirmez.")
+    st.caption("Tek sefer başlat, gün/saat değiştirmeden kendi kendine ilerler. "
+               "İşlem sürerken telefonda bu sekmeyi açık tut; bağlantı kesilirse "
+               "Streamlit oturumu işlemi durdurabilir. GitHub veri.txt değiştirilmez.")
+
+    st.divider()
+    with st.expander("🔍 İstersen tek günü ve tek saati ayrı incele",expanded=False):
+        day=st.selectbox("Gün",dates,index=len(dates)-1,key="v28_date")
+        positions=days[day]
+        starts=[p for p in HOUR_STARTS if p in positions]
+        if not starts:
+            st.warning("Günün ilk saat çekilişi henüz yok.")
+            return
+        start=st.selectbox("Hangi 12 çekilişlik saat?",starts,index=len(starts)-1,
+                           format_func=lambda p:clock(p)[0]+"–"+clock(p+11)[0],
+                           key="v28_start")
+        if st.button("🐅 80 sayının saatlik yolculuğunu göster",key="v28_go"):
+            with st.spinner("Geçmişi günler arasında kesmeden 12 yarı ömürle işliyorum"):
+                rows=inspect_hour(draws,day,start)
+            st.session_state["v28_hour"]=(day,start,rows)
+        saved=st.session_state.get("v28_hour")
+        if saved and saved[:2]==(day,start):
+            rows=saved[2]
+            selected=st.select_slider("İlgilendiğin H pozisyonu",
+                                       options=list(range(1,13)),value=6,
+                                       key="v28_h")
+            known=sum(bool(r[f"H{selected}"]) for r in rows)
+            st.caption(f"H{selected}: {known} sayı için o anın durumu gözlenmiştir.")
+            st.markdown("#### Her sayının H1–H12 sıcaklık yolu")
+            st.dataframe(rows,hide_index=True,use_container_width=True)
+            num=st.number_input("Tek sayının yolculuğu",min_value=1,max_value=80,
+                                value=19,step=1,key="v28_one")
+            match=next((r for r in rows if r["Sayı"]==num),None)
+            if match:
+                st.write(match)
+            st.download_button("⬇️ 80 sayı, H1–H12 tam saatlik TXT/CSV",
+                               csv_bytes(rows),file_name="V28_80_SAYI_H1_H12.csv",
+                               mime="text/csv",key="v28_download")
 
 
 def _v28_source_as_txt(draws):
@@ -183,10 +197,10 @@ def _v28_source_as_txt(draws):
 
 
 @st.cache_data(show_spinner=False,max_entries=2)
-def _v28_cached_full_run(data_text,null_reps):
+def _v28_cached_full_run(data_text,null_reps,_progress=None):
     """Only explicit user button triggers heavy 72-day execution."""
     reports,meta,macro,_durations,forecast,ci=run(
-        data_text,rng_reps=int(null_reps),detailed=True)
+        data_text,rng_reps=int(null_reps),detailed=True,progress=_progress)
     buffer=BytesIO()
     with ZipFile(buffer,"w",compression=ZIP_DEFLATED,compresslevel=6) as archive:
         for filename,blob in reports.items():
