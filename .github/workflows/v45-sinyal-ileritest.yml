@@ -1,0 +1,36 @@
+name: V45 Yeni 14 Gun Sinyal Kor Testi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v45_sinyal_kor_test.py'
+      - '.github/workflows/v45-sinyal-ileritest.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v45:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout project and unchanged data
+        uses: actions/checkout@v4
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check frozen time slots and future blindness
+        run: python v45_sinyal_kor_test.py --selftest
+      - name: Evaluate only complete days after 13 October 2026
+        run: python v45_sinyal_kor_test.py --source veri.txt --output-dir v45_artifacts
+      - name: Upload single V45 report collection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V45_ILK14_YENI_TAM_GUN_SINYAL_TEST
+          path: v45_artifacts/
+          if-no-files-found: warn
+          retention-days: 90
