@@ -1,0 +1,35 @@
+name: V36 80 Sayi Uzman Motorlar Davranis Klonu
+on:
+  push:
+    paths:
+      - 'v36_rng_davranis_klonu.py'
+      - 'v36_klon_app.py'
+      - 'v36_selftest.py'
+      - 'v36_export_zip.py'
+      - 'v10_app.py'
+      - 'veri.txt'
+      - '.github/workflows/v36-clone-check.yml'
+  workflow_dispatch:
+jobs:
+  v36_clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile the independent clone and Streamlit
+        run: python -m py_compile v36_rng_davranis_klonu.py v36_klon_app.py v36_selftest.py v36_export_zip.py v10_app.py
+      - name: Verify real/clone reservoirs and frozen future experiments
+        run: python -u v36_selftest.py
+      - name: Replay 72 full days and produce expert motor ZIP
+        run: python -u v36_export_zip.py
+      - name: Publish single audited clone ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V36_80_SAYI_HER_CEKILIS_KLON_TEK_ZIP
+          path: V36_80_SAYI_HER_CEKILIS_KLON_TEK_ZIP.zip
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
