@@ -126,8 +126,8 @@ def main(path,outpath):
     daypairs=[]
     last_examples=[]
     transitions_latest=[]
-    states_last=np.zeros((37,80),dtype=np.uint8)
-    ranks_last=np.zeros((37,80),dtype=np.uint8)
+    states_last=np.zeros((len(OFFSETS),80),dtype=np.uint8)
+    ranks_last=np.zeros((len(OFFSETS),80),dtype=np.uint8)
     latest=None
     total_events=0
     for index,(start,end,d0,d1) in enumerate(pairs):
@@ -219,8 +219,8 @@ def main(path,outpath):
     path80=[]
     for n in range(80):
         number=n+1
-        gr=[LABELS[int(states_last[j,n])] for j in range(37)]
-        positions=[int(ranks_last[j,n]%16+1) for j in range(37)]
+        gr=[LABELS[int(states_last[j,n])] for j in range(1,len(OFFSETS))]
+        positions=[int(ranks_last[j,n]%16+1) for j in range(1,len(OFFSETS))]
         moved_steps=sum(gr[k]!=gr[k-1] for k in range(1,37))
         path80.append(dict(
             number=number,start_pool_434_before=LABELS[int((rank[latest_start]//16)[n])],
