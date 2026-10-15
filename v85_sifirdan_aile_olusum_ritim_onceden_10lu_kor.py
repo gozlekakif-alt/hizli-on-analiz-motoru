@@ -111,16 +111,27 @@ def frozen_roster(days,draws):
         f["train_hits"]=0
         f["train_dates"]=set()
         f["train_appearances"]=collections.defaultdict(list)
-    for day in days:
-        if day>TRAIN_END:break
-        masks=[mask(r["nums"]) for r in draws[day]]
-        for f in candidates:
-            fm=f["mask"]
-            for i,m in enumerate(masks):
-                if m&fm==fm:
-                    f["train_hits"]+=1
-                    f["train_dates"].add(day)
-                    f["train_appearances"][day].append(i+1)
+    # C-backed arbitrary-width integer intersections: a pre-target-only
+    # inverted index avoids expensive candidate x 9,114-draw Python scans.
+    # Bit j indicates draw j among the 42 complete TRAIN calendar days.
+    per_ball=[0]*81
+    for j,(_,draw) in enumerate(aggregate):
+        mark=1<<j
+        for number in draw["nums"]:
+            per_ball[number]|=mark
+    for f in candidates:
+        sampled=per_ball[f["numbers"][0]]
+        for number in f["numbers"][1:]:
+            sampled&=per_ball[number]
+            if not sampled:break
+        f["train_hits"]=sampled.bit_count()
+        while sampled:
+            bit=sampled&-sampled
+            draw_index=bit.bit_length()-1
+            sampled^=bit
+            day,draw=aggregate[draw_index]
+            f["train_dates"].add(day)
+            f["train_appearances"][day].append(draw["pos"])
     roster=[]
     for k in SIZE:
         pool=[x for x in candidates if x["k"]==k]
