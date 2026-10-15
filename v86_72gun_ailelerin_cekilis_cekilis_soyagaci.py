@@ -146,8 +146,8 @@ def shortlist(info,mask3,now):
     if overlap>=k-1:
         near=(overlap/k+common-.00009*recent, info["id"])
     child=None
-    if info["relation"] in ("SWAP_ONE","GROW_ONE","SHRINK_ONE") and
-       overlap>=max(2,k-2):
+    if (info["relation"] in ("SWAP_ONE","GROW_ONE","SHRINK_ONE") and
+        overlap>=max(2,k-2)):
         child=(overlap/k+common-.0002*recent+
                .025/(1+info["birth_lag"]),info["id"])
     rhythm=None
