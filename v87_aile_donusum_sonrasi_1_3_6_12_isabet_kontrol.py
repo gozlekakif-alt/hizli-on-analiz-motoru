@@ -399,7 +399,7 @@ def run(src,outpath):
             dict(key="Null",detail="20 of 80 fair chance P(one ball)=.25, E[10 correct]=2.5"),
             dict(key="Multiple tests",detail="8 x 4 = 32 nominal signals; avoid winner-only effect stories"),
             dict(key="Confirmation",detail="entire archive explored repeatedly; future truly unseen draws needed"),
-        )])
+        ])
         z.writestr("08_AUDIT.json",json.dumps(dict(
              version=VER,source_draws=len(rows),breaks=breaks,
              frozen_class_names=CLASSES,horizons=HORIZONS,
