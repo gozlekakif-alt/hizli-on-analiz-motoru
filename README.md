@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V67 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V68 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -122,12 +122,24 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - Geçmişte en az görülen **10 ikili**, 216 sonraki çekilişte toplam **134** defa birlikte tamamlandı; en çok görülen 10 ikili **113** defa. Her kolun adil beklentisi **129,873**. Üçlülerde aynı karşılaştırma **28'e 39** (beklenti **29,971**). Sonraki 216 çekilişte seçilen 7–10'lu 10'ar aileler için tam tamamlama yok. Bu gruplar aşırı örtüşebilir, tek günde araştırılmıştır; büyüklük farkını test düzeltmesi yapmadan oyun avantajı saymak yanlış.
 - Tarihsel 72 gün önceden birçok kez araştırıldığından bu da **keşifsel geri testtir**; rastgele kontrolden bağımsız veya prospektif bir tahmin kanıtı değildir.
 
+## V68 — Sıcaklık / yön + 15'lik çekirdek + geçmiş 20'lik örtüşme ile 20'lik aday havuz
+
+**Gerçek çalıştırma:** [V68 kodu](v68_sicaklik_ortusme_havuz_kor_test.py) · [Actions çalıştırması](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38757314417) · [tek ZIP (245818 bayt, 90 gün)](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38757314417/artifacts/11984126536)
+
+- Kullanıcının teorisi: geçmiş çekilişlerde 20/20 ve 15/20 ortaklık olmayışı, gelecekte sıcak/ılık/soğuğun yönüne göre seçilen **15–20 aday sayı havuzunun kurulmasına katkı sağlayabilir mi?** Bir adayın geçmişte 15/20 örtüşmeye sahip olmaması, adil 20/80 mekanizmasında çok yaygın ve **tek başına seçim avantajı değildir**.
+- 12 Ekim 2026, **#61629–#61845** hedeflerinin **217/217** tamamında, önceki 71 tam gün 15.407 çekiliş + o günün hedef öncesi çekilişlerinden sıcaklık, yön, tarihsel 20'lik örtüşme hesaplandı. **Hedefin gerçek 20 sayısı seçimden önce kullanılmadı.**
+- Sıcaklık: son 72 geçmiş çekiliş sayımına dayalı V42 benzeri beş havuz; **yön skoru** son 24 çekiliş eksi önceki 24 çekiliş sayımı; kombinasyon puanı `f72 + 0,6*(f24son-f24önce)`. Sabit ilk 10 en sıcak/yönlü sayı + sonraki üst sıradaki adaylardan beş sayı ile **14 adet alternatif 15'lik çekirdek**; geçmiş 20'liklerle her geçmiş çekiliş için **tam ortak sayı** sayımı. 15'liklerin örtüşme puanı 8+/9+/10+; 20'liğe tamamlarken 9 aday beşli, 10+/11+/12+ tarihsel ortaklık puanına göre düşük veya yüksek grup seçimi. **Temel sıcaklık, sıcaklık+yön ve rastgele** kontroller aynı hedeflerde.
+- **217 hedef çekilişinde 20 sayılık havuz başına ortalama isabet** (adil beklenti 5): `FREQ20=4,78802`; `HEAT_TREND20=4,91705`; `HEAT_LOW20=4,80184`; `HEAT_HIGH20=4,86636`; `LOW15_LOW20=4,94009`; `LOW15_HIGH20=4,89862`; `HIGH15_LOW20=4,91705`; `HIGH15_HIGH20=5,00461`; `RANDOM20=4,91705`. En yüksek tek havuz isabetleri 9–11, hiçbirinde 20/20 yok.
+- **10'lu tek kupon/çekiliş** (adil beklenti 2,5): `FREQ20=2,36406`; `HEAT_TREND20=2,61290`; `HEAT_LOW20=2,49770`; `HEAT_HIGH20=2,56221`; `LOW15_LOW20=2,53456`; `LOW15_HIGH20=2,49309`; `HIGH15_LOW20=2,43779`; `HIGH15_HIGH20=2,52535`; `RANDOM20=2,39170`. En yüksek tek kupon 6–7/10; hiçbirinde 10/10 yok.
+- **15'lik çekirdek ortalamaları** (adil beklenti 3,75): `HEAT15=3,49770`; `LOW15=3,59908`; `HIGH15=3,67281`. **V68 verisi istatistiksel üstünlük göstermiyor**; küçük dalgalanmalar ve çoklu aday denemeleri bir kazanma kuralı değildir.
+- Tek ZIP: `00_ANA_SONUC_V68.txt`, bütün 15/20 ve 5/6/8/10 sonuç CSV'leri, 217×80 sıcaklık/yön/sayı geçmişi CSV, eşleştirmeli sonuç karşılaştırması, çekiliş bazında tüm dondurulmuş havuzlar ve denetim verileri. Test, daha önce defalarca araştırılmış 12 Ekim üzerinde **keşifsel kronolojik geri test**; gerçek geleceğe yönelik bağımsız doğrulama **yok**.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V67 programları, V64 RNG, V65 aile tamamlama, V66 ilk20 ve V67 72. günün 217 çekilişi için geçmiş birliktelik sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V68 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri ve V68 sıcaklık+yön+15/20 havuz seçim testi sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V67 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V68 için ayrı hesaplayıcılar ve Actions raporları vardır._
