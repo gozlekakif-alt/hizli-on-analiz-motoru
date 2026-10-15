@@ -450,17 +450,17 @@ def pack(report,simulated,invalid,partial):
           ("09_SANAL_RNG_ILE_GERCEK_GUN_KARSILASTIRMA.csv",simulated)
         ]
         for name,rows in files:_csv(z,name,rows)
-        z.writestr("10_METOD_VE_SINIRLAR.txt",
-          "Olay birimi: önceki en fazla 3 tam saatten elde edilen iki farkli",
+        z.writestr("10_METOD_VE_SINIRLAR.txt"\n"
+          "Olay birimi: önceki en fazla 3 tam saatten elde edilen iki farkli"\n"
           " kök aileyi sonraki gercek 20'li cekilis içinde beraber gormek.\n"
-          "Ayni çekilişte 3 veya daha çok kök aile görülürse tum ciftler",
+          "Ayni çekilişte 3 veya daha çok kök aile görülürse tum ciftler"\n"
           " sayilir; bunlar bağımsız olasılık deneyleri sayılmaz.\n"
-          "Önceki 3 saat: önceki günün gece başlangıcı veya gece sonu",
+          "Önceki 3 saat: önceki günün gece başlangıcı veya gece sonu"\n"
           " ancak takvim farkı bir günse alınır; eksik günlerden veri uydurulmaz.\n"
-          "Birleşik aile tek kadroda görülmesi, aynı birleşimin iki",
+          "Birleşik aile tek kadroda görülmesi, aynı birleşimin iki"\n"
           " kadroda da görünmesinden ayrı tutulur.\n"
           "Dondurulmuş aday aile listeleri hedef saat başlangıcında kilitli.\n"
-          "RNG karşılaştırması adil, bağımsız çekilişleri simüle eder;",
+          "RNG karşılaştırması adil, bağımsız çekilişleri simüle eder;"\n"
           " yeni günlerde kör test olmadan tahmin avantajı göstermez.\n")
     return data.getvalue()
 
