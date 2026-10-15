@@ -10,7 +10,7 @@ temperature and random baselines, not a validated winning-ticket algorithm.
 """
 from __future__ import annotations
 import argparse,csv,hashlib,io,json,math,random,statistics,zipfile
-from collections import Counter
+from collections import Counter,defaultdict
 from pathlib import Path
 from v52_ayni_cekilis_eslikci_217 import parse_txt
 
@@ -193,7 +193,7 @@ def run(source,out):
     before=list(early)
     hist_masks=[bitset(row["nums"]) for row in before]
     true_rows=[];pool15rows=[];ticketrows=[];temp_rows=[];audit_rows=[]
-    series=Counter();summary=Counter()
+    series=defaultdict(Counter)
     for i,target in enumerate(day):
         slot=i+1
         order,pure,freq,direction,score,state=feature_snapshots(before)
