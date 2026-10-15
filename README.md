@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V78 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V79 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -261,12 +261,24 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **ZIP dosyaları:** kısa karar; 24 strateji validation/holdout raporları; N60 72 günlük uygun çekilişlerde yaklaşık 1,24 milyon satır sayı kimliği, eski/yeni sıra ve son4bit→hedef 1/0 (`.csv.gz`); eski→yeni 5×5×16×16 tam konum geçişleri; 16 geçmiş bit dizisi×5 havuz; iç 1–16 sıra→hedef; giriş-çıkış yön→hedef; 3.255 kilitli 20'lik aday ve gerçek isabet; 3.255×80 hedef kimlik ve seçildi/çıktı (`.csv.gz`); 15 günlük test farkları; eğitim olasılıkları; yöntem dosyası ve audit JSON.
 - **Çıkarım:** Havuz içi **tam sayısal sıra, eski konum ve 0/1 geçmişi** artık ölçülebilir ve kaydedilebilir; eldeki geçmiş tek başına sonraki 20'liyi %25 bağımsız RNG beklentisinden iyi seçtiriyor denemez. Şimdiye kadar pek çok sürüm aynı günleri gördü; gerçekten yeni, hiç incelenmemiş hedefler ve tek kilitli kural gerekiyor.
 
+## V79 — Sayı hangi yönde ve hangi hareket aşamasında hedefte 1 oluyor?
+
+**Başarılı GitHub raporu:** [V79 kaynak](v79_72gun_yon_asama_hedef1_analizi.py) · [Actions çalışma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38777146597) · [tek ZIP (~3,77 MB)](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38777146597/artifacts/11993957273)
+
+- **Kullanıcı isteği:** 72 tam gündeki 80 sayının beş `16+16+16+16+16` sıcaklık havuzundaki **sayı kimliği, yer/yön, hareket aşaması ve hangi durumda gerçek hedef 1 olduğu** ayrı kaydedilmeli. Her hedefte 20 sayı `1`, diğer 60 `0`. Bir hareketin hedefte `1` görünüp görünmediğini ancak **hareket o hedef öncesinde hesaplandıktan sonra** denetle.
+- **Kapsam:** 72 tam gün, 15.624 çekiliş. N60 geçmiş sıklığı, 5×16 havuz ve sıralamada zamanla korunan eşitlikler. N+12 kesintisiz geçmişi bulunan **15.480** hedef: toplam **309.600 gerçek 1** ve **928.800 gerçek 0**, denetim altında. 23 Ağustos veri eksikliği nedeniyle gün atlandı, geçiş hesabında gap'li hedefler yok.
+- **9 hareket aşaması:** mevcut hedef t öncesindeki havuz konumları `t−12 → t−6 → t` (iki ayrı 6 çekiliş adımı). `DURGUN`; `ISINMAYA_BASLADI`; `ISINMA_SURUYOR`; `SOGUMADAN_ISINMAYA_DONDU`; `ISINMA_DURAKLADI`; `SOGUMA_DURAKLADI`; `SOGUMAYA_BASLADI`; `SOGUMA_SURUYOR`; `ISINMADAN_SOGUMAYA_DONDU`. Ayrıca `eski havuz`, `şimdiki havuz`, `tam 1–16 sırası` ve `eski sıra`, `12 adımlık toplam yön/basamak`, `son çekilişte havuza yeni girdi mi`, `bu havuzda kaç adım kaldı (1..12)` ve `geçmiş son4 hedef 1/0` kaydedilir.
+- **Gerçek hedef1 oranları (9 aşama)**: Durgun `118.694/474.419=%25,01881`; ısınmaya başladı `32.531/130.512=%24,92568`; ısınma sürüyor `12.326/48.701=%25,30954`; soğumadan ısınmaya döndü `17.630/71.017=%24,82504`; ısınma durakladı `33.229/131.979=%25,17749`; soğuma durakladı `32.743/130.898=%25,01413`; soğumaya başladı `33.079/132.298=%25,00340`; soğuma sürüyor `12.175/48.985=%24,85455`; ısınmadan soğumaya döndü `17.193/69.591=%24,70578`.
+- **3 net yön**: ısınıyor `81.453/324.425=%25,10688`; sabit `146.852/588.535=%24,95213`; soğuyor `81.295/325.440=%24,98003`. **Hepsi adil RNG %25'e oldukça yakın.** Aşamalar yalnızca geçmiş sınıflandırmasını betimler; bu ayrışmalardan gelecekte 1 olmayı garantileyen yöntem çıkarılamaz.
+- **Tek ZIP'te 14 dosya:** `00` kısa karar; `01` **309.600 satır** hedefte gerçek 1 olan sayı kimliği, günü/saati, çekiliş no, eski-yeni havuz, eski-yeni 16'lık sıra, yön, 9 aşama, ikamet yaşı, giriş bayrağı, son dört 1/0 (.csv.gz); `02` 9 aşamanın gerçek 1/0 sayımları; `03` 5 havuz×9 aşama; `04` her havuzda 1–16 tam sıra; `05` havuz×12 adım kayma miktarı; `06` havuz×aşama×iç sıra çeyreği×kalış süresi; `07` aşama×son4bit; `08` havuzda kalış; `09` giriş-çıkış; `10` gün gün 9 aşama; `11` üç temel yön oranları; `12` kalite ve metot; `13` audit JSON.
+- **Önemli:** N60 **sıcaklık tanımında son 60 çekiliş**; "72 gün" kayıt arşivinin toplam süresidir. Hedefte bir kez `1` görülmesi yalnızca gerçekleşmiş sonuçtur. V78'de bu tip yön/sıra/son4bit girdileri ile 20'lik aday motoru ileriye dönük kronolojik HOLDOUT'ta 4,992/20, aynı kotalı rastgele 4,995/20 almıştır. **Şimdilik RNG dışı tahmin avantajı yok.**
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V78 programları; V74/V75 42/12 havuz yönü, V76 42/60 referans karşılaştırması, **V77 72 günlük 5×16 giriş/çıkış/1-0 kayıt**, V78 de **16'lık havuz içindeki 1–16 sırası, eski sıra, geçmiş 4bit 0/1 ve hedef 1/0** deneylerini Actions ZIP dosyalarında bul. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V79 programları; V77 72 günlük beş 16'lık havuzda giriş/çıkış/1-0, V78 iç sıralar ve geçmiş dört 0/1, **V79 hedefte 1 olan 309.600 sayının dokuz farklı yön hareket aşaması, kesin havuz içi sırası ve hedef 0/1 karşılaştırması** ile ilgili Actions ZIP dosyalarında bulunur. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V78 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V79 için ayrı hesaplayıcılar ve Actions raporları vardır._
