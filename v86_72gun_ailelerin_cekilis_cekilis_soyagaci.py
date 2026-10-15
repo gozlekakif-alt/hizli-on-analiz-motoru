@@ -252,7 +252,7 @@ def run(filepath,outpath):
                     prior_known_full_after_birth=len(f["seen_after_birth"]),
                     previous3_best_overlap=max(
                        (f["mask"]&m).bit_count() for m in last3) if last3 else 0,
-                    10_coupon=",".join(map(str,ticket)),
+                    coupon10=",".join(map(str,ticket)),
                     hit10=hit10,random10=len(actual.intersection(rand)),
                     freq72_10=len(actual.intersection(freq10)),
                     full_family_hit=int(targetfull==f["k"]),
