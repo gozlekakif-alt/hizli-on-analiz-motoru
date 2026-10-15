@@ -58,7 +58,7 @@ def catalog(rows,full_detail=False,prehistory=()):
     groups={k:set() for k in KS}
     pair_shared=set()
     for i in range(len(rows)):
-        n1=rows[i]["nums"]
+        n1=set(rows[i]["nums"])
         for j in range(i+1,len(rows)):
             inter=tuple(sorted(n1.intersection(rows[j]["nums"])))
             if len(inter)<2:
