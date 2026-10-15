@@ -394,7 +394,6 @@ def main(source,out):
                     target0=n0,target1=n1,total=n0+n1,
                     rate_pct=round(100*n1/(n0+n1),6) if n0+n1 else None))
     # Compare rank-position occupancy and last-four pattern against fair 25%.
-    pat_extreme=max((abs(r["rate_pct"]-25.),r) for r in row_pat)
     print("V78 locked",key,
           f"VALIDATE={best['model_mean']:.6f} TEST={locked['model_mean']:.6f}",
           f"random={locked['control_mean']:.6f},p={locked['paired_p_one_sided']:.5f}",
@@ -495,7 +494,7 @@ def main(source,out):
         ]),compress_type=zipfile.ZIP_DEFLATED)
         z.writestr("13_AUDIT.json",json.dumps(dict(
              version=VER,days=days,skipped_days=excluded,gaps=gaps,
-             total_complete_targets=len(rows),valid_main=N_MAIN,
+             total_complete_targets=len(rows),valid_main=int(main_valid.sum()),
              references=NS,lag=LAG,bit_history=BITCOUNT,
              fixed_models=FEATURES,alpha=ALPHA,seed=SEED,
              chosen_key=key,validation=best,holdout=locked,
