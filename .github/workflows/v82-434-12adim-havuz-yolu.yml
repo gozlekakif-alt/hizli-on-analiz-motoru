@@ -1,0 +1,43 @@
+name: V82 434 Cekilis Her12 Bes16 Havuz Nereden Nereye Son12
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v82_434cekilis_her12_5x16_havuz_donusum_son12.py"
+      - ".github/workflows/v82-434-12adim-havuz-yolu.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v82:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Static compile and exact 434-draw / 36-step selftest
+        run: |
+          python -m py_compile v82_434cekilis_her12_5x16_havuz_donusum_son12.py
+          python -u v82_434cekilis_her12_5x16_havuz_donusum_son12.py --selftest
+      - name: Compute consecutive two-day 5x16 journeys every12 and final12 target outcomes
+        run: |
+          python -u v82_434cekilis_her12_5x16_havuz_donusum_son12.py --source veri.txt --out v82_output/V82_72GUN_434CEKILIS_36x12_BES_16LIK_HAVUZ_YOLCULUK.zip
+      - name: Upload one complete V82 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V82_434CEKILIS_5x16_HAVUZ_YOLU_SON12
+          path: v82_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
