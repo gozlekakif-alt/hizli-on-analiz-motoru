@@ -1,0 +1,43 @@
+name: V74 Bes Havuz 5x5 Sicaklik Kimlik Gecisleri 45Gun
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v74_5x5_kimlik_yon_gecis_kalibrasyon.py"
+      - ".github/workflows/v74-bes-havuz-kimlik-gecis.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v74:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Verify source and pool allocation
+        run: |
+          python -m py_compile v74_5x5_kimlik_yon_gecis_kalibrasyon.py
+          python -u v74_5x5_kimlik_yon_gecis_kalibrasyon.py --selftest
+      - name: Train 15 days, choose N on 15 validation days, blind-test final 15 days
+        run: |
+          python -u v74_5x5_kimlik_yon_gecis_kalibrasyon.py --source veri.txt --out v74_output/V74_5x5_KIMLIK_GECIS_KALIBRASYON_3x15GUN_KOR_TEST.zip
+      - name: Archive one ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V74_5x5_HAVUZ_YON_15_15_15_DOGRULAMA
+          path: v74_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
