@@ -1,0 +1,43 @@
+name: V67 72 Gun 217 Cekilis 20 Sayi Tum Birliktelik
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v67_217_cekilis_tum_birliktelik.py'
+      - '.github/workflows/v67-tum217-birliktelik.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v67:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install NumPy vector acceleration
+        run: python -m pip install "numpy>=1.26,<3"
+      - name: Python syntax and exact superset counting selftest
+        run: |
+          python -m py_compile v67_217_cekilis_tum_birliktelik.py
+          python -u v67_217_cekilis_tum_birliktelik.py --selftest
+      - name: Sequential 217 draw all pair and group histories
+        run: |
+          python -u v67_217_cekilis_tum_birliktelik.py \
+            --source veri.txt \
+            --output v67_output/V67_72GUN_TUM217_CEKILIS_20SAYI_BIRLIKTELIK_TEK_ZIP.zip
+      - name: Upload single large complete report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V67_TUM_217_CEKILIS_TAM_BIRLIKTELIK_TEK_ZIP
+          path: v67_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
