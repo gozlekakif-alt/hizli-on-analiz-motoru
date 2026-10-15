@@ -1,0 +1,43 @@
+name: V80 Bes Yon Araligi 10lu Kupon 20li Havuz
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v80_bes_yon_araligi_10_20_kupon_kor_test.py"
+      - ".github/workflows/v80-bes-yon-araligi-10-20-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v80:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Verify source and 10-subset-of-20 quota logic
+        run: |
+          python -m py_compile v80_bes_yon_araligi_10_20_kupon_kor_test.py
+          python -u v80_bes_yon_araligi_10_20_kupon_kor_test.py --selftest
+      - name: Run five fixed movement lag candidates against actual coupons and random control
+        run: |
+          python -u v80_bes_yon_araligi_10_20_kupon_kor_test.py --source veri.txt --out v80_output/V80_72GUN_5_YON_ARALIGI_10_KUPON_20_HAVUZ_KOR_TEST.zip
+      - name: Upload single complete V80 ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V80_BES_YON_ARALIGI_10_20_KUPON_KOR_TEST
+          path: v80_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
