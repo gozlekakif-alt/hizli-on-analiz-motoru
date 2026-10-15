@@ -352,12 +352,31 @@ def _simulated(rows,seed):
              "nums":frozenset(rg.sample(range(1,81),20))}
             for i,r in enumerate(rows)]
 
+def _previous_day_roots(full, selected, random_seed=None):
+    """Equal-length frozen context for selected-day fair RNG comparisons."""
+    prior_day=(date.fromisoformat(selected)-timedelta(days=1)).isoformat()
+    if prior_day not in full:
+        return []
+    rows=full[prior_day]
+    if random_seed is not None:
+        rows=_simulated(rows,random_seed)
+    context=[]
+    for b in BLOCKS[-PREVIOUS_HOURS:]:
+        subset=[rows[pos-1] for pos in range(b["start"],b["end"]+1)]
+        context.append({"day":prior_day,"hour":b["code"],
+                        "roots":root_families(subset)})
+    return context
+
 def rng_sample(full,selected,simulations=RNG_DAYS):
+    """Matched real and random 217-slot day with previous-day root lookback."""
     raw=full[selected]
+    real_ctx=_previous_day_roots(full,selected)
+    real=_collect_day(selected,raw,context=real_ctx,keep_details=False)
     rng_counts=[]
     for i in range(simulations):
         random_day=_simulated(raw,578000+i)
-        d=_collect_day(selected,random_day,keep_details=False)
+        random_ctx=_previous_day_roots(full,selected,random_seed=698000+i)
+        d=_collect_day(selected,random_day,context=random_ctx,keep_details=False)
         rng_counts.append({
             "total":sum(d["class_summary"].values()),
             "disjoint":sum(v for (kind,n),v in d["class_summary"].items()
@@ -367,7 +386,6 @@ def rng_sample(full,selected,simulations=RNG_DAYS):
             "nested":sum(v for (kind,n),v in d["class_summary"].items()
                           if kind=="ALT_UST"),
             "expected":sum(d["expected"].values())})
-    real=_collect_day(selected,raw,keep_details=False)
     recorded={"total":sum(real["class_summary"].values()),
               "disjoint":sum(v for (typ,k),v in real["class_summary"].items()
                       if typ=="AYRI_KOK"),
