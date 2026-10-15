@@ -283,7 +283,7 @@ def _selftest():
     b=tuple(range(1,11))+tuple(range(21,31))
     c=tuple(range(1,6))+tuple(range(31,46))
     toy=[r(1,a),r(2,b),r(3,c),
-         r(14,a),r(15,b),r(16,c),r(27,a),r(28,b)]
+         r(14,a),r(15,b),r(16,c),r(27,a),r(28,tuple(range(61,81)))]
     active,exact=hour_families(toy[:3])
     assert exact and active[2][(1,2)]==3
     assert active[3][(1,2,3)]==3
