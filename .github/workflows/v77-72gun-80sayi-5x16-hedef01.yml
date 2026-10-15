@@ -1,0 +1,43 @@
+name: V77 72 Gun 80 Sayi Bes 16lik Havuz Giris Cikis Hedef 01
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v77_72gun_80sayi_bes_havuz_giris_cikis_hedef01.py"
+      - ".github/workflows/v77-72gun-80sayi-5x16-hedef01.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v77:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Selftest binary, stable 5x16 and training isolation
+        run: |
+          python -m py_compile v77_72gun_80sayi_bes_havuz_giris_cikis_hedef01.py
+          python -u v77_72gun_80sayi_bes_havuz_giris_cikis_hedef01.py --selftest
+      - name: Build 72 day number identities entrance/exit 80 binary outcome ZIP
+        run: |
+          python -u v77_72gun_80sayi_bes_havuz_giris_cikis_hedef01.py --source veri.txt --out v77_output/V77_72_GUN_80_SAYI_5x16_GIRIS_CIKIS_YON_HEDEF_1_0.zip
+      - name: Archive V77 72 day 0/1 complete ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V77_72GUN_80SAYI_5x16_HAVUZ_GIRIS_CIKIS_01
+          path: v77_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
