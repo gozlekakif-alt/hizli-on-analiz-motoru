@@ -187,10 +187,11 @@ def run(filepath,outpath):
     by_draw=[]
     tickets=[]
     exact_events=[]  # genuinely detected complete returns, AFTER known discovery
-    last_root_frames=collections.deque(maxlen=ROOT_LOOKBACK)
+    last_root_frames=collections.deque(maxlen=ROOT_LOOKBACK*20)
     old_numbers=collections.deque(maxlen=ACTIVE)
     seen_draw=[]
     active={}        # mask -> info, family lifetime expires on no full root event
+    by_id={}          # exact known root registry; never includes future roots
     gap_count=0
     source_id_breaks=[]
     for t,row in enumerate(rows):
@@ -206,7 +207,7 @@ def run(filepath,outpath):
         # recent same continuous draws only
         since_break=0
         for j in range(t-1,max(-1,t-4),-1):
-            if j>=0 and (j==t-1 or rows[j+1]["id"]==rows[j]["id"]+1):
+            if j>=0 and rows[j+1]["id"]==rows[j]["id"]+1:
                 since_break+=1
             else:break
         last3=y[max(0,t-since_break):t]
@@ -237,7 +238,7 @@ def run(filepath,outpath):
             phase="VALIDATE" if row["day"]<HOLDOUT_START else "HOLDOUT"
             for rule in RULES:
                 if rule not in best:continue
-                f=next(i for i in active.values() if i["id"]==best[rule])
+                f=by_id[best[rule]]
                 ticket=compose10(f["mask"],counts)
                 hit10=len(actual.intersection(ticket))
                 targetfull=(f["mask"]&y[t]).bit_count()
@@ -313,7 +314,7 @@ def run(filepath,outpath):
                     parent_id=ancestor_id,relation=relationship,
                     last_live=t,birth_pair_count=1,
                     seen_after_birth=[t])
-                families[family]=info;active[family]=info
+                families[family]=info;active[family]=info;by_id[fid]=info
                 new_roots+=1;type_count[relationship]+=1
                 genealogy.append(dict(child_id=fid,
                    child_mask_family=fs(family),k=info["k"],
