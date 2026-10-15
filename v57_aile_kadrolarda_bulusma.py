@@ -235,7 +235,7 @@ def _collect_day(day,rows,context=None,keep_details=True):
                        "night_or_day_boundary":int(
                           any(x["day"]!=day for f in (a,b) for x in frozen[f]))}
                 if keep_details:events.append(event)
-                pairkey=(a,b)
+                pairkey=(tag(a),tag(b))
                 seen_pair[pairkey]+=1
                 by_pair[pairkey]+=1
                 class_summary[(category,len(united))]+=1
