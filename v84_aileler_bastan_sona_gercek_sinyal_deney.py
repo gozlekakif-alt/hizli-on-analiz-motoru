@@ -198,9 +198,8 @@ def run(drawfile,fampath,outpath):
                 rec=group_rec(near_summary,key)
                 rec[0]+=1;rec[1]+=cur;rec[2]+=int(cur==k);rec[3]+=rand
                 rec[4]+=int(best==k)
-                if phase=="HOLDOUT":
-                    candidate.append((i,best,support,k,cur,rand))
-                    today_signal_counts["early_candidates"]+=1
+                candidate.append((i,best,support,k,cur,rand))
+                today_signal_counts["early_candidates"]+=1
             if candidate:
                 # deterministic top signal policy before target is opened:
                 # V10 early alert defaults ready first, stronger hour support,
@@ -332,6 +331,39 @@ def run(drawfile,fampath,outpath):
             f"mean actual family overlap={a['average_hits']:.6f},"
             f" matched random same-k={a['same_size_random_avg']:.6f};"
             f" fully completed={a['exact_completions']}")
+    summary+=["","HOLDOUT partial signal performance by family size and original trigger:"]
+    for k in sorted(sizes):
+        subset=[r for r in near if r["phase"]=="HOLDOUT" and
+                r["family_k"]==k and r["hour_min_class"]!=999]
+        total=sum(x["opportunities"] for x in subset)
+        full=sum(x["actual_full_family_completions"] for x in subset)
+        hits=sum(x["actual_hit_numbers"] for x in subset)
+        randhits=sum(x["mean_random_hits"]*x["opportunities"] for x in subset)
+        if total:
+            summary.append(f"  k{k}: {total} alerts, full={full}, "
+               f"observed={hits/total:.5f}/{k}, random={randhits/total:.5f}/{k}, "
+               f"theory={k/4:.5f}/{k}, expected complete={total*prob_complete(k):.4f}")
+    summary+=["","HOLDOUT exact previous-three partial grade for five-member groups:"]
+    for p in (4,5):
+        s=[r for r in near if r["phase"]=="HOLDOUT" and
+          r["family_k"]==5 and r["previous3_best"]==p and r["hour_min_class"]!=999]
+        n=sum(x["opportunities"] for x in s)
+        hit=sum(x["actual_hit_numbers"] for x in s)
+        full=sum(x["actual_full_family_completions"] for x in s)
+        summary.append(f"  PREVIOUS {p}/5: {n} signals, next target complete5={full}, "
+           f"mean next hits={hit/n:.5f}/5" if n else f"  PREVIOUS {p}/5: zero signals")
+    summary+=["","HOLDOUT same-family rhythm targets from earlier-day-supported gap:"]
+    for stage in ("1to2","2to3","3to4"):
+        ss=[v for v in gap if v["phase"]=="HOLDOUT" and v["stage"]==stage]
+        n=sum(v["opportunities"] for v in ss)
+        h=sum(v["actual_hit_numbers"] for v in ss)
+        full=sum(v["actual_full_family_completions"] for v in ss)
+        expected=sum(v["theoretical_full_expected"] or 0 for v in ss)
+        rnd=sum(v["mean_random_hits"]*v["opportunities"] for v in ss)
+        summary.append(f"  {stage}: target tickets={n}; exact full={full}, "
+            f"theory complete≈{expected:.4f}; "
+            f"mean actual={h/n:.5f}, random={rnd/n:.5f}" if n else
+            f"  {stage}: no eligible targets")
     summary+=["","Per-family size warning and cadence detail are in CSV.",
        "Full-family 1->2,2->3,3->4 timetable: all predicted targets",
        "are evaluated, including the missed/failed signals. Historical",
