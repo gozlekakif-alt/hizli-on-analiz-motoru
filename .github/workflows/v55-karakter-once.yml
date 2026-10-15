@@ -1,0 +1,38 @@
+name: V55 Once Karakter Sonra Kupon Kor Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v55_karakter_once_kor_motor.py'
+      - 'v55_karakter_once_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v55-karakter-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v55:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V55 Python and Streamlit syntax check
+        run: python -m py_compile v55_karakter_once_kor_motor.py v55_karakter_once_app.py v10_app.py
+      - name: Verify two-stage no future leakage and ZIP generator
+        run: python v55_karakter_once_kor_motor.py --selftest
+      - name: Evaluate chronological historical sample and first 14 future full days
+        run: python v55_karakter_once_kor_motor.py --source veri.txt --output-dir v55_artifacts
+      - name: Save single V55 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V55_ONCE_KARAKTER_SONRA_KUPON_TEK_ZIP
+          path: v55_artifacts/*.zip
+          if-no-files-found: warn
+          retention-days: 90
