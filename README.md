@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V79 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V80 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -273,12 +273,25 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **Tek ZIP'te 14 dosya:** `00` kısa karar; `01` **309.600 satır** hedefte gerçek 1 olan sayı kimliği, günü/saati, çekiliş no, eski-yeni havuz, eski-yeni 16'lık sıra, yön, 9 aşama, ikamet yaşı, giriş bayrağı, son dört 1/0 (.csv.gz); `02` 9 aşamanın gerçek 1/0 sayımları; `03` 5 havuz×9 aşama; `04` her havuzda 1–16 tam sıra; `05` havuz×12 adım kayma miktarı; `06` havuz×aşama×iç sıra çeyreği×kalış süresi; `07` aşama×son4bit; `08` havuzda kalış; `09` giriş-çıkış; `10` gün gün 9 aşama; `11` üç temel yön oranları; `12` kalite ve metot; `13` audit JSON.
 - **Önemli:** N60 **sıcaklık tanımında son 60 çekiliş**; "72 gün" kayıt arşivinin toplam süresidir. Hedefte bir kez `1` görülmesi yalnızca gerçekleşmiş sonuçtur. V78'de bu tip yön/sıra/son4bit girdileri ile 20'lik aday motoru ileriye dönük kronolojik HOLDOUT'ta 4,992/20, aynı kotalı rastgele 4,995/20 almıştır. **Şimdilik RNG dışı tahmin avantajı yok.**
 
+## V80 — Beş yön aralığı (6,12,18,24,36) gerçek 10'lu kupon ve 20'lik aday isabet deneyi
+
+**Başarılı GitHub Actions:** [Kaynak V80](v80_bes_yon_araligi_10_20_kupon_kor_test.py) · [Çalışma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38785950996) · [Tek ZIP raporu](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38785950996/artifacts/11998625561)
+
+- **Kullanıcının onayladığı deney:** 72 tam günlük arşiv boyunca, beş `16+16+16+16+16` havuzun yön değişimi için en verimli `L=6,12,18,24,36` geçmiş çekiliş aralığını rastgele seçimle karşılaştır; yalnız geçiş çizelgesi değil, **gerçek 10 sayılı tek kupon** ve **20 sayılı ön eleme havuzu** sonuçları raporlansın. **Sıcaklık tanımı tüm yöntemler için sabit son 60 çekiliş**. Hedef 1/0 hedef öncesi seçimde kullanılmaz.
+- **Yöntem:** 80 sayı son N60 önceki çıkış frekansı ile 5×16 sıcaklık dilimine ayrılır; geçmişteki sıra eşitlikleri korunur. Her `L` için geçmiş kimlik özelliği `mevcut sıcaklık havuzu(5) × L adımlık yön(3) × son adımda havuza giriş(2)`, toplam 30 durum. Eğitim günlerinde P(hedef 1 | durum) hesaplanıp 250 sahte sayımla %25'e yumuşatılır. İki aday seçim biçimi **FREE:** 80 içinden en yüksek 20 sayıyı ve bunlardan en yüksek 10 sayıyı seç (zorunlu havuz kotası yok); **BALANCED:** 5 havuzdan dörder sayıyla 20'lik, 2'şer sayıyla 10'lu. Daima 10'lu ⊆20'lik. Aynı seçim kotasına sahip rastgele kontroller var.
+- **Zaman ayrımı:** 1 Ağustos–12 Ekim **72 tam gün, 15.624 çekiliş**; ilk 27 gün geçmiş oluşturma, **29 Ağustos–12 Eylül TRAIN 3.255**, **13–27 Eylül VALIDATE 3.255**, **28 Eylül–12 Ekim HOLDOUT 3.255**, ve **13 Ekim ilk kesintisiz 112** hedef çekilişte tekrar. 13 Ekim 151 kaydı mevcut ama #61958 ve #61972 eksik, kalan 39 kaydı yapay birleştirmedik. Tüm 10 adayın validasyon sonuçları görülüp yalnız VALIDATE'e göre tek L ve seçim biçimi sabitlendi. Öncelik kupon 10 isabet ortalaması −0,25×günlük ortalama SD (20'lik yalnız eşitlikte karar).
+- **Öğrenilmiş tek kural:** **L=6, FREE** (havuz kotası zorunlu değil). VALIDATE 10'lu `2,54562/10`, 20'lik `5,04485/20`. **Hiç değiştirilmeden HOLDOUT 10'lu `2,49739/10`; aynı yöntem kotalarıyla rastgele kontrol `2,48756/10`; artış +0,00983, eşleştirilmiş tek yönlü p≈0,37784**. Sabit 20'lik HOLDOUT `5,00215/20`, rastgele `4,97573/20`, artış `+0,02642`, eşleştirilmiş p≈0,25690. **10/10 sıfır**; 9+ sıfır; 8+ sıfır; 7+ **3**; 6+ **31** çekiliş.
+- **HOLDOUT 10'lu serbest / dengeli** (hepsi sadece geriye dönük kıyas, seçili kuralı değiştirmek için kullanma): L6 `2,49739/2,50507`; L12 `2,50568/2,49493`; L18 `2,49954/2,50415`; L24 `2,51521/2,53825`; L36 `2,52596/2,52811`. Rastgele kontrol FREE `2,48756`; BALANCED `2,47097` (aynı holdout/kontrol/tohum). **L24 ve L36 son testte daha yüksek görünse de çoklu denemeden sonra kazanan ilan edilemez; %25 RNG üzerinde kalıcı üstünlük doğrulanmadı.**
+- **13 Ekim ilk 112, hiç değiştirilmemiş L6/FREE:** 10'lu `2,50000/10` ve serbest rastgele `2,23214`; 20'lik `5,02679/20` ve serbest rastgele `4,73214`; 10/10 sıfır. Örnek küçük ve kontroller de doğal dalgalanıyor. 13 Ekim eski çalışmalarda daha önce incelendiği için bu bile gerçek anlamda hiç görülmemiş prospektif dönem değil.
+- **Tek ZIP, tüm önemli veri:** 5 yön aralığı ×2 seçim modu × validasyon/holdout/13 Ekim tüm 10'lu ve 20'lik isabetleri; tek kilitli kuralın 3.255+112 hedef için **tam 10 sayı/20 sayı kupon ve gerçekleşen isabet listeleri**, günlük ortalamalar, her lag için 30 eğitim kategori olasılığı, karar ve audit. Kod ve workflow GitHub'a kalıcı eklenmiştir.
+- **Kesin karar:** **Yön hareketi için en verimli tek çekiliş aralığı kanıtlanmadı.** Sonraki iş, yeni çekilişlerden önce tek kural kilitleyip kupon ve eşlenik rastgele kontrolü gelecekte karşılaştırmak; **kuponları güçlü ya da kazançlı diye nitelememek**.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V79 programları; V77 72 günlük beş 16'lık havuzda giriş/çıkış/1-0, V78 iç sıralar ve geçmiş dört 0/1, **V79 hedefte 1 olan 309.600 sayının dokuz farklı yön hareket aşaması, kesin havuz içi sırası ve hedef 0/1 karşılaştırması** ile ilgili Actions ZIP dosyalarında bulunur. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V80 programları; V77 72 günlük 5×16 giriş/çıkış/1-0, V78 16'lık havuz içi yer ve geçmiş dört 0/1, V79 dokuz yön-hareket aşamasında 309.600 hedef-1 kimliği ve **V80 6/12/18/24/36 çekilişlik yön aralığından gerçek 10'lu kupon ve 20'lik havuz isabeti seçimi/testi** sonuçları Actions ZIP'tedir. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V79 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V80 için ayrı hesaplayıcılar ve Actions raporları vardır._
