@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Python syntax
-        run: python -m py_compile v50_8li_yakinlik_kor.py
+        run: python -m py_compile v50_8li_yakinlik_kor.py v50_8li_yakinlik_app.py v10_app.py
       - name: Frozen signal and 14-day tests
         run: python v50_8li_yakinlik_kor.py --selftest
       - name: Existing historical sample and first 14 future full days
