@@ -1,0 +1,43 @@
+name: V72 Dengeli Bes Havuz Sicaklik Yon ve Referans Secimi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v72_dengeli_5_havuz_isi_yon_ref_secimi.py"
+      - ".github/workflows/v72-dengeli-5-havuz-ref.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v72:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Compile and verify five-pool 4-each selection
+        run: |
+          python -m py_compile v72_dengeli_5_havuz_isi_yon_ref_secimi.py
+          python -u v72_dengeli_5_havuz_isi_yon_ref_secimi.py --selftest
+      - name: Select one N and direction using preceding ten days; hold out Oct12
+        run: |
+          python -u v72_dengeli_5_havuz_isi_yon_ref_secimi.py --source veri.txt --output v72_output/V72_DENGELI_5x4_ISI_YON_HAVUZ_20LI_REF_KARSILASTIRMA.zip
+      - name: Upload the complete ZIP with number movements and pools
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V72_5x4_DENGELI_20LI_ISI_YON_REF
+          path: v72_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
