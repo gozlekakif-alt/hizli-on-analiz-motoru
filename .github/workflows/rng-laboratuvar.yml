@@ -1,0 +1,36 @@
+name: RNG Karakter Laboratuvari Standalone
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'rng-laboratuvar/**'
+      - '.github/workflows/rng-laboratuvar.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check standalone source and Streamlit entry syntax
+        run: python -m py_compile rng-laboratuvar/core.py rng-laboratuvar/app.py
+      - name: Check character-first rules, no target leakage and ZIP
+        run: python rng-laboratuvar/core.py --selftest
+      - name: Create independent RNG lab report from original read-only data
+        run: python rng-laboratuvar/core.py --data veri.txt --sims 40 --output rng-lab-output/RNG_KARAKTER_LAB_TEK_RAPOR.zip
+      - name: Upload one ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RNG_KARAKTER_LAB_TEK_ZIP
+          path: rng-lab-output/*.zip
+          if-no-files-found: warn
+          retention-days: 90
