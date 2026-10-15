@@ -218,7 +218,7 @@ def _selftest():
     def fake(d,start):
         data=[]
         for i,t in enumerate(SLOTS):
-            nums=frozenset(range(1,21)) if i in (0,1,8,9) else frozenset(range(61,81))
+            nums=frozenset(range(1,21)) if i in (0,1,9) else frozenset(range(61,81))
             data.append({"day":str(d),"time":t,"id":start+i,"nums":nums})
         return data
     fd={date(2026,10,14):fake(date(2026,10,14),9000)}
