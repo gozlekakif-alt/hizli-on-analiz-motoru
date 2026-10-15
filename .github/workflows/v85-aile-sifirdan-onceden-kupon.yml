@@ -1,0 +1,37 @@
+name: V85 Sifirdan Aile Dogusu 10lu Gercek Isabet
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v85_sifirdan_aile_olusum_ritim_onceden_10lu_kor.py"
+      - ".github/workflows/v85-aile-sifirdan-onceden-kupon.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v85:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify family source chronology and exact 10-number coupon
+        run: |
+          python -m py_compile v85_sifirdan_aile_olusum_ritim_onceden_10lu_kor.py
+          python -u v85_sifirdan_aile_olusum_ritim_onceden_10lu_kor.py --selftest
+      - name: Freeze past-only family roster and evaluate 10-ball prediction on later dates
+        run: |
+          python -u v85_sifirdan_aile_olusum_ritim_onceden_10lu_kor.py --source veri.txt --out v85_output/V85_AILE_YENIDEN_DOGUS_10LU_KUPON_KOR_TEST.zip
+      - name: Publish one complete V85 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V85_SIFIRDAN_AILE_RITIM_10LU_KOR_TEST
+          path: v85_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
