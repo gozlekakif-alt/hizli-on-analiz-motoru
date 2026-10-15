@@ -523,5 +523,7 @@ if __name__=="__main__":
     else:
         days,partial,invalid=read_txt(Path(args.data).read_text(encoding="utf-8-sig"))
         report,metadata=build_package(days,partial,invalid,day=args.day,sims=args.sims)
-        Path(args.output).write_bytes(report)
+        output_file=Path(args.output)
+        output_file.parent.mkdir(parents=True,exist_ok=True)
+        output_file.write_bytes(report)
         print(json.dumps({"output":args.output,**metadata},ensure_ascii=False))
