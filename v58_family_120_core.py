@@ -22,7 +22,7 @@ import hashlib,json,math,random,sqlite3,statistics
 from v52_ayni_cekilis_eslikci_217 import parse_txt
 from v53_saatlik_degisen_aileler import BLOCKS
 
-VERSION="58.4"
+VERSION="58.5"
 MAX_ROOTS_PER_HOUR=90
 MAX_MEETINGS_PER_HOUR=14000
 MAX_HOURS_PER_BATCH=18*6
@@ -173,8 +173,8 @@ def analyze_hour(day,hour,draws,prior,prev_day,known_draws):
         bestkind=("EXACT" if exact else
                   "ONE_SWAP" if best and shared==old["k"]-1 and
                               best["k"]==old["k"] else
-                  "TWO_SWAP" if best and shared==old["k"]-2 and
-                              best["k"]==old["k"] else
+                  "TWO_SWAP" if best and old["k"]>=3 and shared>=1 and
+                              shared==old["k"]-2 and best["k"]==old["k"] else
                   "EXPAND" if best and f&best["mask"]==f else
                   "SHRINK" if best and f&best["mask"]==best["mask"] else
                   "PARTIAL" if shared else "LOST")
