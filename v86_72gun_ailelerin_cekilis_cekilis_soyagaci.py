@@ -136,7 +136,7 @@ def random10(date,idn):
 def shortlist(info,mask3,now):
     """Deterministic recipe scores; no data from current target."""
     k=info["k"]
-    overlap=max(((mask&m).bit_count() for m in mask3),default=0)
+    overlap=max(((info["mask"]&m).bit_count() for m in mask3),default=0)
     recent=now-info["last_live"]
     nseen=len(info["seen_after_birth"])
     # Birth is a second exact occurrence across two already-seen targets.
