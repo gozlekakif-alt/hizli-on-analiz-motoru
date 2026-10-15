@@ -72,7 +72,7 @@ def catalog(rows,full_detail=False,prehistory=()):
                 raise RuntimeError("Safety limit exceeded; no partial results. "
                                    "Unusually high overlap needs manual review.")
     roots=_maximal(pair_shared)
-    root_set=set(r for r in roots if 2<=len(r)<=10)
+    root_set=set(r for r in roots if 2<=len(r)<=20)
     cached={}
     families={}
     support_dist=defaultdict(Counter)
@@ -106,7 +106,7 @@ def catalog(rows,full_detail=False,prehistory=()):
 
 def attributes(cat,hour,day):
     """Every selected-day family, all 2..20, including overlap-aware labels."""
-    root_set=set(r for r in cat["roots"] if len(r)<=10)
+    root_set=set(r for r in cat["roots"] if len(r)<=20)
     heat=cat["heat"]
     cache=cat["closure_cache"]
     rows=cat["rows"]
