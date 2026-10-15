@@ -1,0 +1,40 @@
+name: V65 7 8 9 10 Aile Tamamlama Nadirlik Kor Testi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v65_7_8_9_10_aile_tamamlama.py'
+      - '.github/workflows/v65-7-8-9-10-aile-tamamlama.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v65:
+    name: Exact co-occurrence probabilities and frozen family completion replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and invariant selftest
+        run: |
+          python -m py_compile v65_7_8_9_10_aile_tamamlama.py
+          python -u v65_7_8_9_10_aile_tamamlama.py --selftest
+      - name: Complete-day historical family rarity versus completion test
+        run: |
+          python -u v65_7_8_9_10_aile_tamamlama.py \
+            --source veri.txt \
+            --output v65_output/V65_7_8_9_10_AILE_TAMAMLAMA_TEK_ZIP.zip
+      - name: Deliver consolidated report ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V65_7_8_9_10_AILE_TAMAMLAMA_TEK_ZIP
+          path: v65_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
