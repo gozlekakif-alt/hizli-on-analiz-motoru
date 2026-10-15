@@ -1,0 +1,107 @@
+name: V58 120 Aile Zaman DNA Adim Adim
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v58_family_120_core.py'
+      - 'v58_family_120_merge.py'
+      - '.github/workflows/v58-120-aile-zaman.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v58-120-aile-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Model / checkpoint selftest
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check model and report builder syntax
+        run: python -m py_compile v58_family_120_core.py v58_family_120_merge.py
+      - name: Check 120 indicators and atomic resumable day checkpoint
+        run: python v58_family_120_core.py --selftest
+
+  research:
+    name: Tamamlanmis 6 gunluk parca ${{ matrix.shard }}/12
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Restore last day-granular SQLite checkpoint
+        uses: actions/cache/restore@v4
+        with:
+          path: v58_checkpoints/shard_${{ matrix.shard }}.sqlite
+          key: v58-days-${{ github.ref_name }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            v58-days-${{ github.ref_name }}-${{ matrix.shard }}-
+      - name: Scan just this shard, committing each complete day
+        run: |
+          python -u v58_family_120_core.py \
+            --source veri.txt \
+            --shards 12 \
+            --shard ${{ matrix.shard }} \
+            --checkpoint v58_checkpoints/shard_${{ matrix.shard }}.sqlite
+      - name: Cache last completed day for future/retries
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: v58_checkpoints/shard_${{ matrix.shard }}.sqlite
+          key: v58-days-${{ github.ref_name }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Preserve this shard even if a later step fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V58_SHARD_${{ matrix.shard }}
+          path: v58_checkpoints/shard_${{ matrix.shard }}.sqlite
+          retention-days: 60
+          if-no-files-found: warn
+
+  merge:
+    name: Validate all shards / one complete time report
+    needs: research
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download all 12 shard databases
+        uses: actions/download-artifact@v4
+        with:
+          pattern: V58_SHARD_*
+          path: v58_checkpoints
+          merge-multiple: true
+      - name: Validate 217 slots per day, 18 hours per day, 120 metrics per hour
+        run: |
+          python -u v58_family_120_merge.py \
+            --sources v58_checkpoints \
+            --shards 12 \
+            --source veri.txt \
+            --output v58_output/V58_120_AILE_TAM_ZAMAN_TEK_ZIP.zip
+      - name: Deliver one complete ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: V58_120_AILE_TAM_ZAMAN_TEK_ZIP
+          path: v58_output/V58_120_AILE_TAM_ZAMAN_TEK_ZIP.zip
+          retention-days: 90
+          if-no-files-found: error
