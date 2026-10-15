@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V72 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V73 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -185,12 +185,25 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - Tek ZIP: kısa karar; 72 yöntemin 10 günlük eğitim / 217 hedef testi; N bazında eğitim birincileri; **217×12×6 = 15.624 birleşik 20'lik havuz + gerçek isabet**; **217×12×80 = 208.320 sayı-havuz/yön/kimlik kaydı**; gerçekleşen hedeflerin beşli dağılımı; 5/6/8/10 alt kupon raporu; metodoloji ve kontrol JSON.
 - **Pratik referans:** N=72 **yalnızca makul sabit başlangıç penceresi** olarak kullanılabilir, yön için 12 çekilişlik havuz yer değiştirme ve 12/24 kısa frekans farkı. Ancak herhangi bir N için **rastgeleliğin üzerinde kanıtlanmış tahmin avantajı yok**; yeni, hiç incelenmemiş günlerde önceden kilitlenmiş tek kural test edilmeden “en iyi pencere” ilan edilmez.
 
+## V73 — Beş eşit sıcaklık havuzundan 4'er sayı ile 20'lik: sabit referans seçiminde 45 günlük öğrenme/doğrulama/test
+
+**Başarılı rapor:** [V73 kod](v73_5_havuz_referans_yon_cok_gun_kor_test.py) · [GitHub Actions](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38768727437) · [V73 tek ZIP, 1,38 MB](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38768727437/artifacts/11990138770)
+
+- **Kullanıcının gerçek hedefi:** Hangi sabit **geçmiş çekiliş sayısı N**, beş eşit sıcaklık sınıfına (`5×16`) bölünen 80 sayının her sınıfından **4 kimlik/yön seçilerek kurulan dengeli 20'lik havuzu** en verimli hale getiriyor? Sadece tüm sıcaklardan veya tüm soğuklardan tek havuz seçimiyse kullanıcı amacını karşılamaz.
+- **Veri ve üç evre:** 72 tam gün (1 Ağustos–12 Ekim 2026). İlk 27 gün `warmup`. **29 Ağustos–12 Eylül (15 gün=3.255 çekiliş)**: her N için yön seçimi `TRAIN`. **13–27 Eylül (15 gün=3.255)**: train'de sabitlenen yönlerden bir N referansı seçimi `VALIDATE`. **28 Eylül–12 Ekim (15 gün=3.255)**: tek N ve tek yön **değişmeden HOLDOUT**. Bu günler daha önce çok araştırıldığından geçmişe dönük/kronolojik holdout, tam bağımsız gelecekte test değil.
+- **21 sabit N:** `12,24,36,42,56,72,96,120,144,168,217,288,432,576,720,864,1008,1440,2160,3024,4340` çekiliş. Havuzlardaki 80 sayı kimliği son N frekansı ile 16'şar sıralanır. Her hedefte 12 çekiliş öncesindeki aynı-N havuz yeriyle farkı ve son12–önceki12 çıkış yönü hesaplanır. Her havuzdan tam 4 sayı seçilir. `RISING, COOLING, STEADY, FREQ, MIXED, RANDOM` yöntemleri karşılaştırılır. `MIXED`: havuz içinde 2 yükselen, 1 sabit, 1 soğuyan (gerektiğinde yön puanı ile tamamlama).
+- **Eğitimde her N için kendi yön kuralı seçildi.** Doğrulamada `ortalama − 0,25×günlük ortalama SD` ölçütüne göre referans **N=12, MIXED** seçildi. Önceden dondurulmuş yöntemin sonuçları: TRAIN `5,05776/20`, VALIDATE `5,06790/20`, HOLDOUT `4,94562/20`, adil RNG beklenen `5,00000/20`. HOLDOUT'ta aynı beş havuzdan rastgele dörder `5,03932/20`. **Seçili yöntem −0,09370 sayı/çekiliş geride**; çiftli karşılaştırma z≈−2,238, yönlü p≈0,9874 (üstünlük yönü); adil RNG üst-kuyruk p≈0,9674.
+- **Son 15 günde diğer N/yön kombinasyonlarını yalnız karşılaştırmalı olarak raporladık, bunlardan yeniden kazanan seçilmedi.** Bazı örnekler: N24 COOLING `5,00614`; N42 RISING `4,98648`; N56 RISING `4,98648`; N72 MIXED `4,95422`; N96 COOLING `5,01321`; N217 MIXED `4,98710`; N288 RISING `4,98341`; N432 RISING `5,00369`; N576 COOLING `5,00584`; N720 COOLING `5,02089` (bu sonuçlara göre tekrar N seçmek overfitting olur).
+- **Son testte kilitli N=12 MIXED 20'lik havuzu:** 3.255 hedefte **7+ isabet: 578; 8+: 219; 9+: 69; 10+: 11**. Matematiksel rastgele kontrol 20/80 seviyesinin üzerinde doğrulanmış kupon avantajı göstermedi.
+- **Raporun tek ZIP içeriği:** 21N×6kural tüm üç dönem sonuçları, eğitimden seçili N başına yön kuralı, 3.255 hedef için seçilen tam 20'lik ve her havuzun 4 numarası, **3.255×80=260.400 sayının eski/yeni sıcaklık havuzu, sıralama yönü, son12/önceki12 frekansı, seçildi/çıktı bilgisi**, 15 günlük hedef-bazlı isabet ve rastgele karşılaştırma, beş havuz hedef kotaları, havuz+yön bazlı isabet, metodoloji, audit JSON.
+- **Kesin çıkarım:** Sıcaklık yerine göre yükselme/soğuma gibi geçmiş karakterler kaydedilebilir ancak hangi `N` geçmiş penceresinin **rastgele 5/20 üzeri tahmin avantajı** verdiği henüz gösterilemedi. Sonuç iyi çıktı diye N değiştirmeyin. Gerçekten yeni gelecek çekilişlerde önceden dondurulan tek seçimi sınamak gerekir.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V72 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 birliktelikler, V68 15/20 havuz, V69 saatlik 4/5/6/7, V70 ilk20 sıcaklık pencereleri, V71 ayrı sıcak/soğuk tek sınıf testleri ve V72 her havuzdan dörder seçilen gerçek 20'lik kimlik/yön motorunun N=12..432 karşılaştırma raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V73 programları, V64 RNG, V65 aile, V66 ilk20, V67 birliktelikler, V68 15/20, V69 saatlik 4/5/6/7, V70 ilk20 pencere, V71 ayrı havuzlar, V72 ilk 5x4 kimlik/yön ve V73 21 referansı 15+15+15 günlük öğrenme/doğrulama/test ile karşılaştıran raporlara bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V72 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V73 için ayrı hesaplayıcılar ve Actions raporları vardır._
