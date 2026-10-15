@@ -1,0 +1,41 @@
+name: V64 Gunluk Isinin Kademeli Yon ve RNG Kontrolu
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v64_gunluk_isi_yon_kademeli.py'
+      - '.github/workflows/v64-gunluk-isi-yon-kademeli.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v64:
+    name: Consecutive full days and draw-exact RNG comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax and calendar-gap selftest
+        run: |
+          python -m py_compile v64_gunluk_isi_yon_kademeli.py
+          python -u v64_gunluk_isi_yon_kademeli.py --selftest
+      - name: Evaluate 72 full days and 240 independent 20-of-80 RNG worlds
+        run: |
+          python -u v64_gunluk_isi_yon_kademeli.py \
+            --source veri.txt \
+            --replicates 240 \
+            --output v64_output/V64_GUNLUK_ISI_YON_RNG_TEK_ZIP.zip
+      - name: Save one archive with all calculations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V64_GUNLUK_ISI_KADEMELI_72_GUN_TEK_ZIP
+          path: v64_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
