@@ -133,7 +133,10 @@ def compute_candidates(first,previous,day,hour,shapes):
                                 continue
                             if not mask&(1<<(u-1)):shape_score[u]+=1
     scores["SHAPE_GROW"]=shape_score
-    fromv59,_,_,_=prior_features(first,prefix,day,hour)
+    # V59 requires set-like nums because its root-family intersection
+    # is computed with the & operator. Keep the source immutable.
+    v59first=[{**r,"nums":frozenset(r["nums"])} for r in first]
+    fromv59,_,_,_=prior_features(v59first,prefix,day,hour)
     score_tickets={}
     for method in BATCH_METHODS:
         if method.startswith("V59_"):
