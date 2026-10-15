@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V66 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V67 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -26,6 +26,7 @@ Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–
 | V64 | [v64_gunluk_isi_yon_kademeli.py](v64_gunluk_isi_yon_kademeli.py) | 72 tam gün; 70 gerçek ardışık gün çifti, 68 üçlü gün, 240 adil 20/80 RNG tekrarında 8 önceden tanımlı ölçüm | Göreli kademeli geçiş %51,786 (RNG %52,031); sabit-eşik kademeli %70,554 (RNG %71,594). Düzeltilmiş 8 testte doğrulanan üstünlük yok |
 | V65 | [v65_7_8_9_10_aile_tamamlama.py](v65_7_8_9_10_aile_tamamlama.py) | 7,8,9,10 sayılı tam aile olasılığı; önceki 72+ilk6 çekilişten sabit aday, hedef sonraki6; düşük/yüksek yakın görünüm | LOW: 7'li ort.1,7564 ve 0 tam; 8'li 2,0240 ve 1 tam; 9'lu 2,2439 ve 0 tam; 10'lu 2,5364 ve 0 tam. Keşifsel; istatistiksel tahmin üstünlüğü doğrulanmadı |
 | V66 | [v66_72gun_ilk20_birliktelik.py](v66_72gun_ilk20_birliktelik.py) | 72. gün ilk çekilişin 20 sayısından 190 ikili ve 2–10 arası 616.645 farklı grubun önceki 71 günde aynı çekilişte bulunma sayısı; sonraki 216 çekiliş kontrolü | En sık ikili 30–62 (991), en seyrek 41–59 (836); geçmişte az/çok ikili gelecekte 257/256 tam olay, adil beklenti her yanda ~260; üstünlük kanıtlanmadı |
+| V67 | [v67_217_cekilis_tum_birliktelik.py](v67_217_cekilis_tum_birliktelik.py) | 72. tam günün tüm 217 çekilişi: her 20'linin 2–10'lu 616.645 grubunun geçmişte aynı çekilişte kaç kez bulunduğu (toplam 133.811.965 tam sayım); önceki 71 gün + o günün önceki çekilişleri; tek ZIP | Sonraki çekilişe önceden dondurulan en az/en çok 10 ikili: 134/113; üçlü: 28/39; 7–10'lularda tam 0. Adil RNG dışı üstünlük doğrulanmadı |
 
 İlgili [GitHub Actions geçmişi](../../actions) hesaplamanın başarılı/başarısız yürütmelerini ve süreli ZIP çıktılarını içerir. Programların kaynak kodu depoda kalıcıdır; Actions **artifact** dosyaları saklama süresi bitince kaybolabilir.
 
@@ -107,12 +108,26 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 
 **Yöntem:** Gruplar ilk çekilişteki sabit 20 sayı içinden, önceki 71 günün 20'liklerinde **aynı tek çekilişte tüm üyelerin bulunması** koşuluyla sayıldı. 2^20 bit maskesi üzerinde tam superset sayımı yapıldı, yalnız komşu çekilişlerde toplam görünümler "birlikte" kabul edilmedi.
 
+## V67 tamamlandı — 72. günün tüm 217 çekilişinde eksiksiz birliktelik geçmişi
+
+**Çalışma:** [V67 kodu](v67_217_cekilis_tum_birliktelik.py) · [V67 GitHub Actions sonucu ve tek ZIP](../../actions/workflows/v67-tum217-birliktelik.yml)
+
+- Gün: **12 Ekim 2026**; çekiliş **#61629 00:02** ile **#61845 23:57** arasında, tam **217/217**.
+- Her çekilişin kendi 20 sayısı için **190 ikili ve 2–10'lu toplam 616.645 farklı grubun** *daha önceki aynı çekilişte birlikte görünme* tam sayımı yapıldı. 217×616.645 = **133.811.965 grup kaydı**.
+- Her (t) çekilişinde geçmiş havuzu **15.407 önceki tam gün çekilişi + o gün tamamlanmış (t−1) çekiliş**. **Hedef çekiliş ve sonraki çekilişler geçmişe dahil değildir**.
+- **Tam veri saklama:** Tek ZIP'in `all_groups/` klasöründe 217 adet `slot_001..217_uint16le.bin` frekans vektörü, sabit `subset_masks_k2_to_k10_uint32le.bin` maskeleriyle bire bir eşlenir; her vektör 616.645 gruba karşılık gelir. Bilgi kaybı olmaması için tam dizi ikilik sıkıştırılmıştır; telefonda 133 milyon satır CSV açmak gerekmez.
+- **Okunabilir CSV:** `00_217_CEKILIS_ANA_TABLO.csv` (her çekilişin ilk 20 sayısı ve özetleri), `01_217x9_GRUP_BOYUTLARI_MIN_ORT_MAX_SIFIR.csv` (her çekiliş/boyut), `02_TUM_217_CEKILIS_190_IKILI_SAYIMI.csv` (41.230 ikili), `03_HER_CEKILIS_EN_AZ_EN_COK_10_AILE_K2_K10.csv` (her büyüklük için 10 en az ve 10 en çok aile), `04_SONRAKI_CEKILISTE_ILK20_KAC_SAYI_TEKRAR.csv`, `05_EN_AZ_VE_EN_COK_SONRAKI_CEKILIS_TOPLU.csv`.
+- Çekiliş #61629 için **190 ikilinin geçmiş ortalama birlikte görünümü 919,9789**. Son çekiliş #61845'e gelindiğinde geçmiş örnek sayısı **15.623**.
+- Her çekilişteki 20 sayı ile **hemen bir sonraki çekilişin** ortalama ortak sayısı **4,99074**, adil beklenti **5**.
+- Geçmişte en az görülen **10 ikili**, 216 sonraki çekilişte toplam **134** defa birlikte tamamlandı; en çok görülen 10 ikili **113** defa. Her kolun adil beklentisi **129,873**. Üçlülerde aynı karşılaştırma **28'e 39** (beklenti **29,971**). Sonraki 216 çekilişte seçilen 7–10'lu 10'ar aileler için tam tamamlama yok. Bu gruplar aşırı örtüşebilir, tek günde araştırılmıştır; büyüklük farkını test düzeltmesi yapmadan oyun avantajı saymak yanlış.
+- Tarihsel 72 gün önceden birçok kez araştırıldığından bu da **keşifsel geri testtir**; rastgele kontrolden bağımsız veya prospektif bir tahmin kanıtı değildir.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V66 programları, V64 RNG, V65 aile tamamlama ve V66 72. gün ilk20 birliktelik sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V67 programları, V64 RNG, V65 aile tamamlama, V66 ilk20 ve V67 72. günün 217 çekilişi için geçmiş birliktelik sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V66 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V67 için ayrı hesaplayıcılar ve Actions raporları vardır._
