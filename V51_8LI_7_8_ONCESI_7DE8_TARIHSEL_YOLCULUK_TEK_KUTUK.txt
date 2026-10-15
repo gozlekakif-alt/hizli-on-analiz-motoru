@@ -1,0 +1,76 @@
+V51 — 8'LI AILELER: +7, +8 VE ONCESINDEKI 7/8 TARIHSEL YOLCULUK
+Kaynak: Kullanıcının V50_8LI_7_12_YAKINLIK_TEK_RAPOR.zip / 05_GECMIS_HER_HEDEF.csv.
+Kaynak geçmişi: 01.08.2026–12.10.2026 arası 72 tam gün içinde tetiklenen yakın 8'li aileler.
+Yontem: Birbirinden gercek 5–30 dakika uzakta EN AZ 8 ortak sayı bulunan her çekiliş çifti,
+artan sıradaki ilk 8 ortak sayıyla tek aile seçer. İkinci görünümden sonra +7 ile +12
+arasındaki HEDEF çekilişlerde 8/8 ve 7/8 sayılarını sayar.
+UYARI: +7/+8 penceresi 2 adet tam 8/8 görüldükten SONRA ayrıca incelendi,
+dolayısıyla bu karşılaştırma BAĞIMSIZ KÖR TEST değildir.
+
+TEMEL SAYIM — YALNIZCA +7 VE +8 HEDEF ÇEKİLİŞLER
++7. çekiliş: 6.443 hedef-aile karşılaşması, tam 7/8=0, tam 8/8=1,
+rastgele kontrol tam 7/8=1, tam 8/8=0.
++8. çekiliş: 6.442 hedef-aile karşılaşması, tam 7/8=3, tam 8/8=1,
+rastgele kontrol tam 7/8=1, tam 8/8=0.
+TOPLAM: 12.885 hedef-aile karşılaşması,
+tam 7/8=3, tam 8/8=2, en az 7/8=5.
+Aynı hedeflere uygulanan sabit rastgele kontrolde tam 7/8=2, tam 8/8=0.
+Bağımsız rastgele 20/80 modelinde bir 8'li biletin en az 7/8 oranı
+0,0001648008; 12.885 eşleşmede matematiksel beklenti ~2,123.
+Beş görülmesi rastgele kıyasından yüksek, fakat sonradan seçilmiş aralık
+ve birbiriyle örtüşen aileler nedeniyle kanıtlanmış avantaj değildir.
+
+ILK TAM 8/8 OLAYI OLMADAN ONCE
+22.08.2026 23:57 hedefinden ÖNCE +7/+8 için 3.872 karşılaşmada tam 7/8=0,
+tam 8/8=0, rastgele kontrolde de en az 7/8=0.
+Ancak +9. çekilişte 7/8 DİĞER İKİ OLAY zaten görülmüştü:
+03.08.2026 14:22 — #46540 — +9 — 7/8
+Aile: 12-27-45-58-67-69-76-77
+17.08.2026 08:42 — #49510 — +9 — 7/8
+Aile: 5-13-15-20-48-56-66-80
+İlk tam 8/8:
+22.08.2026 23:57 — #50778 — +7 — 8/8
+Aile: 8-11-13-24-31-48-56-64; tetikleyici ikinci geliş #50771.
+
+ILK VE İKİNCİ 8/8 ARASINDA +8'DE ÜÇ KEZ 7/8
+18.09.2026 16:42 — #56550 — +8 — 7/8
+Aile: 2-6-11-17-20-25-29-62; tetikleyici #56542.
+20.09.2026 23:32 — #57066 — +8 — 7/8
+Aile: 1-10-17-19-28-46-47-79; tetikleyici #57058.
+06.10.2026 20:32 — #60502 — +8 — 7/8
+Aile: 12-15-21-42-53-59-65-68; tetikleyici #60494.
+İkinci tam 8/8:
+08.10.2026 07:52 — #60784 — +8 — 8/8
+Aile: 1-46-48-53-57-62-64-78; tetikleyici #60776.
+
+TÜM +7..+12 ARALIĞINDAKİ 7/8 VE 8/8 (KRONOLOJİ)
+03.08.2026 14:22 — #46540 — +9 — 7/8
+17.08.2026 08:42 — #49510 — +9 — 7/8
+22.08.2026 23:57 — #50778 — +7 — 8/8
+07.09.2026 19:17 — #54194 — +12 — 7/8
+08.09.2026 17:22 — #54388 — +9 — 7/8
+18.09.2026 16:42 — #56550 — +8 — 7/8
+20.09.2026 23:32 — #57066 — +8 — 7/8
+06.10.2026 20:32 — #60502 — +8 — 7/8
+08.10.2026 07:52 — #60784 — +8 — 8/8
+
+GENİŞ +7..+12 PENCERE KONTROLÜ
+38.645 hedef-aile eşleşmesinde tam 7/8=7, tam 8/8=2,
+en az 7/8=9, rastgele kontrolde en az 7/8=8.
+Adil matematiksel beklenti yaklaşık 6,369 (en az 7/8).
+Genel kupon avantajı kanıtlanmamıştır.
+
+DONEMLERE GORE +7 VE +8
+01.08–07.09: 6.586 hedef-aile eşleşmesi, 7/8=0, 8/8=1.
+08.09–12.10: 6.299 hedef-aile eşleşmesi, 7/8=3, 8/8=1.
+Farkın özellikle ikinci dönemde olması ve diğer aralıklardaki daha düşük
+sayılara bakıldığında kararlı, tekrarlanan bir ritim gösterilmiş sayılmaz.
+
+SONUC
+Çekiliş öncesi kuralla belirlenmiş 8'li aileler bazen 7–8 el sonra 7/8 veya
+8/8 biçiminde birleşiyor. Önceki +9 örnekleri ile sonraki +8 örnekleri
+bir '8. ele yönelim' fikri verse de fark istatistiksel olarak doğrulanmamış.
+Özellikle +8'e daraltmayı şimdi geçmişten seçmek veri madenciliği yanlılığıdır.
+Önceden kilitli V50 +7..+12 kuralı hiç değiştirilmeden YENİ 14 tam günde
+rastgele kontrol ile kör olarak sınanmalı. Henüz yeni tam gün 0/14.
+Bu kütük bahis/kazanç garantisi veya RNG çözümü değildir.
