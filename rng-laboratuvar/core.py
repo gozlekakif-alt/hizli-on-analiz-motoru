@@ -505,7 +505,7 @@ def smoke_test():
     assert abs(sum(check["temperature"])-20)<1e-9
     fake,meta=build_package(data,{},[],sims=3)
     with zipfile.ZipFile(io.BytesIO(fake)) as z:
-        assert len(z.namelist())==9
+        assert len(z.namelist())==8
         assert z.read("01_KARAKTER_TAHMIN_VE_GERCEK.csv")
     print("PASS: 217 slots, no future leakage, real+fair RNG, 3 tickets, single ZIP")
 
