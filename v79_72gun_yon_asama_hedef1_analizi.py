@@ -199,10 +199,6 @@ def run(source,out):
                  age[i,b],AGE_BUCKETS[agecl],entry,
                  format(pat,"04b"),hit))
         assert len(row_ones)==20
-        target100.append(dict(day=item["day"],time=item["time"],
-                 draw_id=item["id"],slot=item["pos"],
-                 target_20_numbers=",".join(map(str,row_ones)),
-                 **{f"stage_{k}":sum(v[1] for kk,v in [] ) for k in []}))
         if i%3500==0:print(f"V79 processed {i}/{len(idx)}",flush=True)
 
     def summarize(counter,keys,to_text):
@@ -333,9 +329,9 @@ def run(source,out):
     print("V79 OUTPUT",str(outfile),outfile.stat().st_size,flush=True)
 
 def selftest():
-    a=np.array([[0,2,4,4,3,2,1,0,3]],dtype=np.uint8)
-    b=np.array([[0,1,3,3,2,3,1,1,2]],dtype=np.uint8)
-    c=np.array([[0,3,4,2,2,4,0,0,1]],dtype=np.uint8)
+    a=np.array([[0,1,1,2,1,2,1,3,1]],dtype=np.uint8)
+    b=np.array([[0,1,2,1,2,1,1,2,2]],dtype=np.uint8)
+    c=np.array([[0,2,3,2,2,1,0,1,1]],dtype=np.uint8)
     got=compute_phase(a,b,c)
     assert got.shape==(1,9)
     assert set(int(x) for x in got[0])==set(range(9))
