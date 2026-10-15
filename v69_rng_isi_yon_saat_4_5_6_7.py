@@ -229,7 +229,7 @@ def p_two_sided_null(observed,null,center=None):
     return (1+sum(abs(float(v)-center)>=delta-1e-13 for v in null))/(1+len(null))
 
 def p_one_sided_null(observed,null):
-    return (1+sum(int(v)>=int(observed) for v in null))/(1+len(null))
+    return (1+sum(float(v)>=float(observed)-1e-12 for v in null))/(1+len(null))
 
 def ci95(arr):
     return [float(np.percentile(arr,2.5)),float(np.percentile(arr,97.5))]
