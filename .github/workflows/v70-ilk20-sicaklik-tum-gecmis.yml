@@ -1,0 +1,43 @@
+name: V70 Ilk 20 Sicaklik Tum Gecmis Pencereler
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v70_ilk20_coklu_sicaklik_pencere.py"
+      - ".github/workflows/v70-ilk20-sicaklik-tum-gecmis.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v70:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Syntax and baseline tests
+        run: |
+          python -m py_compile v70_ilk20_coklu_sicaklik_pencere.py
+          python -u v70_ilk20_coklu_sicaklik_pencere.py --selftest
+      - name: Entire 71-day lookback and joint 4000 RNG target null
+        run: |
+          python -u v70_ilk20_coklu_sicaklik_pencere.py --source veri.txt --sims 4000 --out v70_output/V70_12_EKIM_ILK20_SICAKLIK_TUM_GECMIS_PENCERELER.zip
+      - name: Archive one ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V70_ILK20_12_24_36_42_56_72_TUM_PENCERELER
+          path: v70_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
