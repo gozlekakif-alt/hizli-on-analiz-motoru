@@ -326,10 +326,10 @@ def pack(res,comparison,evsummary,issues,malformed,partial):
           ("06_ILK6_VE_HEDEF7_12_CEKILIS_KIMLIKLERI.csv",res["hours"]),
         ]:_csv(z,fname,data)
         z.writestr("07_KURALLAR_SABIT_VE_KOD_DENETIMI.txt",
-          "Aile tanımı: ilk6 icinde en az iki farkli 20 sayilik cekiliste",
+          "Aile tanımı: ilk6 icinde en az iki farkli 20 sayilik cekiliste"
           " eksiksiz tekrar eden ortak setler. Kökler maksimaldir.\n"
           "Ikiye iki bulusma adaylari: ilk6'daki en yuksek destekli 16 adet",
-          " ikili alt aile arasindan, toplam kumesi 3 veya 4 sayi olan",
+          " ikili alt aile arasindan, toplam kumesi 3 veya 4 sayi olan"
           " en guclu 2 benzersiz birleşim saat başına kaydedilir.\n"
           "Bütün puanlama ve sıralama kuralları kodda önceden sabittir.\n"
           "Her saat ilk6 verisi goruldugunde sonraki6 hic okunmadan secilir.\n"
