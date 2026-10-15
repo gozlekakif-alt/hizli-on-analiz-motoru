@@ -191,30 +191,38 @@ def _transition(before,after,source_hour,dest_hour,all_detail=True):
             fragments=[p for p in combinations(fam,k-1) if
                        k>=3 and p in after_all[k-1]] if k>=3 else []
             expansions=expanded_idx.get(k,{}).get(fam,())
+            # Split and replacement can BOTH describe the same numeric
+            # event. Prioritize splitting as a primary category, but keep
+            # independent alternative flags to avoid hiding either feature.
             if found:category="AYNEN_DEVAM"
-            elif options:category="TEK_SAYI_DEGISTI"
             elif len(fragments)>=2:category="PARCALANDI"
+            elif options:category="TEK_SAYI_DEGISTI"
             elif expansions:category="BUYUDU"
             else:category="TEKRAR_YOK"
             counts[(k,category)]+=1
             if len(fragments)>=2 and not found:counts[(k,"PARCALANMA_ALTERNATIF")]+=1
+            if len(options)>=1 and not found:counts[(k,"TEK_SAYI_DEGISTI_ALTERNATIF")]+=1
             if len(expansions)>0:counts[(k,"UST_AILEYE_KATILDI")]+=1
             if len(options)>=2:counts[(k,"COK_KOLLU_DONUSUM")]+=1
             if all_detail:
-                rem=[n for n in fam if n not in next_family]
-                added=[n for n in next_family if n not in fam]
+                # An unchanged family has no departing or arriving numbers.
+                next_identity=fam if found else next_family
+                rem=[n for n in fam if n not in next_identity]
+                added=[n for n in next_identity if n not in fam]
                 history.append({
                     "from_hour":source_hour,"to_hour":dest_hour,"k":k,
                     "family":family_id(fam),"old_support":support,
                     "status":category,
                     "next_exact_support":new.get(fam,(0,0))[0],
-                    "best_new_family":family_id(next_family),
-                    "new_support":options[0][1] if options else 0,
+                    "best_new_family":family_id(next_identity),
+                    "new_support":new[fam][0] if found else options[0][1] if options else 0,
                     "removed":family_id(rem),"added":family_id(added),
                     "removed_bands":"-".join(str(band(n)) for n in rem),
                     "added_bands":"-".join(str(band(n)) for n in added),
                     "possible_swaps":len(options),
                     "split_children":len(fragments),
+                    "split_flag":int(len(fragments)>=2 and not found),
+                    "one_swap_flag":int(bool(options) and not found),
                     "child_families":"|".join(family_id(p) for p in fragments),
                     "expansions":len(expansions),
                     "different_origin_next":int(source_hour=="H00" and dest_hour=="H07")
@@ -418,6 +426,8 @@ def pack(report,partial,issues,broken):
           "AYNEN_DEVAM = ayni tam aile bir sonraki saat icinde de 2+ kez ortaya cikti.",
           "TEK_SAYI_DEGISTI = eski aile 2+ değil, 1 ayrildi 1 eklendi,",
           "yeni k boyutlu baska aile sonraki saatte 2+ tam göründü.",
+          "PARCALANDI ve TEK_SAYI_DEGISTI eszamanli olabilir; ikisi için",
+          "ayri split_flag ve one_swap_flag alanlari bulunur.",
           "PARCALANDI = eski tam aile artık 2+ değil, bir sonraki saatte en az",
           "iki farklı (k-1) alt aile 2+ kez goruldu.",
           "BIRLESME = yeni tam aile 2+ oldu; onceki saatte kendisi 2+",
