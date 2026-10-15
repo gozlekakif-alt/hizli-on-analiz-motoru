@@ -474,7 +474,7 @@ def _selftest():
     c=list(range(1,9))+list(range(41,53))
     hour=[row(1,a),row(2,b),row(3,c)]
     roots=root_families(hour)
-    assert (1,2,3,4,5,6,7,8) in roots
+    assert (1,2,3,4,5,6,7,8,9) in roots
     assert all(not (set(x)<set(y)) for x in roots for y in roots if x!=y)
     prior=[{"day":"2026-10-12","hour":"H00",
             "roots":{(1,2,3):2,(11,12,13):2,(1,2):2}}]
