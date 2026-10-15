@@ -1,0 +1,40 @@
+name: V66 72 Gun Ilk20 Birlikte Cikma Olasiliklari
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v66_72gun_ilk20_birliktelik.py'
+      - '.github/workflows/v66-72gun-ilk20-birliktelik.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v66:
+    name: Evaluate 72nd full day first draw against previous 71 days
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and synthetic subset counter selftest
+        run: |
+          python -m py_compile v66_72gun_ilk20_birliktelik.py
+          python -u v66_72gun_ilk20_birliktelik.py --selftest
+      - name: Prior 71 complete days and 72nd day frozen first20 study
+        run: |
+          python -u v66_72gun_ilk20_birliktelik.py \
+            --source veri.txt \
+            --output v66_output/V66_72_GUN_ILK20_TUM_BIRLIKTELIK.zip
+      - name: Upload all 616645 group data and scored 216 further drawings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V66_72_GUN_ILK20_190_IKILI_616645_GRUP_TEK_ZIP
+          path: v66_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
