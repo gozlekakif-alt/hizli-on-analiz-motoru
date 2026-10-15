@@ -1,0 +1,54 @@
+name: V62 Geometrik Aile Dogum Ayrilma Birlesme
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v62_geometrik_aile_yasam_motoru.py'
+      - '.github/workflows/v62-geometrik-aile-yasam.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v62-geometrik-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax check
+        run: python -m py_compile v62_geometrik_aile_yasam_motoru.py
+      - name: Verify connected shapes, true ancestry, frozen holdout model
+        run: python -u v62_geometrik_aile_yasam_motoru.py --selftest
+
+  research:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Full 72 days, time-linked family life and random-control
+        run: |
+          python -u v62_geometrik_aile_yasam_motoru.py \
+            --data veri.txt \
+            --rng-days 48 \
+            --output v62_output/V62_GEOMETRIK_AILE_YASAM_DONUSUM_TEK_ZIP.zip
+      - name: Archive single complete ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V62_GEOMETRIK_AILE_YASAM_DONUSUM_TEK_ZIP
+          path: v62_output/V62_GEOMETRIK_AILE_YASAM_DONUSUM_TEK_ZIP.zip
+          if-no-files-found: warn
+          retention-days: 90
