@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V69 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V70 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -145,12 +145,23 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **Saatin ilk 6 çekilişi görüldükten sonra 12 çekilişlik toplamı tahmin:** `H6_MATH=167`, `H6_MATH_HEAT=168` doğru sayı-adet eşleşmesi. Rastgele sistemde bile H6 bilgisiyle ortalama ~154,6/~154,4 başarılı tahmin yapılabiliyor; tek yönlü simülasyon p≈0,083, sıcaklık katkısı 1 isabet, kanıtlanmış fark değil. **Bu saat öncesi tahmin değildir:** H1–H6 zaten gözlendi, yalnız H7–H12 belirsiz.
 - **13 CSV/TXT/JSON çıktı** tek ZIP'te; 217 çekilişte beş havuz ve yön, 18 saat bazında 0–12 tam sayım, saat başından ve H6 sonrasından aday sayı listeleri / gerçek isabetler, RNG simülasyonla denetim. Bugüne dek incelenmiş 12 Ekim geçmişi nedeniyle **keşifsel geri test**; bağımsız geleceğe dönük başarı iddiası yapılmaz.
 
+## V70 — 12 Ekim ilk çekilişin 20 sayısı, geçmişte 12–24–36–42–56–72–...–15.407 pencere
+
+**Başarılı gerçek veri denetimi:** [V70 kod](v70_ilk20_coklu_sicaklik_pencere.py) · [Actions çalıştırma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38764633947) · [V70 tek ZIP](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38764633947/artifacts/11987126977)
+
+- **Sabit hedef:** #61629, 12.10.2026 00:02; `5,6,11,22,23,30,31,32,35,39,41,43,47,54,55,57,59,62,74,75`. Hedef çekilişten **önceki 71 tam gün** 15.407 çekiliş, hedef bilgisi yalnız testte.
+- Her geçmiş pencere N'de **80 sayı ayrı ayrı geçmiş frekansına göre sıralandı** ve 16'şar sayılık 5 eşit grup (en soğuk→en sıcak) oluşturuldu. Hedefte gruplardan **beklenen sayı 4'er**. 12,24,36,42,56,72 gibi özel uzunluklar ve tüm geçmiş boyunca çoğunlukla 12'şer adımlı **toplam 1.291 pencere** incelendi. Eşit frekanslı sayılar numara sırasıyla ayrıldı, kesim yerlerindeki eşitlik sayısı her satırda yazıldı. Ek olarak matematiksel z-skorlu, değişken büyüklüklü sıcaklık sınıfları raporlandı.
+- **Örnek hedef dağılımı** (soğuk/serin/nötr/ılık/sıcak): `N12=5/3/5/4/3`; `N24=3/6/5/4/2`; `N36=5/6/3/5/1`; `N42=5/4/6/3/2`; `N56=4/6/5/3/2`; `N72=2/7/6/4/1`; `N217=3/4/6/7/0`; `N432=7/4/2/5/2`; `N1008=3/4/7/2/4`; `N15407=4/4/4/4/4`.
+- **217'lik pencerede sıcak 16 sayıdan hiçbirinin çıkmaması** tek önceden belirlenmiş sınıflamada adil RNG'de p=`0.0055496`. **Tüm 15.407 geçmişte hedef20'nin beş gruba tam 4'er dağılması** tek sınıflamada p=`0.0056484`. Bunları binlerce pencereden sonradan seçmek ise yanıltıcı olabilir.
+- **4.000 aynı-hedef ortak Monte Carlo örneğiyle 1.291 pencerelik tarama düzeltmesi:** herhangi bir pencerede sıfır sıcak sayı görülme ihtimali `p=0.27568`; herhangi bir pencerede 4/4/4/4/4 dağılım görülme ihtimali `p=0.78605`; tüm pencerelerde en yüksek mutlak frekans-z sapması gerçek `|z|=2.2802` (`N408`), düzeltilmiş `p=0.29168`. **Rastgelelikten anlamlı sapma gösterilemedi; sayıların sıcaklık kimliği pencere uzunluğuna göre değişir.** Özellikle kısa pencereler frekans eşitliği nedeniyle keyfi numara bağ çözümünden etkilenir.
+- ZIP içeriği: kısa TXT; istenen pencere CSV'si; 1.291 pencere tam CSV; hedef 20 sayının her penceredeki sayı/sıcaklık kimliği CSV; ekstrem pencereler ve sıfır sıcak / tam denge satırları; metodoloji ve audit JSON. Bunun kendisi **gelecekte kupon seçme avantajını kanıtlamaz**; tek geçmiş hedefe bakılmaktadır.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V69 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri, V68 15/20 havuz ve V69 saatlik 4/5/6/7 tahmin testleri sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V70 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri, V68 15/20 havuz, V69 saatlik 4/5/6/7 ve V70 12 Ekim ilk 20'nin 1.291 geçmiş sıcaklık penceresi testleri sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V69 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V70 için ayrı hesaplayıcılar ve Actions raporları vardır._
