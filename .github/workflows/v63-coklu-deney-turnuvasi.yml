@@ -1,0 +1,44 @@
+name: V63 31 Metot Kupon Hipotezleri Kor Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v63_coklu_motor_turnuvasi.py'
+      - '.github/workflows/v63-coklu-deney-turnuvasi.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v63-multi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  v63:
+    name: Test 31 hypotheses on 36 development plus 36 historical holdout days
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and fixed first six selftest
+        run: |
+          python -m py_compile v63_coklu_motor_turnuvasi.py
+          python -u v63_coklu_motor_turnuvasi.py --selftest
+      - name: Chronological first-six frozen tournament
+        run: |
+          python -u v63_coklu_motor_turnuvasi.py \
+            --source veri.txt \
+            --output v63_output/V63_31_METOT_KOR_TURNUVA_TEK_ZIP.zip
+      - name: Deliver one result archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V63_31_METOT_KOR_TURNUVA_TEK_ZIP
+          path: v63_output/V63_31_METOT_KOR_TURNUVA_TEK_ZIP.zip
+          retention-days: 90
+          if-no-files-found: warn
