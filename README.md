@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V75 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V76 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -220,12 +220,23 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **Sınırlama:** 13 Ekim zaten veri dosyasında vardı; model seçimi için kullanılmamış olsa da gerçek zamanlı ileriye dönük deney değil. Yalnız küçük, eksiksiz 112 çekiliş. Kuralı değiştirmeden yeni, tam çekilişler üzerinde tekrar etmek gerek.
 - ZIP: 112 hedefin 5×4 tam 20 aday kimlik listeleri ve isabet, 112×80 eski-yeni havuz/yer/yön/tahmini olasılık satırı, 5×3 çıkış oranları, **değiştirilmemiş eğitim olasılıkları**, metodoloji ve denetim JSON.
 
+## V76 — Kullanıcı önerisi: sıcaklık geçmiş referansı 42 yerine 60 çekiliş olursa ne olur?
+
+**Başarılı GitHub Actions:** [V76 kaynak](v76_42_60_ref_sabit_yon_5x4_kor_test.py) · [çalışma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38771328284) · [tek ZIP](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38771328284/artifacts/11991416803)
+
+- **60 geçmiş çekilişin her sayı için beklentisi =15 çıkış.** 80 sayı sıralanarak 5 eşit 16-ball sıcaklık havuzuna ayrılıyor, her havuzdan tam dört sayının kimliği seçilerek **tek 20'lik** oluşturuluyor. Yalnızca **N=42 → N=60** değiştirilerek önceden belirlenmiş V74 kuralı korunuyor: `LAG=12`, `DIRECTION15` (beş ısı havuzu×üç yer/yön), `SHRINK=250` ve her hedef öncesi aynı seçme/bağlayıcı rastgele puan algoritması.
+- **Önceki veride oranlar ayrıca eğitildi:** 29 Ağustos–12 Eylül **3.255** çekiliş; 13–27 Eylül doğrulama **3.255**; 28 Eylül–12 Ekim test **3.255**; 13 Ekim'in ilk kesintisiz **112** çekilişinde tekrar. 13 Ekim'de 151 mevcut kayıttan #61958 ve #61972 eksik, geçmiş bozulmasın diye ilk kesintisiz 112 hedeften sonrası kullanılmadı.
+- **Tam karşılaştırma, N42 ortalama vs N60 ortalama:** TRAIN `5,06390 vs 5,06114`; VALIDATE `5,08848 vs 5,02304`; HOLDOUT `5,05653 vs 5,00799`; 13 Ekim ilk 112 `5,19643 vs 5,15179`. Adil RNG beklentisi `5,00000/20`. HOLDOUT 60−42 `−0,04854` ve çift taraflı eşleştirilmiş `p≈0,20644`; 13 Ekim `−0,04464`, `p≈0,82599`. **Aralarında güvenilir fark bulunamadı.**
+- **5x4 rastgele kontrol ortalaması:** TRAIN N42 `5,06574`, N60 `5,05161`; VALIDATE `5,01598`, `5,03195`; HOLDOUT `4,97358`, `4,99109`; 13 Ekim `4,76786`, `4,88393`. 13 Ekim N60 sonuçları `7+=17`, `8+=9`, `9+=2`, `10+=1` hedef çekiliş (**20 sayılık havuz isabetleri**, 10'lu kuponun 10/10 kazanımı değil). 13 Ekim N60 adil RNG'ye karşı tek yönlü approx `p≈0,17778` — üstünlük kanıtı değil.
+- **Dosya:** V76 ZIP 42/60 tüm öğrenme/doğrulama/test özetleri, günlük isabetler, 13 Ekim her çekilişte 42 ve 60 için beş havuzun gerçek dört sayı kimlikleri ve isabetleri, tüm 80 sayının eski/yeni havuz hareketi, 5×3 öğrenilmiş oranları, denetim bilgisi.
+- **Bilimsel karar:** 60 çekiliş matematiksel olarak çalışır ama testte 42'nin önüne geçmedi. 42'nin gerçek, uzun vadeli RNG tahmin üstünlüğü de kanıtlanmadı. Özellikle önceki birçok analizde aynı tarihler incelenmiştir, ileriye dönük henüz görülmemiş çekilişler gereklidir.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V75 programları, V64 RNG, V65 aile, V66 ilk20, V67 birliktelikler, V68 15/20, V69 saatlik 4/5/6/7, V70 ilk20 pencere, V71 ayrı havuzlar, V72–V73 5×4 referans/yön, V74 eğitimde öğrenilen 5×5/5×3 havuz geçiş oranları, V75 aynı 42/12 kuralının 13 Ekim 112 ardışık çekilişte tekrarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V76 programları, V64 RNG, V65 aile, V66 ilk20, V67 birliktelikler, V68 15/20, V69 saatlik 4/5/6/7, V70 ilk20 pencere, V71 ayrı havuzlar, V72–V73 5×4 referans/yön, V74 havuz geçiş oranları, V75 13 Ekim 42/12 ve V76 42/12 ile kullanıcı önerisi 60/12 eşit kotalı 20'lik karşılaştırmasına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V75 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V76 için ayrı hesaplayıcılar ve Actions raporları vardır._
