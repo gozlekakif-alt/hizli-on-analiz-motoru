@@ -1,0 +1,36 @@
+name: V56 Tum Aile DNA Parcalanma Birlesme
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v56_aile_tam_dna_parcalanma.py'
+      - '.github/workflows/v56-aile-dna-tam.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v56:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate V56 syntax
+        run: python -m py_compile v56_aile_tam_dna_parcalanma.py
+      - name: Test full family taxonomy and split merge mechanics
+        run: python v56_aile_tam_dna_parcalanma.py --selftest
+      - name: Generate full 72-day all-hour summary and latest-day exact DNA report
+        run: python v56_aile_tam_dna_parcalanma.py --data veri.txt --sims 32 --output v56_artifacts/V56_TUM_AILE_DNA_TEK_RAPOR.zip
+      - name: Archive V56 one ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V56_TUM_AILE_DNA_TEK_ZIP
+          path: v56_artifacts/*.zip
+          if-no-files-found: warn
+          retention-days: 90
