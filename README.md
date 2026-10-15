@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V71 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V72 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -169,12 +169,28 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **İstatistik:** Her sabit 10/15/20 havuzunun 20/80 hedefte isabet sayısı tam hipergeometrik dağılımlı. 217 çekiliş toplamının olasılıkları 217 kat konvolüsyon ile hesaplandı ve 11.619 hipoteze konservatif aile düzeyi çoklu test düzeltmesi uygulandı. Tek gün daha önce çok incelendiği için **bağımsız ileriye dönük doğrulama yoktur**.
 - ZIP: ana kısa karar TXT; 11.619 yöntem tam sonuç CSV; 26 seçili pencere test özeti; 217×26×9 önceden dondurulmuş sayı seçimleri ve gerçekleşen isabetler; 26 pencerenin beşli dağılımı ve hedef bazlı sayım; rastgele kontrol; metodoloji; JSON denetim.
 
+## V72 — Gerçek dengeli 20'lik havuz: beş sıcaklık grubundan dörder sayı, sayı kimliği ve havuz geçiş yönü
+
+**Tamamlanan test ve indirme:** [V72 kaynak](v72_dengeli_5_havuz_isi_yon_ref_secimi.py) · [GitHub Actions başarılı](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38767245577) · [V72 tek ZIP](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38767245577/artifacts/11989647018)
+
+**Önemli kullanıcı düzeltmesi:** V71'de her seferinde yalnız sıcak / yalnız soğuk / yalnız orta havuzdan 10, 15 veya 20 sayı seçilmesi kullanıcının istediği şey DEĞİLDİ. Kullanıcı **80 sayıyı sıcaklığa göre beş gruba ayırıp, her birinden 4 sayı olacak şekilde 20 sayılık birleşik bir hedef aday havuzu** istiyor. Dörder sayının seçiminde her sayının **geçmiş havuz yeri, hangi yöne kaç basamak geçtiği, son dönem çıkış hareketi ve numarası** hesaba katılmalı. Asıl sorusu **bu 5×4 kimlik/yön motorunda sıcaklık sınıfı için sabit kaç geçmiş çekiliş kullanılırsa daha iyi olur?**
+
+- **Gerçek motor:** Son `N` çekilişte her sayının frekansı ile 80 sayı sıralanır → sıcaklığa göre `5×16` eşit kimlik havuzu (soğuk/serin/nötr/ılık/sıcak); aynı sınıflama **12 çekiliş öncesi** tekrar hesaplanıp her sayının `havuz_geçişi ∈[-4,4]` ölçülür. Son 12 ile önceki 12 arasındaki çıkış farkı da ikinci yön özelliği olur. Her hedef öncesinde sıcaklık ve yön **dondurularak** her sınıftan tam dört sayı seçilir. 6 seçim politikası: RISING, COOLING, STEADY, FREQ, MIXED (2 yükselen +1 sabit +1 soğuyan, gerekiyorsa tamamlama), RANDOM (beş havuzda yine 4'er rastgele).
+- **Sabit N seçenekleri:** `12,24,36,42,56,72,96,120,144,217,288,432`. Toplam 12×6=72 birleşik yöntem.
+- **Seçim disiplininin testi:** 12 Ekim'den önceki **10 tam gün, 2.170 çekiliş** üzerinde N ve yöntem seçildi (`ortalama isabet −0,25×günlük isabet ortalamalarının SD`); **12 Ekim 217 hedef çekilişi** dondurulmuş seçimle test edildi. Eski araştırmalarda bu gün de incelendiği için **bağımsız geleceğe dönük tahmin kanıtı değil**.
+- **Eğitimde birinci:** `N=432, STEADY`; eğitim ortalaması **5,08203/20**; 12 Ekim gerçek test ortalaması **4,97235/20**; matematiksel 5,000/20; tam hipergeometrik tek taraflı **p≈0,603**; gerçek gün için ayrı rastgele 20 sayı kontrolü **5,11521/20**. Bu modelin avantajı doğrulanmadı.
+- **Her N'nin önceki 10 güne göre seçilen yönteminin 12 Ekim ortalaması:** N12=4,8894; N24=4,9954; N36=4,9124; N42=5,0507; N56=5,0507; N72=5,0829; N96=4,8664; N120=4,8295; N144=4,9677; N217=5,0276; N288=5,1014; N432=4,9724.
+- **N=72, 5×4 birleşik aday havuzu, her seçim politikasının 12 Ekim ortalaması:** STEADY **5,08295**; FREQ **4,94931**; RANDOM **5,18433**; MIXED **4,97696**; RISING **4,97235**; COOLING **5,15207**. Rastgele 4'er seçmek bile birçok kuralı geçti; **hangi N/yön daha verimli belirlendi denemez**.
+- **Eğitim birincisi 20'lik havuzdan 10'lu kupon:** HEAT_FIRST **2,48387/10**, DIRECTION_FIRST **2,52995/10**; beklenti 2,5; 10/10 hiç yok.
+- Tek ZIP: kısa karar; 72 yöntemin 10 günlük eğitim / 217 hedef testi; N bazında eğitim birincileri; **217×12×6 = 15.624 birleşik 20'lik havuz + gerçek isabet**; **217×12×80 = 208.320 sayı-havuz/yön/kimlik kaydı**; gerçekleşen hedeflerin beşli dağılımı; 5/6/8/10 alt kupon raporu; metodoloji ve kontrol JSON.
+- **Pratik referans:** N=72 **yalnızca makul sabit başlangıç penceresi** olarak kullanılabilir, yön için 12 çekilişlik havuz yer değiştirme ve 12/24 kısa frekans farkı. Ancak herhangi bir N için **rastgeleliğin üzerinde kanıtlanmış tahmin avantajı yok**; yeni, hiç incelenmemiş günlerde önceden kilitlenmiş tek kural test edilmeden “en iyi pencere” ilan edilmez.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V71 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 birliktelikler, V68 15/20 havuz, V69 saatlik 4/5/6/7, V70 ilk 20'nin 1.291 geçmiş penceresi ve V71 217 hedefin 11.619 sıcak/orta/soğuk kupon geri testleriyle Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V72 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 birliktelikler, V68 15/20 havuz, V69 saatlik 4/5/6/7, V70 ilk20 sıcaklık pencereleri, V71 ayrı sıcak/soğuk tek sınıf testleri ve V72 her havuzdan dörder seçilen gerçek 20'lik kimlik/yön motorunun N=12..432 karşılaştırma raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V71 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V72 için ayrı hesaplayıcılar ve Actions raporları vardır._
