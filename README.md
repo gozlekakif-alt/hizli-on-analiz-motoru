@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V68 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V69 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -134,12 +134,23 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **15'lik çekirdek ortalamaları** (adil beklenti 3,75): `HEAT15=3,49770`; `LOW15=3,59908`; `HIGH15=3,67281`. **V68 verisi istatistiksel üstünlük göstermiyor**; küçük dalgalanmalar ve çoklu aday denemeleri bir kazanma kuralı değildir.
 - Tek ZIP: `00_ANA_SONUC_V68.txt`, bütün 15/20 ve 5/6/8/10 sonuç CSV'leri, 217×80 sıcaklık/yön/sayı geçmişi CSV, eşleştirmeli sonuç karşılaştırması, çekiliş bazında tüm dondurulmuş havuzlar ve denetim verileri. Test, daha önce defalarca araştırılmış 12 Ekim üzerinde **keşifsel kronolojik geri test**; gerçek geleceğe yönelik bağımsız doğrulama **yok**.
 
+## V69 — RNG sıcaklık/yön ve saat içinde 4–5–6–7 kez çıkacak sayıları önceden belirleme
+
+**Tamamlanan GitHub Actions testi:** [V69 kaynak kodu](v69_rng_isi_yon_saat_4_5_6_7.py) · [başarılı çalıştırma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38762096264) · [tek ZIP (29.065 bayt)](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38762096264/artifacts/11985428805)
+
+- **Veri:** 71 tam gün ×217 = 15.407 geçmiş çekilişten sonra **12 Ekim 2026, 217 çekiliş** (#61629–#61845), her hedef öncesinde yalnız geçmiş biliniyor. Saat hesabı **18 tam saat ×12 çekiliş** üzerinden; 01:02'daki tek çekiliş saat sayılmıyor.
+- **%25 hipotezi:** Her çekilişten önce son 72 çekilişteki V42 sıcak/ılık/soğuk sınıfları ve son 24 − önceki 24 yön hesaplandı. Gerçek sonraki-çekiliş çıkış oranları: **soğuk %24,790; serin %24,356; nötr %25,304; ılık %26,340; sıcak %23,999**. **1.000 adil tam-gün RNG simülasyonu** ile hiçbirinde istatistiksel olarak güvenilir %25 sapması görülmedi (ılık p≈0,075; diğerleri daha yüksek).
+- **Saatlik rastgele beklenti:** Her bir sayının 12 çekilişte tam 4 kez çıkma olasılığı %19,3578 (80 sayı içinde ortalama 15,486); tam 5 = %10,3241 (8,259); tam 6 = %4,0149 (3,212); tam 7 = %1,1471 (0,918). Günün 18 saatindeki gerçek adetler: 4 kez **285**, 5 kez **163**, 6 kez **45**, 7 kez **14** sayı-saat.
+- **Saat öncesi kimlik seçimi:** Her saat hedef tam 4/5/6/7 çıkış için sırasıyla **15/8/3/1 sayı** donduruldu. 18 saat ×27 aday = **486 sayı-adet tahmini/yöntem**. Toplam doğru eşleşmeler: `HOT72=60`, `HEAT_TREND=65`, `COLD72=63`, `RANDOM=70`. Rastgele simülasyonun aynı yöntemlerde beklediği doğru sayısı ≈69,5–69,8; **16 sınama için maksimum istatistiğe dayalı düzeltmeli p=0,73826**, üstünlük kanıtı yok.
+- **Saatin ilk 6 çekilişi görüldükten sonra 12 çekilişlik toplamı tahmin:** `H6_MATH=167`, `H6_MATH_HEAT=168` doğru sayı-adet eşleşmesi. Rastgele sistemde bile H6 bilgisiyle ortalama ~154,6/~154,4 başarılı tahmin yapılabiliyor; tek yönlü simülasyon p≈0,083, sıcaklık katkısı 1 isabet, kanıtlanmış fark değil. **Bu saat öncesi tahmin değildir:** H1–H6 zaten gözlendi, yalnız H7–H12 belirsiz.
+- **12 CSV/TXT/JSON çıktı** tek ZIP'te; 217 çekilişte beş havuz ve yön, 18 saat bazında 0–12 tam sayım, saat başından ve H6 sonrasından aday sayı listeleri / gerçek isabetler, RNG simülasyonla denetim. Bugüne dek incelenmiş 12 Ekim geçmişi nedeniyle **keşifsel geri test**; bağımsız geleceğe dönük başarı iddiası yapılmaz.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V68 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri ve V68 sıcaklık+yön+15/20 havuz seçim testi sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V69 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri, V68 15/20 havuz ve V69 saatlik 4/5/6/7 tahmin testleri sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V68 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V69 için ayrı hesaplayıcılar ve Actions raporları vardır._
