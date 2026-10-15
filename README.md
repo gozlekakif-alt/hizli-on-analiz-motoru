@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V64 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V65 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -24,6 +24,7 @@ Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–
 | V62 | [v62_geometrik_aile_yasam_motoru.py](v62_geometrik_aile_yasam_motoru.py) | Şekillerin doğumu, parçalanması, birleşmesi, aile soy ağacı | 15.550 gerçek ardışık geçiş, 182.510 aile kaydı, 69.270 soy bağı; öngörü doğrulanmadı |
 | V63 | [v63_coklu_motor_turnuvasi.py](v63_coklu_motor_turnuvasi.py) | 31 sabit yöntem ve geliştirmede seçilen 2 birleşik kontrol | Son 36 günlük tarihsel testte en iyi sonradan görünen FRESH6 2,554/10; çoklu test düzeltmesi geçilmedi |
 | V64 | [v64_gunluk_isi_yon_kademeli.py](v64_gunluk_isi_yon_kademeli.py) | 72 tam gün; 70 gerçek ardışık gün çifti, 68 üçlü gün, 240 adil 20/80 RNG tekrarında 8 önceden tanımlı ölçüm | Göreli kademeli geçiş %51,786 (RNG %52,031); sabit-eşik kademeli %70,554 (RNG %71,594). Düzeltilmiş 8 testte doğrulanan üstünlük yok |
+| V65 | [v65_7_8_9_10_aile_tamamlama.py](v65_7_8_9_10_aile_tamamlama.py) | 7,8,9,10 sayılı tam aile olasılığı; önceki 72+ilk6 çekilişten sabit aday, hedef sonraki6; düşük/yüksek yakın görünüm | LOW: 7'li ort.1,7564 ve 0 tam; 8'li 2,0240 ve 1 tam; 9'lu 2,2439 ve 0 tam; 10'lu 2,5364 ve 0 tam. Keşifsel; istatistiksel tahmin üstünlüğü doğrulanmadı |
 
 İlgili [GitHub Actions geçmişi](../../actions) hesaplamanın başarılı/başarısız yürütmelerini ve süreli ZIP çıktılarını içerir. Programların kaynak kodu depoda kalıcıdır; Actions **artifact** dosyaları saklama süresi bitince kaybolabilir.
 
@@ -66,12 +67,37 @@ Kaynak kodu ve test yöntemi GitHub'a kalıcı işlendi. Raporun ZIP çıktısı
 
 **Yeni veriye dokunmadan kuralı sabitle:** Önceden belirlenen 8 V64 göstergesinden tercihen tek bir yön göstergesini seç, yeni tam günler geldikçe tahminleri önceden kaydet, her 217 çekilişte 10 sayılık sabit bir seçim yapılıyorsa 2,5 adil isabetiyle karşılaştır. Geçmiş 72 gün üzerinde başka parametre aramak bağımsız kanıt değildir.
 
+## V65 tamamlandı — 7–10 kişilik ailelerin birlikte tamamlanması
+
+Kaynak: [V65 script](v65_7_8_9_10_aile_tamamlama.py) ve [V65 Actions tek ZIP raporu](../../actions/workflows/v65-7-8-9-10-aile-tamamlama.yml).
+
+**Adil 20/80 düzeneğinde tek, önceden seçili k grubunun tamamının çıkma olasılığı:**
+
+- 7/7: 0,0000244026 ≈ 40.979'da 1
+- 8/8: 0,0000043457 ≈ 230.115'te 1
+- 9/9: 0,0000007243 ≈ 1.380.688'de 1
+- 10/10: 0,0000001122 ≈ 8.911.711'de 1
+
+**Yeni test** her saatin ilk 6 çekilişine kadar bilinen son 72+6 çekilişin ikili ortak kümelerinden tam 7,8,9,10 büyüklüğünde aile türetti. Her boyutta düşük/geçmişte az, yüksek/çok, uzun ara veren ve rastgele aileleri önceden dondurarak sonraki 6 çekilişe uyguladı.
+
+- Tam 72 gün; düşük hareketli 7'li ortalama **1,7564/7**, tam 0.
+- Düşük hareketli 8'li **2,0240/8**, tam **1** (7776 hedeften; adil beklenti 0,0338 tam).
+- Düşük hareketli 9'lu **2,2439/9**, tam 0.
+- Düşük hareketli 10'lu **2,5364/10**, tam 0.
+- **Az hareketli vs çok hareketli** isabet farkı (gün blok bootstrap): 7'li +0,0540; 8'li +0,0319; 9'lu +0,0034; 10'lu +0,0653. 7'li ve 10'lu için keşifsel %95 blok aralıkları pozitif görünse de **geçmiş verinin tekrar kullanılması, grup ve yöntem seçimi, çoklu deneme** nedeniyle yeni testlerde doğrulama gerekir.
+- Bu sınıflandırma **grubun tüm üyelerinin nadir görünmesi değildir**: 7'li ailede en az 5, 8'li en az 6, 9'lu en az 7, 10'lu en az 8 üyenin geçmişte aynı çekilişte kaç defa bulunduğuna göre sıralandı.
+- Sabit bir aile için bir önceki çekilişte çıkmaması, adil bağımsız sistemde sonraki çekilişte tam çıkma olasılığını artırmaz. **Nadirlikten kupon satın alma önerisi yapılmıyor.**
+
+### Araştırma kararı
+
+Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli hedef olmasını destekleyen güvenilir kanıt yok**. Sonraki yeni günler geldiğinde, aynı önceden sabitlenen LOW_ACTIVITY ölçümüyle 7 ve 10'luların rastgele kontrole göre davranışını ileriye dönük inceleyebiliriz. Diğer yöntemleri ve eşikleri sonuçlara göre yeniden optimize etmek yerine kuralları önce kilitlemeliyiz.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V64 programları, V64 RNG sonuçları ve Actions ZIP raporuna bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V65 programları, V64 RNG ve V65 7–10 aile tamamlama sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64 için ayrı hesaplayıcı ve Actions raporu vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64 ve V65 için ayrı hesaplayıcılar ve Actions raporları vardır._
