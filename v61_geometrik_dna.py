@@ -444,14 +444,14 @@ def report(full,defs,rows,selected,drawrows,summary,shapes_summary,
           "V61: 20/80, 8×10 sabit grid, tum yasal hucreler.\n"
           "Bir k-hucre motifunun olasiligi tam (20)_k/(80)_k;\n"
           "bu olasilik ne sekle ne hucre konumuna baglidir.\n"
-          "Ilk6 motifi hedef 7-12 gorulmeden secilir, böylece tahmin",
+          "Ilk6 motifi hedef 7-12 gorulmeden secilir, böylece tahmin"
           " etiketine gelecekten veri sizmaz.\n"
-          "Bir onceki hedefte gorulmemis konumlar ile TAM AYNI",
-          " konumlar AYRI tespit edilir. Bunlarin beklenen tekrar",
+          "Bir onceki hedefte gorulmemis konumlar ile TAM AYNI"
+          " konumlar AYRI tespit edilir. Bunlarin beklenen tekrar"
           " sayilari bilinmesi gereken konum havuzuna gore verilir.\n"
-          "RNG gerceginin geometrik düzenlilik göstermesi normaldir;",
+          "RNG gerceginin geometrik düzenlilik göstermesi normaldir;"
           " denk gelen duzenlilik bir sonraki cekilis tahminini saglamaz.\n"
-          "DEV sonrasi ek model aramak secici yanlilik yaratir;",
+          "DEV sonrasi ek model aramak secici yanlilik yaratir;"
           " ilerleme icin dondurulmus V61 algoritmasiyla canli on test lazim.\n")
     return bio.getvalue()
 
