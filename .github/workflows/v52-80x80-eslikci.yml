@@ -1,0 +1,37 @@
+name: V52 Ayni Cekilis 80x80 Eslikciler
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v52_ayni_cekilis_eslikci_217.py'
+      - 'v52_ayni_cekilis_eslikci_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v52-80x80-eslikci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v52:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax check V52 module and Streamlit
+        run: python -m py_compile v52_ayni_cekilis_eslikci_217.py v52_ayni_cekilis_eslikci_app.py v10_app.py
+      - name: Fixture test exact same-draw pair calculations
+        run: python v52_ayni_cekilis_eslikci_217.py --selftest
+      - name: Generate selected 217-draw day and ALL historical daily 80x80 summaries
+        run: python v52_ayni_cekilis_eslikci_217.py --source veri.txt --output-dir v52_artifacts
+      - name: Save one ZIP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: V52_80x80_ES_CEKILIS_TEK_RAPOR
+          path: v52_artifacts/*.zip
+          retention-days: 90
+          if-no-files-found: error
