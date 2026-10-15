@@ -1,0 +1,39 @@
+name: V59 Aile Birlesim Donusum 36 Gun Kor Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v59_aile_birlesim_donusum_kor_test.py'
+      - '.github/workflows/v59-aile-birlesim-kor-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V59 syntax
+        run: python -m py_compile v59_aile_birlesim_donusum_kor_test.py
+      - name: Verify no-target-leakage and fixed family hypotheses
+        run: python v59_aile_birlesim_donusum_kor_test.py --selftest
+      - name: Run 72 days chronological walk-forward, score 36-day historical holdout
+        run: |
+          python -u v59_aile_birlesim_donusum_kor_test.py \
+            --source veri.txt \
+            --output v59_output/V59_AILE_BIRLESIM_DONUSUM_KOR_TEST_TEK_ZIP.zip
+      - name: Archive single family experiment ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V59_AILE_BIRLESIM_DONUSUM_KOR_TEST_TEK_ZIP
+          path: v59_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
