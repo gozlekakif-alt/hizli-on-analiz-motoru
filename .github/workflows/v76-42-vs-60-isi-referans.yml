@@ -1,0 +1,43 @@
+name: V76 Sabit Yon 42 vs 60 Isi Referans Deneyi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v76_42_60_ref_sabit_yon_5x4_kor_test.py"
+      - ".github/workflows/v76-42-vs-60-isi-referans.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v76:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Compile and verify fixed comparison
+        run: |
+          python -m py_compile v76_42_60_ref_sabit_yon_5x4_kor_test.py
+          python -u v76_42_60_ref_sabit_yon_5x4_kor_test.py --selftest
+      - name: Compare N42 versus N60 on 3 x 15 full days plus 13 Oct contiguous
+        run: |
+          python -u v76_42_60_ref_sabit_yon_5x4_kor_test.py --source veri.txt --out v76_output/V76_42_VS_60_REFERANS_12_YON_SABIT_5x4_20LI.zip
+      - name: Upload V76 single ZIP audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V76_42_60_12_YON_5x4_KARSILASTIRMA
+          path: v76_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
