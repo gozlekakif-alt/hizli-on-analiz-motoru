@@ -486,7 +486,7 @@ def run(source,out):
             "k-family hit probability p=prod_{i=0..k-1}(20-i)/(80-i)."
         ]))
         z.writestr("07_AUDIT.json",json.dumps(dict(
-            version=VER,data_days=days,catalogue_candidate_count=raw_count,
+            version=VER,data_days=dates,catalogue_candidate_count=raw_count,
             frozen_roster_count=len(roster),family_sizes=dict(collections.Counter(
               f["k"] for f in roster)),training_cutoff=TRAIN_END,
             validation_cutoff=VALID_END,holdout_cutoff=HOLD_END,
