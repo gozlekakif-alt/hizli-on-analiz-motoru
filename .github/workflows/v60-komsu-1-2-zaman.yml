@@ -1,0 +1,39 @@
+name: V60 Ardisik Cekilis Komsu 1 2 Zaman Analizi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v60_komsu_salinim_20_80.py'
+      - '.github/workflows/v60-komsu-1-2-zaman.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v60:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax
+        run: python -m py_compile v60_komsu_salinim_20_80.py
+      - name: Run neighborhood partition and time integrity selftests
+        run: python v60_komsu_salinim_20_80.py --selftest
+      - name: All complete historical days ±1 ±2 1..80 10/20 bands 5–60 mins
+        run: |
+          python -u v60_komsu_salinim_20_80.py \
+            --source veri.txt \
+            --output v60_output/V60_KOMSU_1_2_20LI_80LI_TEK_ZIP.zip
+      - name: Upload single V60 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V60_KOMSU_1_2_20LI_80LI_TEK_ZIP
+          path: v60_output/*.zip
+          if-no-files-found: warn
+          retention-days: 90
