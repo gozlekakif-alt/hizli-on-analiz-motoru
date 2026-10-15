@@ -1,0 +1,38 @@
+name: V84 Aileleri Bastan Sona Denetle 4of5 Geliyorum Ritim
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "v10_aileler.csv"
+      - "veri.txt"
+      - "v84_aileler_bastan_sona_gercek_sinyal_deney.py"
+      - ".github/workflows/v84-aileler-tam-denetim.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify V10 family logic and exact partial/complete probabilities
+        run: |
+          python -m py_compile v84_aileler_bastan_sona_gercek_sinyal_deney.py
+          python -u v84_aileler_bastan_sona_gercek_sinyal_deney.py --selftest
+      - name: Audit complete 72-day 1131-family chronology and target results
+        run: |
+          python -u v84_aileler_bastan_sona_gercek_sinyal_deney.py --source veri.txt --families v10_aileler.csv --out v84_output/V84_72GUN_1131_AILELER_TAM_DENETIM_GELIYORUM_RITIM.zip
+      - name: Save one complete report archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V84_AILELER_BASTAN_SONA_4_5_GELIYORUM_RITIM
+          path: v84_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
