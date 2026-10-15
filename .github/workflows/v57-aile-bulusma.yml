@@ -1,0 +1,36 @@
+name: V57 Ailelerin Ayni Cekiliste Bulusmasi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v57_aile_kadrolarda_bulusma.py'
+      - '.github/workflows/v57-aile-bulusma.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v57:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V57 syntax check
+        run: python -m py_compile v57_aile_kadrolarda_bulusma.py
+      - name: Test same draw meetings and locked families
+        run: python v57_aile_kadrolarda_bulusma.py --selftest
+      - name: Analyze 72 complete days, all parent-family co-meetings, and RNG
+        run: python v57_aile_kadrolarda_bulusma.py --data veri.txt --sims 40 --output v57_artifacts/V57_AILELER_AYNI_CEKILISTE_BULUSMA_TEK_ZIP.zip
+      - name: Upload single ZIP family meeting report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V57_AILELER_AYNI_CEKILISTE_TEK_ZIP
+          path: v57_artifacts/*.zip
+          retention-days: 90
+          if-no-files-found: warn
