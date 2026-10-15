@@ -478,9 +478,8 @@ def _selftest():
         return {"pos":i+1,"id":50000+i,"time":SLOTS[i],
                 "nums":frozenset(nums)}
     a=set(range(1,21))
-    b=set(range(1,19))|{21,22}
-    c=set(range(2,20))
-    c.update([32,33])
+    b=set(range(1,9))|set(range(21,33))
+    c=set(range(2,8))|set(range(33,47))
     first=[draw(0,a),draw(1,b),draw(2,c)]
     cat=catalog(first,full_detail=True,prehistory=())
     assert cat["families"][3][(2,3,4)][0]==3
@@ -517,8 +516,11 @@ def main():
     args=p.parse_args()
     if args.selftest:_selftest();return
     if args.sims<1:raise ValueError("Minimum 1 simulation")
-    full,partial,issues,broken=parse_txt(Path(args.data))
-    report=scan({str(k):v for k,v in full.items()},args.day,args.sims)
+    all_dates,issues,broken=parse_txt(Path(args.data))
+    full={day:rows for day,rows in all_dates.items() if len(rows)==217 and
+          {r['pos'] for r in rows}==set(range(1,218))}
+    partial={day:len(rows) for day,rows in all_dates.items() if day not in full}
+    report=scan(full,args.day,args.sims)
     output=Path(args.output);output.parent.mkdir(parents=True,exist_ok=True)
     output.write_bytes(pack(report,partial,issues,broken))
     print(json.dumps({"file":str(output),"selected_day":report["day"],
