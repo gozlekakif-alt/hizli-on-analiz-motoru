@@ -1,0 +1,37 @@
+name: V86 72 Gun Ailelerin Cekilis Cekilis Soyagaci ve Kupon
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v86_72gun_ailelerin_cekilis_cekilis_soyagaci.py"
+      - ".github/workflows/v86-aile-72gun-soyagaci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v86:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify immutable exact family sets, swaps, growth, shrink and random controls
+        run: |
+          python -m py_compile v86_72gun_ailelerin_cekilis_cekilis_soyagaci.py
+          python -u v86_72gun_ailelerin_cekilis_cekilis_soyagaci.py --selftest
+      - name: Analyze 15624 draws natural family birth mutations complete return and target tickets
+        run: |
+          python -u v86_72gun_ailelerin_cekilis_cekilis_soyagaci.py --source veri.txt --out v86_output/V86_72GUN_AILELER_CEKILIS_CEKILIS_GENEOLOJI_10LU_KUPON.zip
+      - name: Upload single complete deep family-genealogy V86 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V86_72GUN_AILE_CEKILIS_CEKILIS_SOYAGACI_10LU_TEST
+          path: v86_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
