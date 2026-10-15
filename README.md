@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026
+**Son güncelleme:** 15 Ekim 2026 (V64 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -23,6 +23,7 @@ Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–
 | V61 | [v61_geometrik_dna.py](v61_geometrik_dna.py) | 8×10 düzeninde aynı şeklin kayma, dönme, aynalama ve yeni konumda oluşması | Geometrik model tarihsel testte rastgele beklentiden daha iyi değil |
 | V62 | [v62_geometrik_aile_yasam_motoru.py](v62_geometrik_aile_yasam_motoru.py) | Şekillerin doğumu, parçalanması, birleşmesi, aile soy ağacı | 15.550 gerçek ardışık geçiş, 182.510 aile kaydı, 69.270 soy bağı; öngörü doğrulanmadı |
 | V63 | [v63_coklu_motor_turnuvasi.py](v63_coklu_motor_turnuvasi.py) | 31 sabit yöntem ve geliştirmede seçilen 2 birleşik kontrol | Son 36 günlük tarihsel testte en iyi sonradan görünen FRESH6 2,554/10; çoklu test düzeltmesi geçilmedi |
+| V64 | [v64_gunluk_isi_yon_kademeli.py](v64_gunluk_isi_yon_kademeli.py) | 72 tam gün; 70 gerçek ardışık gün çifti, 68 üçlü gün, 240 adil 20/80 RNG tekrarında 8 önceden tanımlı ölçüm | Göreli kademeli geçiş %51,786 (RNG %52,031); sabit-eşik kademeli %70,554 (RNG %71,594). Düzeltilmiş 8 testte doğrulanan üstünlük yok |
 
 İlgili [GitHub Actions geçmişi](../../actions) hesaplamanın başarılı/başarısız yürütmelerini ve süreli ZIP çıktılarını içerir. Programların kaynak kodu depoda kalıcıdır; Actions **artifact** dosyaları saklama süresi bitince kaybolabilir.
 
@@ -46,16 +47,24 @@ Her tam günde 217×20 = **4.340 sayı görünümü**, 80 sayıya bölünür. G�
 - 72 günün tümünde en az görülen sayı: **59**, toplam **3.743**, günlük ortalama **51,9861**.
 - Herhangi bir **önceden seçilmiş tek sayı** için adil bağımsız çekiliş modeli `X ~ Binomial(n=217,p=0.25)`: E[X]=54,25, standart sapma ≈ **6,379**. **80 sayı içinden gün sonunda minimumu/maksimumu seçmek** bambaşka bir örneklem olayıdır: bu uçları 54,25 ile tek sayıymış gibi sınamayın.
 
-## Takip edilecek V64 araştırması (henüz yazılmadı / çalıştırılmadı)
+## V64 tamamlandı — Günlük sıcaklık, yön ve kademeli geçişler
 
-**217 çekiliş — Günlük uç frekansın ertesi gün hareketi:**
+GitHub Actions çalışması: [V64 otomatik test ve ZIP raporu](../../actions/workflows/v64-gunluk-isi-yon-kademeli.yml).
 
-1. Her gerçek tam günde 80 sayı için frekans ve gün sonu alt/üst 5, alt/üst 10, 40 altı / 70 üstü kategorilerini sabitle.
-2. **Yalnız gerçekten ardışık takvim günlerindeki** tam günleri eşleştir (eksik gün varsa atlama yok). O gün 34–40'a düşen sayı ertesi gün kaç kez çıkmış? 70–83'e çıkan sayı ertesi gün kaç kez çıkmış?
-3. Etiketli gerçek sayıların ertesi gün frekansını tek sayı için **54,25** adil referansıyla, aynı gün en düşük/en yüksek seçilmesiyle oluşan `regression to the mean` etkisini de karşılaştıran **bağımsız sentetik 20/80 günlük dizileriyle** ölç.
-4. Yön ve eşik taramalarında 80 sayı / çoklu deneme yanlılığını düzelt; gün birimiyle güven aralığı raporla.
-5. Kuralların sonunda seçilecek tek/az sayıda modelin sonraki **yeni ve önceden görülmemiş** günlerdeki isabetini ölç. Tarihsel çıkış sayısı tek başına sonraki çekiliş ihtimalini yükseltmez.
-6. **Henüz hiçbir model para karşılığı kupona bağlanmadı.** İstatistiksel üstünlük gösterilmedikçe kupon sayısını artırma.
+- Veri: 72 tam gün = 15.624 çekiliş; yalnız **70 gerçek ardışık takvim günü çifti** ve **68 tam üç günlük dizi**. Eksik günler atlanıp yan yana sayılmadı.
+- Sınıflar: Her gün **80 sayının 16'şarlı beş göreli sıcaklık dilimi** ve ayrıca sabit frekans dilimleri (`≤44, 45–50, 51–57, 58–63, ≥64`).
+- **Göreli kademeli geçiş:** gerçek %51,786; 240 adil RNG tekrarının ortalaması %52,031.
+- **Sabit sınıf kademeli geçiş:** gerçek %70,554; RNG ortalaması %71,594.
+- **Aynı göreli sınıfta kalış:** gerçek %19,607; RNG %20,002.
+- **Üç günlük sayısal yön devamı:** gerçek %28,824; RNG %29,058.
+- **Dün en sıcak seçilen 10 sayının ertesi gün isabeti:** gerçek 2,489; RNG 2,500 (adil beklenti 2,5).
+- **Sonuç:** Önceden kodlanmış sekiz incelemenin hiçbirinde iki taraflı Monte Carlo, aile düzeyi çoklu test düzeltmesi sonrası üstünlük doğrulanmadı. Bunlar tarihsel keşiflerdir; yeni bağımsız gelecek veride doğrulama sayılmaz.
+
+Kaynak kodu ve test yöntemi GitHub'a kalıcı işlendi. Raporun ZIP çıktısı Actions üzerinde **süreli artifact** olarak saklanır. Sonuçlar kupon satın almayı gerekçelendirmez.
+
+### V65 için olası devam (henüz uygulanmadı)
+
+**Yeni veriye dokunmadan kuralı sabitle:** Önceden belirlenen 8 V64 göstergesinden tercihen tek bir yön göstergesini seç, yeni tam günler geldikçe tahminleri önceden kaydet, her 217 çekilişte 10 sayılık sabit bir seçim yapılıyorsa 2,5 adil isabetiyle karşılaştır. Geçmiş 72 gün üzerinde başka parametre aramak bağımsız kanıt değildir.
 
 ### Yeni sohbetten devam etme
 
@@ -63,6 +72,6 @@ Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V63 programları ve Actions sonuçlarına bak. V64'te günlük 217 çekiliş için sayıların alt/üst frekanslarının ertesi gün hareketini, bağımsız RNG kontrolüyle araştırmaya devam et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V64 programları, V64 RNG sonuçları ve Actions ZIP raporuna bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. Son günlük alt/üst istatistik için henüz ayrı V64 hesaplayıcısı yoktur._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64 için ayrı hesaplayıcı ve Actions raporu vardır._
