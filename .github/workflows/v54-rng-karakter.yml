@@ -1,0 +1,38 @@
+name: V54 RNG Karakter Aile Gecis
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v54_rng_karakter_gecis.py'
+      - 'v54_rng_karakter_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v54-rng-karakter.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v54:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V54 syntax check + existing Streamlit imports
+        run: python -m py_compile v54_rng_karakter_gecis.py v54_rng_karakter_app.py v10_app.py
+      - name: Check V54 freezes early, family transitions and fair RNG
+        run: python v54_rng_karakter_gecis.py --selftest
+      - name: Export V54 character, family mutation and 14-day blind-audit ZIP
+        run: python v54_rng_karakter_gecis.py --source veri.txt --sims 80 --output-dir v54_artifacts
+      - name: Preserve single V54 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V54_RNG_KARAKTER_AILE_TEK_ZIP
+          path: v54_artifacts/*.zip
+          retention-days: 90
+          if-no-files-found: warn
