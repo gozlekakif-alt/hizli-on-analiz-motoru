@@ -1,0 +1,120 @@
+HIZLI ON V49 — 8'LI / 9'LU / 10'LU AILE YAKINLIGI VE UCUNCU GELIS
+15.10.2026 | Gecmise donuk aciklayici test. Gelecegi tahmin basarisi ONAYLANMADI.
+
+KAYNAK
+- GitHub gozlekakif-alt/hizli-on-analiz-motoru/veri.txt.
+- 72 TAM gun 01.08.2026–12.10.2026, 15.624 cekilis tetikleme arastirmasi.
+- Ileri izleme icin 15.990 gecerli sonuc: kismi 23.08 ve 13.10 hedef olarak izlendi.
+- 23.08 #50924 ve #50936 (gecersiz 20-sayi satiri) disarida.
+- Bir 'el', kaynakta art arda GELEN GECERLI sonuc demektir. Eksik satir gecilerek sayilir.
+- Her TAM gunde, fiziksel olarak 5–30 dakika arali iki cekiliste EN AZ K ortak sayi varsa olay olusturuldu.
+- 01:02–07:02 kapali saat dilimi '30 dakika yakini' sayilmadi.
+- Her tetikleyici ciftten SADECE BIR K-sayilik aile alindi: ortak sayilarin sirali ilk K'si.
+  Bu kural hedefler incelenmeden sabitlendi, tum olasi altkumeler kullanilip sonradan secilmedi.
+- Ikinci gorunumdan SONRAKI 217 gercek kayitli cekilis degerlendirildi.
+- 217 hedef gorulemeyecek 23 adet 8'li, 4 adet 9'lu, 1 adet 10'lu olay esit ufuk icin disarida.
+- Aile secimi gelecek sonuclara gore degistirilmedi.
+- Sabit rastgele referans, olay cekilis numarasi ve K'ye bagli deterministik farkli sayilar ile uretilmistir;
+  matematiksel beklenti bagimsiz 20/80 hipergeometrik olasiliktir.
+
+1) OLAY SAYISI VE BENZERSIZ AILE
+K; 5-30 dakika icinde en az K ortak olan cekilis cifti; 217 hedefi tamamlanan; farkli sabitlenmis aile
+8; 6.449; 6.426; 6.426
+9; 1.965; 1.961; 1.961
+10; 450; 449; 449
+
+Ilgili 90.720 fiziksel yakin cekilis cifti arasinda TAM ortak sayi dagilimi:
+tam 8 ortak=4.484; tam 9=1.515; tam 10=368; tam 11=76; tam 12=6; 13 ve uzeri=0.
+8+/9+/10+ sayimlari ust uste binen kume olaylaridir, birbirinden bagimsiz degildir.
+
+2) IKINCI GELISTEN SONRAKI 217 HEDEFTE KAC AILE UCUNCU KEZ BIRLESTI?
+K aile; en az (K-2)/K gorulen farkli olay; en az (K-1)/K; TAM K/K
+8; en az 6/8: 2.768; en az 7/8: 195; tam 8/8: 9
+9; en az 7/9: 216; en az 8/9: 11; tam 9/9: 0
+10; en az 8/10: 11; en az 9/10: 0; tam 10/10: 0
+
+NOT: Her olay icin ilk bulusma bir kez sayildi. Asagidaki satirlar ise tum hedeflerde toplam rastlama sayisidir;
+ayni tetikleyici 217 hedef icinde birden fazla kez esigi asabilir.
+
+3) GERCEK TOPLAM ISABET OLAYLARI / HIPERGEOMETRIK RNG / SABIT RASTGELE KONTROL
+K boyu; secilen hedef esigi; gozlenen toplam; RNG matematiksel beklenen; deterministik rastgele kontrol
+8; 6/8 VE UZERI; 3.558; 3.530,05; 3.534
+8; 7/8 VE UZERI; 199; 229,81; 181
+8; TAM 8/8; 9; 6,06; 3
+
+9; 7/9 VE UZERI; 232; 265,96; 232
+9; 8/9 VE UZERI; 11; 14,18; 11
+9; TAM 9/9; 0; 0,31; 0
+
+10; 8/10 VE UZERI; 12; 13,80; 13
+10; 9/10 VE UZERI; 0; 0,61; 1
+10; TAM 10/10; 0; 0,011; 0
+
+Toplam 217-hedef gozlemleri: 8'li 1.394.442, 9'lu 425.537, 10'lu 97.433.
+RNG olasiliklari:
+P(>=6/8)=0,0025315145; P(>=7/8)=0,0001648008; P(8/8)=0,000004345661.
+P(>=7/9)=0,0006249951; P(>=8/9)=0,00003331673; P(9/9)=0,000000724277.
+P(>=8/10)=0,0001416522; P(>=9/10)=0,000006232861; P(10/10)=0,000000112212.
+
+4) ZAMAN PENCERELERI - GÖZLENEN / RNG BEKLENEN
+8'li (K):
+1–6 el: >=6/8 91 / 97,61; >=7/8 4 / 6,35; tam8/8 0 / 0,17
+7–12 el: >=6/8 108 / 97,61; >=7/8 9 / 6,35; tam8/8 2 / 0,17
+13–24 el: >=6/8 216 / 195,21; >=7/8 7 / 12,71; tam8/8 0 / 0,34
+25–72 el: >=6/8 793 / 780,84; >=7/8 52 / 50,83; tam8/8 2 / 1,34
+73–217 el: >=6/8 2.350 / 2.358,79; >=7/8 127 / 153,56; tam8/8 5 / 4,05
+
+9'lu:
+1–6 el: >=7/9 8 / 7,35; >=8/9 0 / 0,39; tam9/9 0 / 0,009
+7–12 el: >=7/9 4 / 7,35; >=8/9 1 / 0,39; tam9/9 0 / 0,009
+13–24 el: >=7/9 16 / 14,71; >=8/9 0 / 0,78; tam9/9 0 / 0,017
+25–72 el: >=7/9 51 / 58,83; >=8/9 3 / 3,14; tam9/9 0 / 0,068
+73–217 el: >=7/9 153 / 177,71; >=8/9 7 / 9,47; tam9/9 0 / 0,206
+
+10'lu:
+1–6 el: >=8/10 0 / 0,38; >=9/10 0 / 0,017; tam10/10 0 / 0,0003
+7–12 el: >=8/10 0 / 0,38; >=9/10 0 / 0,017; tam10/10 0 / 0,0003
+13–24 el: >=8/10 0 / 0,76; >=9/10 0 / 0,034; tam10/10 0 / 0,0006
+25–72 el: >=8/10 5 / 3,05; >=9/10 0 / 0,134; tam10/10 0 / 0,0024
+73–217 el: >=8/10 7 / 9,22; >=9/10 0 / 0,406; tam10/10 0 / 0,0073
+
+5) ILK 36 TAM GUN / SON 36 TAM GUN KARSILASTIRMASI
+Ilk 36 gunde dogan olaylar; ilk 217 hedefte esik TOPLAM hit / hedef sonrasi olasilik:
+8'li n=3.211: >=6 1.800, >=7 102, tam8 3.
+9'lu n=1.002: >=7 131, >=8 8, tam9 0.
+10'lu n=239: >=8 9, >=9 0, tam10 0.
+
+Son 36 gunde dogan olaylar:
+8'li n=3.215: >=6 1.758, >=7 97, tam8 6.
+9'lu n=959: >=7 101, >=8 3, tam9 0.
+10'lu n=210: >=8 3, >=9 0, tam10 0.
+
+6) EN ERKEN TAM 8/8 UCUNCU BULUSMA ORNEKLERI
+8'li aile; ikinci gorunum cekilis no; sonraki tam8/8 cekilis no; sonra kac el; tetikleyicinin ortak sayi miktari
+8-11-13-24-31-48-56-64; #50771; #50778; +7; ilk ciftte 9 ortak sayi
+1-46-48-53-57-62-64-78; #60776; #60784; +8; ilk ciftte 8 ortak sayi
+14-29-39-47-53-57-60-75; #59389; #59431; +42; ilk ciftte 8 ortak sayi
+6-10-21-27-50-57-61-79; #53750; #53816; +66; ilk ciftte 8 ortak sayi
+19-37-39-41-42-45-51-60; #60068; #60146; +78; ilk ciftte 8 ortak sayi
+21-23-24-34-52-60-63-72; #53299; #53393; +94; ilk ciftte 8 ortak sayi
+3-10-27-31-35-48-70-78; #54328; #54438; +110; ilk ciftte 8 ortak sayi
+16-18-37-39-44-59-67-70; #54081; #54266; +185; ilk ciftte 8 ortak sayi
+2-28-31-44-54-70-73-74; #56821; #57006; +185; ilk ciftte 8 ortak sayi
+
+7) SONUC / GUVENILIRLIK
+- 8'li ailede tam 8/8'in 9 gorulmesi, 6,06 rastgele beklentisinden buyuktur,
+  ancak olaylar gun icinde ve gecmiste secilmis ailelere bagli, bagimsiz degildir.
+- 7–12 el grubunda 2 tam 8/8 olmasi kucuk sayili, coklu aralik ve esik denemeli SONRADAN BULUNAN bir sapmadir.
+  Bu nedenle tek basina 'sinyal' veya tahmin algoritmasi olarak kullanilamaz.
+- 9'lu ve 10'lu ailelerde yakin ciftin ortaya cikmasi ucuncu tam birlesmeyi garantilemedi.
+- Hem gercek 20'li cekilisler hem aileler birbiriyle cok sayida ortustugu icin
+  klasik bagimsiz z testleri iyimser olabilir; onceden sabitlenen kuralla
+  YENI gunlere ait gun-blok / esit olasilikli rastgele kontrol basarisi aranmalidir.
+- Tum arastirma gecmisteki 72 tam gunden secilmis sinyallerdir. Kor ileri test yapilmadi.
+- Onceden kabul kurali: 8'li aileler icin ikinci gorunum sonrasi 7–12 hedef el,
+  tam 8/8 veya 7/8 esigi, her yakin olaydan tek K aile. Bu kuralin yeni
+  14 TAM gunde nasil davrandigi eskilere bakip degistirilmeden sinanmalidir.
+- Matematik: bağımsız 20/80 RNG'de tum 8/8 geri gelisleri veya 10/10 kuponlar her zaman seyrektir;
+  bu arastirma hicbir kazanc vaadi sunmaz.
+
+Bu dosya: 8'li, 9'lu, 10'lu ailelerin ayri tam raporu ve V48 11'li sonucuyla karsilastirma zemini.
