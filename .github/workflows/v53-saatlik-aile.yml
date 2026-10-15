@@ -1,0 +1,38 @@
+name: V53 Saatlik Degisen 2-10 Aile
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v53_saatlik_degisen_aileler.py'
+      - 'v53_saatlik_degisen_aileler_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v53-saatlik-aile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v53:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check V53 python and Streamlit source syntax
+        run: python -m py_compile v53_saatlik_degisen_aileler.py v53_saatlik_degisen_aileler_app.py v10_app.py
+      - name: Verify 13 plus 17x12 hour groups and exact same-draw families
+        run: python v53_saatlik_degisen_aileler.py --selftest
+      - name: Export hourly family movements with all 72-day overview as one ZIP
+        run: python v53_saatlik_degisen_aileler.py --source veri.txt --output-dir v53_artifacts
+      - name: Upload single ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V53_SAATLIK_2_10_AILELER_TEK_ZIP
+          path: v53_artifacts/*.zip
+          retention-days: 90
+          if-no-files-found: warn
