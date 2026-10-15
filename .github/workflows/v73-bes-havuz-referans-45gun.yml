@@ -1,0 +1,43 @@
+name: V73 Bes Havuz Sabit Referans 45 Gun Egitim Dogrulama Testi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v73_5_havuz_referans_yon_cok_gun_kor_test.py"
+      - ".github/workflows/v73-bes-havuz-referans-45gun.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v73:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Source compile and 5x4 movement selftest
+        run: |
+          python -m py_compile v73_5_havuz_referans_yon_cok_gun_kor_test.py
+          python -u v73_5_havuz_referans_yon_cok_gun_kor_test.py --selftest
+      - name: Train 15 days, validate 15 days and test frozen policy on final 15 days
+        run: |
+          python -u v73_5_havuz_referans_yon_cok_gun_kor_test.py --source veri.txt --out v73_output/V73_5x4_REFERANS_YON_15GUN_EGITIM_15GUN_DOGRULAMA_15GUN_TEST.zip
+      - name: Upload full single V73 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V73_5x4_SABIT_REF_45GUN_TAM_RAPOR
+          path: v73_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
