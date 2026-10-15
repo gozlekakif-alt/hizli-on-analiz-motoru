@@ -231,7 +231,8 @@ def _selftest():
     assert hits[0]["win8"]==0 and hits[1]["win8"]==1
     frozen=generate_events(fd)
     fd[date(2026,10,14)][8]["nums"]=frozenset(range(31,51))
-    assert generate_events(fd)[:2]==frozen[:2], "future target leaked to predictions"
+    assert [e for e in generate_events(fd) if e["first_id"]==9000
+            and e["trigger_id"]==9001] == core, "future target leaked to predictions"
     result=run(fd,{},[],[])
     z=build_zip(*result)
     with zipfile.ZipFile(io.BytesIO(z)) as archive:
