@@ -98,11 +98,12 @@ def discover_class(family,origin_lag,frame,known):
     if family in known:
         return "EXACT",known[family]["mask"],known[family]["created_at"],"EXACT"
     possible=[]
-    for oldt,oldm in frame:
-        cls=relation(oldm,family)
-        if cls in PARENTS:
-            possible.append((PARENTS.index(cls),-int(oldm.bit_count()),
-                             -oldt,oldm,cls))
+    for oldt,oldmasks in frame:
+        for oldm in oldmasks:
+            cls=relation(oldm,family)
+            if cls in PARENTS:
+                possible.append((PARENTS.index(cls),-int(oldm.bit_count()),
+                                 -oldt,oldm,cls))
     if possible:
         _,_,_,parent,cls=min(possible)
         return cls,parent,known[parent]["created_at"],cls
@@ -231,8 +232,7 @@ def run(src,outpath):
                 known[fm]=dict(mask=fm,created_at=t,
                     source=rows[srcinfo["parent_index"]]["id"],
                     first_draw=row["id"])
-        for fm in current:
-            previous.append((t,fm))
+        previous.append((t,tuple(current)))
         if t%3000==0:
             print("V87 step",t+1,"roots known",len(known),
                   "selected",len(selected_events),
