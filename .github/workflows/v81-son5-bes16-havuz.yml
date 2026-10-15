@@ -1,0 +1,43 @@
+name: V81 Son 5 Cekilis 5x16 Sicaklik Havuzu ve Kupon Testi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v81_son5_cekilis_bes16_havuz_hedef_kupon.py"
+      - ".github/workflows/v81-son5-bes16-havuz.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v81:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Validate source and five-draw-only heat groups
+        run: |
+          python -m py_compile v81_son5_cekilis_bes16_havuz_hedef_kupon.py
+          python -u v81_son5_cekilis_bes16_havuz_hedef_kupon.py --selftest
+      - name: Analyze 72 days 5x16 frequency pools 10+20 ticket blind split
+        run: |
+          python -u v81_son5_cekilis_bes16_havuz_hedef_kupon.py --source veri.txt --out v81_output/V81_72GUN_SON5CEKILIS_BES_16LIK_HAVUZ_ISABET_TEST.zip
+      - name: Save complete single ZIP output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V81_SON5_16LIK_SICAKLIK_HAVUZ_10_20_KUPON
+          path: v81_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
