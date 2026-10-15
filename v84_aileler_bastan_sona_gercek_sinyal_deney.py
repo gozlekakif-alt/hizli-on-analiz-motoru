@@ -161,7 +161,6 @@ def run(drawfile,fampath,outpath):
                    "VALIDATE" if day<"2026-09-28" else "HOLDOUT")
             rec=group_rec(gap_summary,(phase,stage,k))
             rec[0]+=1;rec[1]+=actual;rec[2]+=int(actual==k);rec[3]+=rnd
-            if len(positions) and stage=="1to2":pass
             today_signal_counts[f"rhythm_{stage}"]+=1
             if phase=="HOLDOUT" and len(signals_detail)<30000:
                 signals_detail.append(dict(day=day,draw_pos=pos,stage=stage,
@@ -240,7 +239,11 @@ def run(drawfile,fampath,outpath):
                                            if ps and known_days[i]==1)),
              complete_family_events=sum(len(ps) for ps in family_ap),
              number_of_families_complete_any=sum(bool(ps) for ps in family_ap),
-             **dict(today_signal_counts)))
+             early_candidates=today_signal_counts["early_candidates"],
+             early_distinct_targets=today_signal_counts["early_distinct_targets"],
+             rhythm_1to2=today_signal_counts["rhythm_1to2"],
+             rhythm_2to3=today_signal_counts["rhythm_2to3"],
+             rhythm_3to4=today_signal_counts["rhythm_3to4"]))
         if d_index%12==0:
             print(f"V84 processed day {d_index+1}/72",flush=True)
     # Full-family events as input family CSV vs actual 72 days:
