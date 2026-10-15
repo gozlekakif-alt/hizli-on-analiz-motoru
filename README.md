@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V73 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V75 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -198,12 +198,34 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **Raporun tek ZIP içeriği:** 21N×6kural tüm üç dönem sonuçları, eğitimden seçili N başına yön kuralı, 3.255 hedef için seçilen tam 20'lik ve her havuzun 4 numarası, **3.255×80=260.400 sayının eski/yeni sıcaklık havuzu, sıralama yönü, son12/önceki12 frekansı, seçildi/çıktı bilgisi**, 15 günlük hedef-bazlı isabet ve rastgele karşılaştırma, beş havuz hedef kotaları, havuz+yön bazlı isabet, metodoloji, audit JSON.
 - **Kesin çıkarım:** Sıcaklık yerine göre yükselme/soğuma gibi geçmiş karakterler kaydedilebilir ancak hangi `N` geçmiş penceresinin **rastgele 5/20 üzeri tahmin avantajı** verdiği henüz gösterilemedi. Sonuç iyi çıktı diye N değiştirmeyin. Gerçekten yeni gelecek çekilişlerde önceden dondurulan tek seçimi sınamak gerekir.
 
+## V74 — 5x5 eski→yeni sıcaklık kimlik matrisi + 5x3 hareket sınıfı, 20'likte eşit 5x4 seçimin doğrulama testi
+
+**Başarılı GitHub Actions:** [V74 kaynak](v74_5x5_kimlik_yon_gecis_kalibrasyon.py) · [çalışma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38769792751) · [tek ZIP V74](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38769792751/artifacts/11990219849)
+
+- **Çıkış noktası:** V73'te sıcaklık/yön için N referans aralığını öğrenme+doğrulama ile seçmek HOLDOUT'ta avantaj göstermedi. Bu kez 80 sayının `eski havuz → yeni havuz` kimlik hareketlerini **TRAIN döneminde gerçek hit oranlarıyla** 5×5 (25 kategori) ve 5×3 (15 kategori) olarak ayrıca öğrendik.
+- **Veri:** 72 tam gün, ilk 27 gün warmup; **29 Ağustos–12 Eylül 3.255 çekiliş eğitim**, **13–27 Eylül 3.255 validasyon**, **28 Eylül–12 Ekim 3.255 holdout**. Önceki hedefler geleceğe sızmadan, her sayının son N frekansına göre 5×16 havuzu belirleniyor. Her sayının `L=6/12/24` çekiliş önceki havuz konumu bulunuyor. 12 sabit N (`12,24,42,56,72,96,144,217,288,432,720,1008`), iki durum türü (`TRANS25` ve `DIRECTION15`) ve iki %25 öncüllü yumuşatma gücü (`250/2500`) birlikte **144 aday kural**.
+- **Her 20'lik:** Mevcut 5 havuzun her birinden **tam 4 sayının kimliğini**, eğitim verisinden öğrenilen ilgili hareket grubunun gelecekte çıkma oranına göre seç. Eşit puanlarda önceden tohumlanan rastgele öncelik. Karşılaştırma: 5 havuzdan yine **4'er rasgele sayı** seçen denetim.
+- **Validasyonun kilitlediği V74 model:** `N=42` geçmiş çekiliş, `LAG=12` hareket aralığı, `DIRECTION15` (5 mevcut sınıf×yükseliyor/sabit/soğuyor), `SHRINK=250`. Yani 5×5 matrisi raporladıysak da **seçilen kural 5×3**.
+- **VALIDATE:** model **5,08848/20**, aynı kotalı rastgele **5,01598/20**. **HOLDOUT (3.255 hedef)** model **5,05653/20**, aynı kotalı rastgele **4,97358/20**. Fark **+0,08295** doğru sayı/çekiliş; model-vs-denetim eşleştirilmiş z≈2,221, **tek yönlü p≈0,01318**. Adil RNG 5/20 ortalamasıyla kıyaslamada tek yönlü **p≈0,02834**. Brier skorunda fark çok küçük (`+0,000000315` iyi yön), logloss da çok küçük (`+0,000000825`).
+- **Bulguyu abartma:** Bu tarihler V68–V73'te zaten araştırıldı; çok sayıda motor denemesi ve tarih seçimi yapıldı. **Bu p değerleri yeni, gerçek ileriye dönük loto üstünlüğünü kanıtlamaz.** Sonuç yalnızca yeni tarihli sabit parametreli doğrulama yapmaya değecek bir hipotez sunar.
+- **ZIP:** 144 yöntem validasyon puanı, 3.255 hedefin dörder seçilen gerçek 20'liği ve isabeti, 3.255×80 sayının eski ve yeni havuzu + yer/yön, 5×5 TRAIN/VALIDATE/HOLDOUT geçiş hit oranları, 5×3 sıcaklık/yön hit oranları, 15 günün günlük sonuçları, diğer pencerelerin yalnız açıklayıcı HOLDOUT değerleri, yöntem ve JSON.
+
+## V75 — V74'ün 42/12 hareket kuralı hiç değiştirilmeden 13 Ekim ilk kesintisiz çekilişlerinde
+
+**Başarılı GitHub Actions:** [V75 kaynak](v75_13ekim_sabit_42_12_gecis_kor_test.py) · [çalışma](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38770234509) · [tek ZIP V75](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38770234509/artifacts/11990572837)
+
+- **Frozen V74:** `N42/LAG12/DIRECTION15/SHRINK250`, eğitim fit oranları yalnız **29 Ağustos–12 Eylül**; 13 Ekim sonucuna bakarak parametre değiştirilmedi. Dörder sayılık beş havuz, aynı V74 seed'inin devamı olan tie-break dizisi ve aynı kontrol kuralı.
+- **13 Ekim veri kalitesi:** `veri.txt` içinde `13.10.2026` tarihli **151** çekiliş kaydı var (`#61846..#61998`), **#61958 ve #61972** kayıtları eksik. Gerçekte ardışık son N ve N+12 penceresi bozulmasın diye yalnız ilk kesintisiz **112** çekiliş (`#61846 00:02..#61957 15:12`) kullanıldı. Eksik çekilişleri tahmin ederek doldurmadık, kalan 39 kayıt atlandı.
+- **13 Ekim 112 hedef sonucu:** 20'lik model **582 toplam =5,19643/20**; aynı havuzlardan rastgele **534 toplam=4,76786/20**; fark **+0,42857**; eşleştirilmiş z≈2,146, tek yönlü p≈0,01592. Ama modelin sabit adil RNG beklentisi **5/20** üzerinde olmasının tek yönlü yaklaşık **p≈0,11434**, yani bağımsız RNG'ye karşı bu 112 çekilişte anlamlı üstünlük kanıtı yok. Model 7+ isabet 25, 8+ 13, 9+ 3, 10+ 0. Brier küçük farkla daha iyi `0,187491831 vs 0,1875`.
+- **Sınırlama:** 13 Ekim zaten veri dosyasında vardı; model seçimi için kullanılmamış olsa da gerçek zamanlı ileriye dönük deney değil. Yalnız küçük, eksiksiz 112 çekiliş. Kuralı değiştirmeden yeni, tam çekilişler üzerinde tekrar etmek gerek.
+- ZIP: 112 hedefin 5×4 tam 20 aday kimlik listeleri ve isabet, 112×80 eski-yeni havuz/yer/yön/tahmini olasılık satırı, 5×3 çıkış oranları, **değiştirilmemiş eğitim olasılıkları**, metodoloji ve denetim JSON.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V73 programları, V64 RNG, V65 aile, V66 ilk20, V67 birliktelikler, V68 15/20, V69 saatlik 4/5/6/7, V70 ilk20 pencere, V71 ayrı havuzlar, V72 ilk 5x4 kimlik/yön ve V73 21 referansı 15+15+15 günlük öğrenme/doğrulama/test ile karşılaştıran raporlara bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V75 programları, V64 RNG, V65 aile, V66 ilk20, V67 birliktelikler, V68 15/20, V69 saatlik 4/5/6/7, V70 ilk20 pencere, V71 ayrı havuzlar, V72–V73 5×4 referans/yön, V74 eğitimde öğrenilen 5×5/5×3 havuz geçiş oranları, V75 aynı 42/12 kuralının 13 Ekim 112 ardışık çekilişte tekrarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V73 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V75 için ayrı hesaplayıcılar ve Actions raporları vardır._
