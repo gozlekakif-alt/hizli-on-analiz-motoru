@@ -1,0 +1,39 @@
+name: V61 Geometrik DNA Sekil Yasami
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v61_geometrik_dna.py'
+      - '.github/workflows/v61-geometrik-dna.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v61:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check V61 syntax
+        run: python -m py_compile v61_geometrik_dna.py
+      - name: Verify 20 shape families and strictly frozen first-six analyses
+        run: python -u v61_geometrik_dna.py --selftest
+      - name: Full 72-day geometric DNA / fair random baseline / 36-day holdout
+        run: |
+          python -u v61_geometrik_dna.py \
+            --source veri.txt \
+            --output v61_output/V61_GEOMETRIK_DNA_SEKIL_DONUSUM_TEK_ZIP.zip
+      - name: Upload one combined geometric-DNA ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V61_GEOMETRIK_DNA_SEKIL_DONUSUM_TEK_ZIP
+          path: v61_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
