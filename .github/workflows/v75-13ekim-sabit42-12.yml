@@ -1,0 +1,40 @@
+name: V75 13 Ekim Sabit V74 N42 Lag12 Kontrol
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v75_13ekim_sabit_42_12_gecis_kor_test.py"
+      - ".github/workflows/v75-13ekim-sabit42-12.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v75:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install NumPy
+        run: python -m pip install "numpy>=1.24,<3"
+      - name: Compile and frozen model check
+        run: |
+          python -m py_compile v75_13ekim_sabit_42_12_gecis_kor_test.py
+          python -u v75_13ekim_sabit_42_12_gecis_kor_test.py --selftest
+      - name: Frozen 42/12 conditional transition, consecutive 13 October targets only
+        run: |
+          python -u v75_13ekim_sabit_42_12_gecis_kor_test.py --source veri.txt --out v75_output/V75_13EKIM_SABIT_42_12_GECIS_ILK_KESINTISIZ_KOR_TEST.zip
+      - name: Upload V75 exact candidates and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V75_13EKIM_KILITLI_42_12_KOR_TEST
+          path: v75_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
