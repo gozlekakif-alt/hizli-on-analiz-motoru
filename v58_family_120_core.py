@@ -22,7 +22,7 @@ import hashlib,json,math,random,sqlite3,statistics
 from v52_ayni_cekilis_eslikci_217 import parse_txt
 from v53_saatlik_degisen_aileler import BLOCKS
 
-VERSION="58.3"
+VERSION="58.4"
 MAX_ROOTS_PER_HOUR=90
 MAX_MEETINGS_PER_HOUR=14000
 MAX_HOURS_PER_BATCH=18*6
@@ -36,14 +36,14 @@ GROUPS=[
 ("G02_BANT",["band_unique_mean","one_band_roots","distinct_band_roots","band_coverage_ratio","odd_fraction","upper40_fraction","mirror_pairs","adjacent_pairs","number_spread_mean","band_entropy_mean"]),
 ("G03_SAAT_ICI",["support_mean","support_max","support_ge3","support_ge4","first_slot_mean","last_slot_mean","slot_span_mean","slot_gap_mean","long_gap_roots","support_sum"]),
 ("G04_DONUSUM",["exact_previous","new_roots","lost_previous","one_swap_previous","two_swap_previous","grow_previous","shrink_previous","split_previous","merge_new","return_3hours"]),
-("G05_GUNLER",["prev_calendar_roots","prev_calendar_exact","prev_same_clock_roots","prev_same_clock_exact","yesterday_root_family_count","yesterday_size_mean","yesterday_overlap_max","yesterday_one_swap","yesterday_grow","yesterday_lost"]),
+("G05_GUNLER",["prev_calendar_roots","prev_calendar_exact","prev_same_clock_roots","prev_same_clock_exact","prev_last_hour_root_count","yesterday_size_mean","yesterday_overlap_max","yesterday_one_swap","yesterday_grow","yesterday_lost"]),
 ("G06_AYRILMA",["prev_one_missing_best","prev_two_missing_best","prev_threeplus_missing_best","prev_zero_any","prev_retained_mean","prev_arrivals_mean","prev_whole_in_draw","prev_fragment_in_draw","prev_not_in_draw","previous_root_count"]),
 ("G07_BIRLESME",["disjoint_meetings","partial_overlap_meetings","nested_meetings","meeting_events","union_mean_size","union_max_size","repeated_union_events","draws_3plus_families","draws_4plus_families","draws_5plus_families"]),
-("G08_AG",["network_nodes","network_active_nodes","network_edges","network_max_degree","network_mean_degree","network_bridge_nodes","network_components","network_largest_component","network_triangles","network_pair_daycross"]),
+("G08_AG",["network_nodes","network_active_nodes","network_edges","network_max_degree","network_mean_degree","network_degree3plus_nodes","network_components","network_largest_component","network_triangles","multi_origin_hour_meetings"]),
 ("G09_SICAKLIK",["hot_members_mean","cold_members_mean","mixed_heat_roots","all_hot_roots","all_cold_roots","hot_share","cold_share","hot_root_count","cold_root_count","neutral_root_count"]),
 ("G10_RITIM",["hour_interval_mean","daily_prev_any_exact","root_last_first_span_max","root_in_first6","root_in_last6","root_cross_half","root_only_first6","root_only_last6","prior3_exact_roots","max_hour_support"]),
 ("G11_CEKILIS",["unique_twenty_min","first6_draw_overlap_mean","last6_draw_overlap_mean","first6_root_appearances","last6_root_appearances","draws_2plus_roots","draws_3plus_roots","max_roots_same_draw","draw_band_range_mean","draw_mirror_mean"]),
-("G12_RNG",["expected_meetings","observed_meetings","meeting_minus_expected","meeting_over_expected","expected_disjoint","observed_disjoint","expected_overlap","observed_overlap","root_pair_exposures","signal_flag_placeholder"]),
+("G12_RNG",["expected_meetings","observed_meetings","meeting_minus_expected","meeting_over_expected","expected_disjoint","observed_disjoint","expected_overlap","observed_overlap","root_pair_exposures","no_frozen_family_flag"]),
 ]
 METRICS=[(g,n) for g,names in GROUPS for n in names]
 assert len(METRICS)==120 and len({n for _,n in METRICS})==120
@@ -342,7 +342,7 @@ def analyze_hour(day,hour,draws,prior,prev_day,known_draws):
        pair_expectation["DISJOINT"],mt["DISJOINT"],
        pair_expectation["OVERLAP"]+pair_expectation["NESTED"],
        mt["OVERLAP"]+mt["NESTED"],
-       len(frozen_pair)*len(draws),0])
+       len(frozen_pair)*len(draws),int(len(parents)==0)])
     if set(values)!={n for g,n in METRICS}:
         raise AssertionError("Not all 120 metrics computed")
     hour_meta={"day":day,"hour":hour["code"],"time_range":hour["name"],
@@ -399,6 +399,9 @@ def study_one_day(day,rows,prev_day=None):
     roots_day={}
     prior=[]
     known=[]
+    if prev_day is not None and\
+       date.fromisoformat(day)-date.fromisoformat(prev_day[0])==timedelta(days=1):
+        known=[norm(x) for x in prev_day[1][-72:]]
     if prev_day is not None:
         # last 3 completed hour blocks from the immediately previous calendar
         # day only. A gap in source days does not count as continuity.
