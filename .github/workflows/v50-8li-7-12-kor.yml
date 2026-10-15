@@ -1,0 +1,38 @@
+name: V50 8li Aile 7-12 Sinyal Ileri Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v50_8li_yakinlik_kor.py'
+      - 'v50_8li_yakinlik_app.py'
+      - 'v10_app.py'
+      - '.github/workflows/v50-8li-7-12-kor.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  v50:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax
+        run: python -m py_compile v50_8li_yakinlik_kor.py
+      - name: Frozen signal and 14-day tests
+        run: python v50_8li_yakinlik_kor.py --selftest
+      - name: Existing historical sample and first 14 future full days
+        run: python v50_8li_yakinlik_kor.py --source veri.txt --output-dir v50_artifacts
+      - name: Save one report ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V50_8LI_AILE_7_12_TEK_ZIP
+          path: v50_artifacts/*.zip
+          retention-days: 90
+          if-no-files-found: warn
