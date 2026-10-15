@@ -1,6 +1,6 @@
 # HIZLI ON — GitHub Ana Araştırma Sayfası
 
-**Son güncelleme:** 15 Ekim 2026 (V70 tamamlandı)
+**Son güncelleme:** 15 Ekim 2026 (V71 tamamlandı)
 
 Bu depo, kullanıcı tarafından sağlanan gerçek çekiliş sonuçlarıyla 1–80 arasından 20 sayı çekilen Hızlı On oyununun betimsel ve ileriye dönük kontrol deneylerini toplar. Araştırmanın amacı **rastgele beklenenden bağımsız olarak üstün olan bir tahmin yöntemi var mı?** sorusunu sınamaktır. Şu ana kadar güvenilir üstünlük doğrulanmamıştır.
 
@@ -156,12 +156,25 @@ Aile tamamlamada matematiksel olarak en nadir 10'lu; bunun için **öncelikli he
 - **4.000 aynı-hedef ortak Monte Carlo örneğiyle 1.291 pencerelik tarama düzeltmesi:** herhangi bir pencerede sıfır sıcak sayı görülme ihtimali `p=0.27568`; herhangi bir pencerede 4/4/4/4/4 dağılım görülme ihtimali `p=0.78605`; tüm pencerelerde en yüksek mutlak frekans-z sapması gerçek `|z|=2.2802` (`N408`), düzeltilmiş `p=0.29168`. **Rastgelelikten anlamlı sapma gösterilemedi; sayıların sıcaklık kimliği pencere uzunluğuna göre değişir.** Özellikle kısa pencereler frekans eşitliği nedeniyle keyfi numara bağ çözümünden etkilenir.
 - ZIP içeriği: kısa TXT; istenen pencere CSV'si; 1.291 pencere tam CSV; hedef 20 sayının her penceredeki sayı/sıcaklık kimliği CSV; ekstrem pencereler ve sıfır sıcak / tam denge satırları; metodoloji ve audit JSON. Bunun kendisi **gelecekte kupon seçme avantajını kanıtlamaz**; tek geçmiş hedefe bakılmaktadır.
 
+## V71 — 12 Ekim'in 217 hedefi, 1.291 geçmiş sıcaklık penceresi, 10/15/20 kupon ve körlük disiplini
+
+**Başarılı rapor:** [V71 kod](v71_217_cekilis_tum_isi_pencere_test.py) · [GitHub Actions](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38765553971) · [Tek ZIP rapor](https://github.com/gozlekakif-alt/hizli-on-analiz-motoru/actions/runs/38765553971/artifacts/11990155120)
+
+- **İnceleme:** #61629–#61845, 12.10.2026 **217 çekiliş**. Her hedef öncesi geçmiş: 71 tam gün ×217 = 15.407 çekiliş, gün içinde önceki çekilişler aşamalı ekleniyor. Hedef gerçek 20 sayısı seçime sızmıyor.
+- **Pencereler:** Son 12,24,36,42,56,72,...,217,...,15.407 çekiliş; 12 adımlı yaklaşık **1.291 farklı geçmiş uzunluğu**. Her pencerede 80 sayı o aralıktaki görünme sıklığına göre sıralanıyor, eşitliklerde küçük numara önce. Sayı sıcaklığının değişen pencereler arasında eşdeğer olmadığı ayrıca raporlanıyor.
+- **Kandidatlar:** COLD/MIDDLE/HOT havuzlarından her hedefe 10/15/20 sayı sabitleniyor. **1.291×3×3 = 11.619 yöntem** ile 217 adımlı retrospektif kronolojik tekrar. Tek sabit rastgele kontrol da mevcut.
+- **Tüm pencerelerde geçmişe bakınca en yüksek ortalama:** `10'lu, 1.812 MIDDLE = 2,78802/10` (adil 2,50), `15'li, 1.812 MIDDLE = 4,07373/15` (adil 3,75), `20'li, 2.184 MIDDLE = 5,32258/20` (adil 5,00). Ham tek yönlü p değerleri sırasıyla ≈0,000609 / 0,000991 / 0,002681. **11.619 seçenek üzerinden Bonferroni ile düzeltilmiş p=1** (hiçbiri üstünlük kanıtı değil).
+- **Tek rastgele kontrol:** 10'lu 2,56682, 15'li 3,84793, 20'li 5,08295 ortalama. **Tam 217×1291 beşli sıcaklık dağılımı** ve her hedefteki gerçek kupon-isabet listeleri ZIP'te.
+- **20'lik ana pencereler (sıcak / orta / soğuk):** 12 → 4,83/5,24/5,00; 24 →4,86/4,99/5,01; 36 →4,90/5,06/4,92; 42 →5,04/5,00/4,99; 56 →4,98/5,08/4,85; 72 →4,88/5,09/4,82; 217 →5,02/5,08/5,01. Hepsi 217 çekiliş ortalama isabeti. **Pencere seçilerek sonuçlar geriye dönük şişirilebilir.**
+- **İstatistik:** Her sabit 10/15/20 havuzunun 20/80 hedefte isabet sayısı tam hipergeometrik dağılımlı. 217 çekiliş toplamının olasılıkları 217 kat konvolüsyon ile hesaplandı ve 11.619 hipoteze konservatif aile düzeyi çoklu test düzeltmesi uygulandı. Tek gün daha önce çok incelendiği için **bağımsız ileriye dönük doğrulama yoktur**.
+- ZIP: ana kısa karar TXT; 11.619 yöntem tam sonuç CSV; 26 seçili pencere test özeti; 217×26×9 önceden dondurulmuş sayı seçimleri ve gerçekleşen isabetler; 26 pencerenin beşli dağılımı ve hedef bazlı sayım; rastgele kontrol; metodoloji; JSON denetim.
+
 ### Yeni sohbetten devam etme
 
 Yeni sohbette şu tek adresi paylaşmak yeterli:
 
 **https://github.com/gozlekakif-alt/hizli-on-analiz-motoru**
 
-Yeni asistana: **“Bu depodaki README, veri.txt, V58–V70 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 217 çekiliş birliktelikleri, V68 15/20 havuz, V69 saatlik 4/5/6/7 ve V70 12 Ekim ilk 20'nin 1.291 geçmiş sıcaklık penceresi testleri sonuçlarıyla Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
+Yeni asistana: **“Bu depodaki README, veri.txt, V58–V71 programları, V64 RNG, V65 aile tamamlama, V66 ilk20, V67 birliktelikler, V68 15/20 havuz, V69 saatlik 4/5/6/7, V70 ilk 20'nin 1.291 geçmiş penceresi ve V71 217 hedefin 11.619 sıcak/orta/soğuk kupon geri testleriyle Actions ZIP raporlarına bak. Günler arası kademeli geçişler RNG'den istatistiksel ayrışmadı; yalnız yeni, henüz incelenmemiş tam günlerle önceden sabitlenmiş modeli ileriye dönük test et. Gelecek çekilişi önceden görme ve geçmişi tahmin başarısı gibi sunma.”** de.
 
-_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V70 için ayrı hesaplayıcılar ve Actions raporları vardır._
+_Not: Bu README denemelerin kaynak kodlarını ve doğrulanmış kısa sayısal sonuçlarını tek noktada tutar; bütün ayrıntılı raporlar GitHub Actions çıktı ZIP'lerinde olabilir. V64–V71 için ayrı hesaplayıcılar ve Actions raporları vardır._
