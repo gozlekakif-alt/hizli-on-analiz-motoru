@@ -53,7 +53,7 @@ def root_families(rows):
     for i in range(len(rows)):
         a=rows[i]["nums"]
         for j in range(i+1,len(rows)):
-            common=frozenset(a&rows[j]["nums"])
+            common=frozenset(set(a).intersection(rows[j]["nums"]))
             if len(common)>=FAMILY_MIN:
                 shared.add(common)
     roots=[]
@@ -149,7 +149,7 @@ def _next_hour_lineage(day,source,targets,new_roots,source_block,code):
                 best_kind="BIR_SAYI_DEGISTIRDI"
                 lost=1
             else:
-                best_parts=[len(set(fam)&r["nums"]) for r in targets]
+                best_parts=[len(set(fam).intersection(r["nums"])) for r in targets]
                 best_overlap=max(best_parts,default=0)
                 best_kind="PARCALI_GELDI" if best_overlap>0 else "HIC_GELMEDI"
                 lost=len(fam)-best_overlap
@@ -228,7 +228,7 @@ def _collect_day(day,rows,context=None,keep_details=True):
                        "a_only":tag(sorted(set(a)-set(b))),
                        "b_only":tag(sorted(set(b)-set(a))),
                        "union":tag(united),"union_size":len(united),
-                       "union_remaining_draw":tag(sorted(draw["nums"]-frozenset(united))),
+                       "union_remaining_draw":tag(sorted(set(draw["nums"])-set(united))),
                        "union_hits_in_this_hour":0,
                        "repeated_union_in_hour":0,
                        "fair_union_prob":round(PROBS[len(united)],11),
@@ -246,7 +246,7 @@ def _collect_day(day,rows,context=None,keep_details=True):
             for event in events:
                 if event["day"]==day and event["hour"]==hour["hour"]:
                     target=frozenset(map(int,event["union"].split("-")))
-                    occurrence=sum(target<=d["nums"] for d in hour["draws"])
+                    occurrence=sum(target.issubset(d["nums"]) for d in hour["draws"])
                     event["union_hits_in_this_hour"]=occurrence
                     event["repeated_union_in_hour"]=int(occurrence>=2)
         src=context[-1] if context else None
