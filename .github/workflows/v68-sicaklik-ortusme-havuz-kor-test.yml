@@ -1,0 +1,37 @@
+name: V68 Sicaklik Yon + 15 20 Havuz Gecmis Ortusme Testi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v68_sicaklik_ortusme_havuz_kor_test.py"
+      - ".github/workflows/v68-sicaklik-ortusme-havuz-kor-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v68:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify syntax and blind-count selftest
+        run: |
+          python -m py_compile v68_sicaklik_ortusme_havuz_kor_test.py
+          python -u v68_sicaklik_ortusme_havuz_kor_test.py --selftest
+      - name: Compute chronological 217-slot 15 and 20-pool backtest
+        run: |
+          python -u v68_sicaklik_ortusme_havuz_kor_test.py --source veri.txt --output v68_output/V68_SICAK_SOGUK_ORTUSME_15_20_HAVUZ_KUPON_KOR_TEST.zip
+      - name: Upload complete single ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V68_SICAK_SOGUK_ORTUSME_15_20_HAVUZ_KUPON
+          path: v68_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
