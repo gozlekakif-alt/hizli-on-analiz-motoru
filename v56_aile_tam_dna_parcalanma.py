@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""V56 — complete 2..10 same-draw family taxonomy and numeric lineage.
+"""V56 — complete 2..20 same-draw family taxonomy and numeric lineage.
 
 Retrospective research, not a predictive RNG model. Family F is "active" in
 an hour if its ENTIRE exact set appears in >=2 distinct 20-number draws.
@@ -27,7 +27,7 @@ import zipfile
 from v52_ayni_cekilis_eslikci_217 import parse_txt
 from v53_saatlik_degisen_aileler import BLOCKS
 
-KS=tuple(range(2,11))
+KS=tuple(range(2,21))
 MAX_SUBFAMILIES_PER_HOUR=200_000
 SIMULATIONS=32
 FUTURE_DATE="2026-10-16"
@@ -45,7 +45,7 @@ def _maximal(intersections):
     return tuple(tuple(sorted(x)) for x in roots)
 
 def catalog(rows,full_detail=False,prehistory=()):
-    """Exact exhaustive 2..10 hourly families + maximal frequent roots.
+    """Exact exhaustive 2..20 hourly families + maximal frequent roots.
     
     Every combination of any two 20-number draws is enumerated. Its support
     is checked by intersection of 12/13 draw-membership bitsets. Thus every
@@ -105,7 +105,7 @@ def catalog(rows,full_detail=False,prehistory=()):
             "rows":rows,"heat":heat,"tidsets":tidsets,"closure_cache":cached}
 
 def attributes(cat,hour,day):
-    """Every selected-day family, all 2..10, including overlap-aware labels."""
+    """Every selected-day family, all 2..20, including overlap-aware labels."""
     root_set=set(r for r in cat["roots"] if len(r)<=10)
     heat=cat["heat"]
     cache=cat["closure_cache"]
@@ -152,7 +152,7 @@ def attributes(cat,hour,day):
                 "hourly_rate":round(count/len(rows),4)}
     
 def _transition(before,after,source_hour,dest_hour,all_detail=True):
-    """Hour transitions for EVERY 2..10 family. One-number edit, children,
+    """Hour transitions for EVERY 2..20 family. One-number edit, children,
     parent expansion, splits and fusion are separately observable.
     """
     history=[]
@@ -168,7 +168,7 @@ def _transition(before,after,source_hour,dest_hour,all_detail=True):
             for partial in combinations(family,k-1):
                 index[partial].append((family,support))
         replacement_idx[k]=index
-        if k<10:
+        if k<20:
             expanded_idx[k]=defaultdict(list)
             for family,(support,_) in after_all[k+1].items():
                 for partial in combinations(family,k):
@@ -227,7 +227,7 @@ def _transition(before,after,source_hour,dest_hour,all_detail=True):
                     "expansions":len(expansions),
                     "different_origin_next":int(source_hour=="H00" and dest_hour=="H07")
                 })
-    for k in range(3,11):
+    for k in range(3,21):
         for f,(count,_) in after_all[k].items():
             if f in before_all[k]:
                 continue
@@ -286,9 +286,9 @@ def summarize_day(day,rows,prehistory=(),details=False):
                 "day":day,"hour":b["code"],"k":len(root),
                 "root_family":family_id(root),
                 "support":next((cat["families"][len(root)][root][0]
-                    for _ in [0] if len(root)<=10 and root in cat["families"][len(root)]),0),
+                    for _ in [0] if len(root)<=20 and root in cat["families"][len(root)]),0),
                 "members":len(root),
-                "outside_limit_10":int(len(root)>10)
+                "outside_limit_20":int(len(root)>20)
             } for root in cat["roots"])
     for (before,old),(after,new) in zip(analyses,analyses[1:]):
         tc,detail,fused=_transition(old,new,before["code"],after["code"],details)
@@ -377,7 +377,7 @@ def scan(full,selected=None,n_sims=SIMULATIONS):
         maximal=[]
         for b,cat in single["hours"]:
             for root in cat["roots"]:
-                if 2<=len(root)<=10:
+                if 2<=len(root)<=20:
                     support=cat["families"][len(root)][root][0]
                 else:support=0
                 maximal.append((root,b["code"],len(root),support))
@@ -415,7 +415,7 @@ def pack(report,partial,issues,broken):
         summary=[
           "V56 — AILELERIN TUM DNA SINIFLARI / PARCALANMA / BIRLESME",
           f"Secili gun {report['day']} | {report['n_days']} TAM 217 cekilisli gun",
-          f"Bu gun: 18 saat, tum 2-10'lu alt aileler kesin sayiliyor.",
+          f"Bu gun: 18 saat, tum 2-20'lu alt aileler kesin sayiliyor.",
           f"Gercek adil RNG kiyaslamasi: {report['random_days']} BAGIMSIZ 217-cekilisli sanal gun.",
           "Saatlik aile: ayni saatte en az iki AYRI 20'li cekiliste tüm sayilar birlikte.",
           "KOK AILE: daha buyuk ayni-saat tekrar ailesi olmayan maksimal ortak kume.",
@@ -453,7 +453,7 @@ def pack(report,partial,issues,broken):
              f"birleşti={overall[(k,'BIRLESME')]}.")
         z.writestr("00_TEK_SAYFA_BULGULAR.txt","\n".join(summary)+"\n")
         datasets=[
-          ("01_SECILI_GUN_TUM_2_10_AILE_DNA.csv",r["selected_all"]),
+          ("01_SECILI_GUN_TUM_2_20_AILE_DNA.csv",r["selected_all"]),
           ("02_SECILI_GUN_SAATTEN_SAATE_DONUSUM.csv",r["transitions"]),
           ("03_SECILI_GUN_BIRLESEN_YENI_AILELER.csv",r["fusion"]),
           ("04_SECILI_GUN_AILE_YASAM_YOLU.csv",r["lives"]),
@@ -467,7 +467,7 @@ def pack(report,partial,issues,broken):
             _write_rows(z,filename,rows)
         z.writestr("10_METOD_VE_SINIRLAR.txt",
             "Kök/kapalı kavramı sık öge kümeleri (frequent itemset) matematiğine göredir.\n"
-            "Tam seçili gün tüm 2–10 alt ailelerde eksiksizdir, eski tam günler"
+            "Tam seçili gün tüm 2–20 alt ailelerde eksiksizdir, eski tam günler"
             " saatlik/günlük toplamlara özetlenir; farklı günler 'komşu saat' diye"
             " birleştirilmez.\n"
             "Aynı gerçek saatin içindeki iki farklı çekilişte ortak grup olmalı.\n"
@@ -512,9 +512,9 @@ def _selftest():
     data=pack(report,{},[],[])
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         assert len(z.namelist())==11
-        assert z.read("01_SECILI_GUN_TUM_2_10_AILE_DNA.csv")
+        assert z.read("01_SECILI_GUN_TUM_2_20_AILE_DNA.csv")
         assert z.read("09_RNG_SANAL_GUN_KARSILASTIRMASI.csv")
-    print("PASS V56: exhaustive 2..10 same-draw families, roots/closure, mutation, split/merge, simulation, single ZIP")
+    print("PASS V56: exhaustive 2..20 same-draw families, roots/closure, mutation, split/merge, simulation, single ZIP")
 
 def main():
     p=argparse.ArgumentParser()
