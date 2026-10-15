@@ -153,8 +153,8 @@ def analyze_hour(day,hour,draws,prior,prev_day,known_draws):
               "union_size":k,"union":serial(tuple(i+1 for i in range(80) if union&(1<<i))),
               "union_mask":union,"union_repeats":0,
               "a_size":a["k"],"b_size":b["k"],
-              "source_hours":("|".join(sorted(set(h["name"] for h in prior
-                            if any(r["mask"] in (a["mask"],b["mask"]) for r in h["roots"])))),
+              "source_hours":"|".join(sorted({h["name"] for h in prior
+                            if any(r["mask"] in (a["mask"],b["mask"]) for r in h["roots"])})),
               "fair_prob":EXPECTED_PROB[k]})
             if len(event)>MAX_MEETINGS_PER_HOUR:
                 raise ValueError("Excess meeting events; fail visibly instead of truncating.")
