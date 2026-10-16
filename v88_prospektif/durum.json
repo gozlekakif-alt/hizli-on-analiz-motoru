@@ -1,0 +1,26 @@
+{
+  "action": "NO_FORECAST_STALE_DATA",
+  "avg_10_correct": null,
+  "avg_frequency10_correct": null,
+  "avg_random10_correct": null,
+  "frozen_model_rule": "SWAP_TWO",
+  "interpretation": "No evidence of predictive advantage on previous V87 holdout; zero confirmed prospective scores until truly new results are supplied.",
+  "issues": [
+    "Invalid draw 2026-08-23 #50924",
+    "Invalid draw 2026-08-23 #50936"
+  ],
+  "latest_data_clock": "19:57",
+  "latest_data_date": "2026-10-13",
+  "latest_data_draw_id": 62014,
+  "locked_draw_horizon": 3,
+  "malformed_lines": [],
+  "most_recent_draw_is_fresh": false,
+  "new_scores_added": 0,
+  "pending_count": 0,
+  "registered_new_forecast": false,
+  "scored_forecasts_total": 0,
+  "source_age_minutes": 3621.925,
+  "ten_out_of_ten_count": 0,
+  "updated_at_utc": "2026-10-16T05:18:55.495392+00:00",
+  "version": "V88.1"
+}

@@ -1,0 +1,8 @@
+V88 — GELECEKTEKI CEKILISLER ICIN GERCEK KAYIT
+Son kayitli cekilis: 62014 2026-10-13 19:57
+Yasi: 3621.93 dakika | Durum: NO_FORECAST_STALE_DATA
+Sabit deney: V87 SWAP_TWO, 3 cekilis sonrasi tek 10lu.
+Gercek ileri testte puanlanan tahmin sayisi: 0
+Ortalama10: None vs random10 None
+Tahmin DOSYASI GitHub commit ile ONCEDEN kaydedilmeden test tamamlanmis sayilmaz.
+Guncel veri olmadan bugun icin yeni kupon veya gelecek isabet uydurulmaz.
