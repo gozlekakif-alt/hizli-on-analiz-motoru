@@ -1,0 +1,42 @@
+name: V96 Bes Havuz Sonraki Cekilis Kor Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v96_bes_havuz_gecis_sonraki_cekilis_kor_test.py"
+      - ".github/workflows/v96-bes-havuz-gecis-kor-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v96-next-draw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Compile and no-leak selftest V96
+        run: |
+          python -m py_compile v96_bes_havuz_gecis_sonraki_cekilis_kor_test.py
+          python -u v96_bes_havuz_gecis_sonraki_cekilis_kor_test.py --selftest
+      - name: Run 72-day time-separated training and holdout
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v96_bes_havuz_gecis_sonraki_cekilis_kor_test.py --source veri.txt --out v96_output/V96_BES_HAVUZ_GECIS_KOR_TEST.zip
+      - name: Publish single V96 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V96_72GUN_BES_HAVUZ_GECIS_SONRAKI_CEKILIS_KOR_TEST
+          path: v96_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
