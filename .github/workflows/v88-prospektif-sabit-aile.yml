@@ -1,0 +1,59 @@
+name: V88 Gelecek Cekilis Oncesi Sabit Aile Tahmin Kaydi
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v88_prospektif_tahmin_kayit.py"
+      - "v88_prospektif/kural_kilidi.json"
+      - ".github/workflows/v88-prospektif-sabit-aile.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v88-prospektif-kayit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prospective-family-registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify immutable family+horizon rule and live time gate
+        run: |
+          python -m py_compile v88_prospektif_tahmin_kayit.py
+          python -u v88_prospektif_tahmin_kayit.py --selftest
+      - name: Score earlier sealed forecasts then seal fresh family signal
+        run: |
+          python -u v88_prospektif_tahmin_kayit.py --source veri.txt --registry v88_prospektif
+      - name: Commit append-only forecasts scores and status to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v88_prospektif/
+          if git diff --cached --quiet; then
+            echo "No changed registry files to commit"
+          else
+            git commit -m "V88: sealed prospective family forecasts and observed target scores"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+      - name: Publish status for audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V88_GERCEK_ILERI_AILE_TAHMIN_KAYIT_DURUMU
+          path: |
+            v88_prospektif/kural_kilidi.json
+            v88_prospektif/durum.json
+            v88_prospektif/SONUC_OKU.txt
+          retention-days: 90
+          if-no-files-found: warn
