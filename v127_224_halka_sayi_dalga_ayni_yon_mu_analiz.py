@@ -132,26 +132,26 @@ def main(source,out):
         assert (dsign.sum(axis=0)[enter==0]<=0).all()
         for kind,sign in enumerate((dsign,rsign,psign)):
             up,down,stable,cat,flips,segments=full_metrics(sign,with_flips=(kind==2))
-            cat_totals[kind]+=np.bincount(cat,minlength=4)
-            by_drawn[0,kind]+=np.bincount(cat[enter==0],minlength=4)
-            by_drawn[1,kind]+=np.bincount(cat[enter==1],minlength=4)
+            cat_totals[kind]+=np.bincount(cat,minlength=4).astype(np.uint64)
+            by_drawn[0,kind]+=np.bincount(cat[enter==0],minlength=4).astype(np.uint64)
+            by_drawn[1,kind]+=np.bincount(cat[enter==1],minlength=4).astype(np.uint64)
             assert int(np.bincount(cat,minlength=4).sum())==B
             for a in range(4):
                 num_cat[:,kind,a]+=(cat==a).astype(np.uint32)
-            num_total_flips+=flips if kind==2 else np.zeros(B,dtype=np.int16)
+            num_total_flips+=flips.astype(np.uint64) if kind==2 else np.zeros(B,dtype=np.uint64)
             if kind==2:
-                num_totals[:,0]+=up
-                num_totals[:,1]+=down
-                num_totals[:,2]+=stable
-                num_totals[:,3]+=(flips>0)
+                num_totals[:,0]+=up.astype(np.uint64)
+                num_totals[:,1]+=down.astype(np.uint64)
+                num_totals[:,2]+=stable.astype(np.uint64)
+                num_totals[:,3]+=(flips>0).astype(np.uint64)
             s1=sign[:-1]
             s2=sign[1:]
             both=(s1!=0)&(s2!=0)
             same=int(np.count_nonzero(both&(s1==s2)))
             opposite=int(np.count_nonzero(both&(s1!=s2)))
-            adjacent[kind]+=(same,opposite,int(both.sum()))
-            shuffle_expected_same[kind]+=float(np.sum(up*(up-1)+down*(down-1))/R)
-            shuffle_expected_opp[kind]+=float(np.sum(2*up*down)/R)
+            adjacent[kind]+=np.asarray((same,opposite,int(both.sum())),dtype=np.uint64)
+            shuffle_expected_same[kind]+=float(np.sum(up.astype(np.int64)*(up.astype(np.int64)-1)+down.astype(np.int64)*(down.astype(np.int64)-1))/R)
+            shuffle_expected_opp[kind]+=float(np.sum(2*up.astype(np.int64)*down.astype(np.int64))/R)
             for p,(u,v) in enumerate(COMPARE_PAIRS):
                 x=sign[u-1]
                 y=sign[v-1]
@@ -175,14 +175,14 @@ def main(source,out):
                     a=(sign[i:k]>0).sum(axis=0)
                     b=(sign[i:k]<0).sum(axis=0)
                     c=(a>0).astype(np.int8)+2*(b>0).astype(np.int8)
-                    bands[j]+=np.bincount(c,minlength=4)
+                    bands[j]+=np.bincount(c,minlength=4).astype(np.uint64)
                     day_band[day][j]+=np.bincount(c,minlength=4).astype(np.uint32)
                 ring_up=(sign>0).sum(axis=1)
                 ring_down=(sign<0).sum(axis=1)
-                ring_step[:,0]+=ring_up
-                ring_step[:,1]+=ring_down
-                ring_step[:,2]+=(80-ring_up-ring_down)
-                ring_step[:,3]+=(ring_up>0)&(ring_down>0)
+                ring_step[:,0]+=ring_up.astype(np.uint64)
+                ring_step[:,1]+=ring_down.astype(np.uint64)
+                ring_step[:,2]+=(80-ring_up-ring_down).astype(np.uint64)
+                ring_step[:,3]+=((ring_up>0)&(ring_down>0)).astype(np.uint64)
                 assert np.array_equal(ring_up==0,ring_down==0)
                 assert np.all(ring_up+ring_down<=80)
                 if t==n-1 or t>=n-12:
