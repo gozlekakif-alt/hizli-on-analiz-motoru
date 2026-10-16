@@ -1,0 +1,39 @@
+name: V104 72 Gun Basindan 672 56 Halka Adim Adim
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v104_72gun_basindan_672_56_halka_fifo_yon.py'
+      - '.github/workflows/v104-72gun-basindan-672-yuruyen.yml'
+permissions:
+  contents: read
+jobs:
+  first672-walking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Verify ring mechanics
+        run: |
+          python -m py_compile v104_72gun_basindan_672_56_halka_fifo_yon.py
+          python -u v104_72gun_basindan_672_56_halka_fifo_yon.py --selftest
+      - name: Walk 72 complete days from first 672 draws
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v104_72gun_basindan_672_56_halka_fifo_yon.py --source veri.txt --out v104_output/V104_72GUN_BASINDAN_YURUYEN_672_56_HALKA.zip
+      - name: Preserve complete 56-ring history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V104_ILK672_TAM72GUN_56_HALKA_YON_ZINCIRI
+          path: v104_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
