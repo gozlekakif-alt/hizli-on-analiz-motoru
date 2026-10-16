@@ -137,9 +137,9 @@ def main(source,out):
                     coupon_size=k,targets=q[0],
                     avg_hits=round(q[1]/q[0],6),
                     fair_mean=k/4,perfect_k_of_k=q[2],
-                    5_or_more=q[3],6_or_more=q[4],
-                    7_or_more=q[5],8_or_more=q[6],
-                    9_or_more=q[7],10_or_more=q[8]))
+                    hits_5_or_more=q[3],hits_6_or_more=q[4],
+                    hits_7_or_more=q[5],hits_8_or_more=q[6],
+                    hits_9_or_more=q[7],hits_10_or_more=q[8]))
     bootstrap=[]
     hold_days=sorted(set(k[0] for k in per_day))
     if hold_days:
