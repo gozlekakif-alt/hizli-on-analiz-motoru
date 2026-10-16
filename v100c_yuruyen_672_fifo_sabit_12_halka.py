@@ -307,7 +307,8 @@ def run(args):
     metadata=dict(version=VERSION,ring_size=12,max_memory=672,
       no_draw_future_leakage=True,
       definition="stable absolute 12-draw ring ids with oldest/newest partial",
-      valid_dates=[days[0],days[-1]],real_draws=len(rows),\n      new_after_baseline=max(0,len(rows)-15624),
+      valid_dates=[days[0],days[-1]],real_draws=len(rows),
+      new_after_baseline=max(0,len(rows)-15624),
       eligible_targets=len(targets),
       model_selected_using_middle18days=winner,
       controls=stats,source_issues=issues[:20],malformed_lines=bad[:20])
