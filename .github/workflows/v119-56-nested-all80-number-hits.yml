@@ -1,0 +1,40 @@
+name: V119 56 Nested All 80 Number Hits
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v119_56_icice_sayi_hedef_3_4_5_6_8_10_test.py'
+      - '.github/workflows/v119-56-nested-all80-number-hits.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  all80:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Preflight compilation
+        run: python -m py_compile v119_56_icice_sayi_hedef_3_4_5_6_8_10_test.py
+      - name: All numbers historical target-draw replay
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v119_56_icice_sayi_hedef_3_4_5_6_8_10_test.py --source veri.txt --out v119_output/V119_56_ICICE_80_SAYI_HEDEF_ISABET.zip
+      - name: Downloadable report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V119_56_ICICE_HEDEF_SAYI_ISABET_KONTROL
+          path: v119_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
