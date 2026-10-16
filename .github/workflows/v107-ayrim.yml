@@ -1,0 +1,27 @@
+name: V107 Ilk6 Son6 Halka Ayrimi
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v107_hedef_saat_ilk6_son6_56_halka_ayristir.py'
+      - '.github/workflows/v107-ayrim.yml'
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy
+      - run: python v107_hedef_saat_ilk6_son6_56_halka_ayristir.py --selftest
+      - run: python -u v107_hedef_saat_ilk6_son6_56_halka_ayristir.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: V107_ILK6_SON6_56HALKA
+          path: v107_output/*.zip
+          retention-days: 90
