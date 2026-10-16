@@ -1,0 +1,46 @@
+name: V128 Publish 36-Step Player and Full Archive Release
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v128-publish-interactive-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore fully tested V128 archive and HTML player
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38977196831
+          name: V128_36_DRAW_224_RING_MOVEMENT_INTERACTIVE_PLAYER
+          github-token: ${{ github.token }}
+          path: v128-release
+      - name: Verify full data and player
+        run: |
+          ls -lh v128-release
+          python -c "import zipfile,json,os; p='v128-release/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; m=json.loads(z.read('07_METOD_VE_KONTROL.json')); assert m['all_transition_rows']==645120 and m['steps']==36; h='v128-release/V128_36_ADIM_224_HALKA_GORSEL_OYNATICI.html'; s=open(h).read(); assert 'XXXMETAXXX' not in s and 'XXXBASE64XXX' not in s; assert 'stepLabel' in s; print('V128 player and 645120-row data archive verified')"
+      - name: Make permanent Github Release with standalone interactive viewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v128-2026-10-13-36-step-ring-replay
+        run: |
+          ZIP=v128-release/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip
+          HTML=v128-release/V128_36_ADIM_224_HALKA_GORSEL_OYNATICI.html
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" "$HTML" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$ZIP" "$HTML" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V128 — Last 36 REAL Archived Draws, 224 Nested Rings, Step-by-step Interactive Player" \
+              --notes "One-at-a-time historical replay of 36 genuinely observed draw records #61978 through #62014 as present in veri.txt (some draw IDs are absent in the source and are not invented). Starts 2688-draw initialization strictly before first replay draw; updates all 224 nested rings x80 numbers at each result. 645120 fully auditable transitions including count, rank, pool old/new, entering/leaving bits, plus 39863 observed pool-class changes. Two downloadable assets: a complete zipped CSV/NPZ/HTML report and a standalone offline interactive HTML mobile-friendly player with step slider, number picker, 224x80 heatmap and ring movement view. This is historical playback, not prediction of future results." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
