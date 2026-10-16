@@ -183,7 +183,7 @@ def analyze(days,rows,X):
              ring_count=len(g),completed_ring_count=features["completed_total"],
              sealed_ring_count=sum(v["sealed"] for v in g),
              preview_is_partial=int(not g[-1]["sealed"]),
-             random20_hit=int(y[picked].sum()),
+             RANDOM20_hit=int(y[picked].sum()),
              **{m+"_hit":sample[m] for m in MODELS},
              last_completed_20="-".join(map(str,(sel["LAST_COMPLETED_TEMP"]+1))),
              hottest72_20="-".join(map(str,(sel["HOT72"]+1)))))
