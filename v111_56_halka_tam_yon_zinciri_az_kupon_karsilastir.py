@@ -20,7 +20,7 @@ from v100c_yuruyen_672_fifo_sabit_12_halka import load,temperature
 from v104_72gun_basindan_672_56_halka_fifo_yon import stable_paths
 from v102_80sayi_56_halka_yon_zinciri_hedef_saat import expected_hours
 
-VERSION="V111.1"
+VERSION="V111.2"
 RANDOM_SEED=20261016
 ALPHA=1500.
 KLIST=(5,6,8,10)
@@ -189,16 +189,17 @@ def run(src,out):
                     selected_numbers="-".join(map(str,np.sort(v+1))),
                     hits=nh,
                     hit_numbers="-".join(map(str,np.sort(v[y[v]>0]+1)))))
-            # Propose smaller tickets from FULL56 scores; none are
-            # optimized on target actual. Also include ten FULL56 once.
-            for k in KLIST:
-                v=choose(source_scores["FULL56"],k,np.random.default_rng(salt))
-                if k<10:
+            # Fair SAME-DRAW, SAME-SIZE comparison for every method.
+            # For each method, 5/6/8 choices are prefixes of its 10
+            # already prechosen ranked numbers (no outcome visibility).
+            for method in MODELS:
+                for k in (5,6,8):
+                    v=selected[method][:k]
                     ledger.append(dict(
                         period=ph,date=day,hour=f"{h:02d}:02-{h:02d}:57",
                         draw_id=int(rows[current]["id"]),target_hand=step+1,
                         predicted_before_draw_id=int(rows[current-1]["id"]),
-                        method="FULL56",ticket_size=k,
+                        method=method,ticket_size=k,
                         selected_numbers="-".join(map(str,np.sort(v+1))),
                         hits=int(y[v].sum()),
                         hit_numbers="-".join(map(str,np.sort(v[y[v]>0]+1)))))
@@ -216,9 +217,10 @@ def run(src,out):
         for m in MODELS:
             s=score_group(ledger,ph,m,10)
             if s:group.append(s)
-        for k in (5,6,8):
-            s=score_group(ledger,ph,"FULL56",k)
-            if s:group.append(s)
+        for m in MODELS:
+            for k in (5,6,8):
+                s=score_group(ledger,ph,m,k)
+                if s:group.append(s)
     # Draw-level matched FULL56 - RANDOM and FULL56 - SHORT6 on
     # date clusters (rather than falsely independent draws).
     by=collections.defaultdict(dict)
@@ -276,6 +278,16 @@ def run(src,out):
              f" >=4={x['at_least4']}, >=5={x['at_least5']},"
              f" >=6={x['at_least6']}, >=7={x['at_least7']},"
              f" >=8={x['at_least8']}, 10of10={x['all_correct']}.")
+    summary+=["","SAME-DRAW 5/5 and 6/6, ALL CONTROLS (VALIDATE/HOLDOUT)",]
+    for ph in ("VALIDATE18","HOLDOUT18"):
+        for k in (5,6,8):
+            for m in MODELS:
+                ss=next((g for g in group if g["phase"]==ph and
+                         g["method"]==m and g["ticket_size"]==k),None)
+                if ss:
+                    summary.append(f" {ph} {k}li {m}: "
+                       f"mean={ss['mean_hits']:.5f} "
+                       f"tam={ss['all_correct']}/{ss['tickets']}")
     summary+=["","RANDOM CONTROL: 10 of 80 when 20 winning,",
               f"mean expected=2.5, chance exact10={hist_theory(10)[-1]*100:.10f}%.",
               "RANDOM10 once per eligible draw, not a chance distribution",
@@ -315,6 +327,7 @@ def run(src,out):
              [r for r in group if r["ticket_size"]==10])
         csvw(z,"02_5_6_8_10LU_TAM56_ISABET_DAGILIMI.csv",
              [r for r in group if r["method"]=="FULL56"])
+        csvw(z,"02B_5_6_8_10LU_TUM_MODELLER_ESIT_CEKILIS.csv",group)
         csvw(z,"03_TUM_CEKILISLER_SURELI_1_KUPON_ONCE_SONRA.csv",ledger)
         csvw(z,"04_GUNLUK_10LU_ESLESMELI_FARK.csv",daily)
         csvw(z,"05_10LU_KARSILASTIRMA_GUN_BAZLI_BELIRSIZLIK.csv",ci)
