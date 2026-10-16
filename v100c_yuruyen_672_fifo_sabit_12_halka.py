@@ -39,17 +39,30 @@ CANDIDATES=MODELS[1:]
 
 def load(src):
     d,issues,bad=parse_txt(src)
+    # Keep V9-V100 historical baseline unchanged. As new live draws are
+    # appended after 12 Oct, accept complete OR partly populated later days
+    # without resetting the existing absolute 12-draw ring identities.
     full={day:arr for day,arr in d.items() if len(arr)==217 and
           [r["pos"] for r in arr]==list(range(1,218))}
-    days=sorted(full)
-    if len(days)!=72 or days[0]!="2026-08-01" or days[-1]!="2026-10-12":
-        raise ValueError("Expected full 72 days: "+str(len(days)))
-    rows=[row for date in days for row in full[date]]
+    baseline=sorted(day for day in full if day<="2026-10-12")
+    if len(baseline)!=72 or baseline[0]!="2026-08-01" or baseline[-1]!="2026-10-12":
+        raise ValueError("Historical 72 complete days not available")
+    later=sorted(day for day,arr in d.items() if day>"2026-10-12" and arr)
+    days=baseline+later
+    rows=[row for date in baseline for row in full[date]]
+    for date in later:
+        newer_rows=sorted(d[date],key=lambda r:r["pos"])
+        # No future leakage: only actually supplied draws are ingested.
+        rows.extend(newer_rows)
+    # IDs strictly ordered; prohibit silent reordering when partial
+    # daily uploads arrive out of sequence.
+    if any(int(rows[i]["id"])<=int(rows[i-1]["id"]) for i in range(1,len(rows))):
+        raise ValueError("Draw IDs are not strictly increasing")
     X=np.zeros((len(rows),80),dtype=np.uint8)
     for i,row in enumerate(rows):
         X[i,np.asarray(row["nums"],dtype=np.int16)-1]=1
-    if X.shape!=(15624,80) or not np.all(X.sum(axis=1)==20):
-        raise ValueError("Expect 15624 20/80 draws")
+    if len(rows)<15624 or np.any(X.sum(axis=1)!=20):
+        raise ValueError("Invalid 20-of-80 drawn numbers")
     return days,rows,X,issues,bad
 
 def temperature(counts):
@@ -294,7 +307,7 @@ def run(args):
     metadata=dict(version=VERSION,ring_size=12,max_memory=672,
       no_draw_future_leakage=True,
       definition="stable absolute 12-draw ring ids with oldest/newest partial",
-      valid_dates=[days[0],days[-1]],real_draws=len(rows),
+      valid_dates=[days[0],days[-1]],real_draws=len(rows),\n      new_after_baseline=max(0,len(rows)-15624),
       eligible_targets=len(targets),
       model_selected_using_middle18days=winner,
       controls=stats,source_issues=issues[:20],malformed_lines=bad[:20])
