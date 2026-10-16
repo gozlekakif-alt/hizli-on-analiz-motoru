@@ -1,0 +1,40 @@
+name: V116 56 Kayan Halka 0-1 ve Aile Oncu Sinyal
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v116_56_kayan_halka_01_7li_aile_oncu_sinyal.py'
+      - '.github/workflows/v116-56-kayan-halka-aile-oncu.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  examine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Requirements
+        run: python -m pip install numpy
+      - name: Check code
+        run: python -m py_compile v116_56_kayan_halka_01_7li_aile_oncu_sinyal.py
+      - name: Compare pretarget 56 ring binary family reunions against draw outcomes
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v116_56_kayan_halka_01_7li_aile_oncu_sinyal.py --source veri.txt --out v116_output/V116_56_KAYAN_HALKA_01_7LI_AILE_ONCU_KOR_KARSILASTIR.zip
+      - name: Downloadable results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V116_56_KAYAN_01_AILE_ONCU_7LI
+          path: v116_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
