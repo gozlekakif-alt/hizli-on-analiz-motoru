@@ -1,0 +1,40 @@
+name: V102 80 Sayi 56 Halka Yon Zinciri ve Hedef Saat
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v100c_yuruyen_672_fifo_sabit_12_halka.py'
+      - 'v102_80sayi_56_halka_yon_zinciri_hedef_saat.py'
+      - '.github/workflows/v102-80-sayi-56-halka-yon-zinciri.yml'
+permissions:
+  contents: read
+jobs:
+  v102-direction-film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencies
+        run: python -m pip install numpy
+      - name: Compile and self-check
+        run: |
+          python -m py_compile v102_80sayi_56_halka_yon_zinciri_hedef_saat.py
+          python -u v102_80sayi_56_halka_yon_zinciri_hedef_saat.py --selftest
+      - name: Describe every warming and cooling ring and target hour
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v102_80sayi_56_halka_yon_zinciri_hedef_saat.py --source veri.txt --out v102_output/V102_80_SAYI_56_HALKA_YON_ZINCIRI_HEDEF_SAAT.zip
+      - name: Upload direction chains
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V102_80_SAYI_56_HALKA_YON_ZINCIRI
+          path: v102_output/*.zip
+          if-no-files-found: warn
+          retention-days: 90
