@@ -1,0 +1,40 @@
+name: V118 V100B 56 Ic Ice Halka 0-1 Aile
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v118_v100b_56_icice_halqa_01_aile_oncu_test.py'
+      - '.github/workflows/v118-v100b-56-nested-01-family.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numeric dependencies
+        run: python -m pip install numpy
+      - name: Syntax
+        run: python -m py_compile v118_v100b_56_icice_halqa_01_aile_oncu_test.py
+      - name: Analyze 56 cumulative rolling windows and 7-member families
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v118_v100b_56_icice_halqa_01_aile_oncu_test.py --source veri.txt --out v118_output/V118_56_ICICE_HALKA_01_AILE_HEDEF_ONCU.zip
+      - name: Save output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V118_56_NESTED_12_672_AILE_01_TEST
+          path: v118_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
