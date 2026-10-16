@@ -1,0 +1,39 @@
+name: V123 Compare 672 and 1344 Number Counts
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v123_672_iki_kat_1344_minmax_80_sayi.py'
+      - '.github/workflows/v123-672x2-1344-counts.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Source check
+        run: python -m py_compile v123_672_iki_kat_1344_minmax_80_sayi.py
+      - name: Real past 672 + last 672 and 1344 calculation
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+        run: |
+          python -u v123_672_iki_kat_1344_minmax_80_sayi.py --source veri.txt --out v123_output/V123_672_672_1344_KARSILASTIRMA.zip
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V123_672x2_1344_80_NUMBER_MINMAX
+          path: v123_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
