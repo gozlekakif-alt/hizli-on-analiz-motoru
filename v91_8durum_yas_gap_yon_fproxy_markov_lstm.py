@@ -53,7 +53,7 @@ RULES=(
  "times across next 12 drawings; does NOT mean full 4/4 family.")
 
 def continuous(a,b):
-    return a["id"]==b["id"]+1 and \
+    return b["id"]==a["id"]+1 and \
       (datetime.datetime.fromisoformat(b["day"]+"T"+b["time"])-
        datetime.datetime.fromisoformat(a["day"]+"T"+a["time"])).total_seconds()==300
 
