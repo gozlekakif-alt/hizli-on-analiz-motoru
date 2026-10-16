@@ -1,0 +1,42 @@
+name: V94 4te1 Kripto 4x20 4Bit RNG Kontrol
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v94_4te1_kripto_4x20_4bit_rng.py"
+      - ".github/workflows/v94-4te1-kripto-rng.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v94:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Compile and verify exactly20of80 quarter model
+        run: |
+          python -m py_compile v94_4te1_kripto_4x20_4bit_rng.py
+          python -u v94_4te1_kripto_4x20_4bit_rng.py --selftest
+      - name: Test 4x20 XOR4 groups and pre-target 10-ball against RNG
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v94_4te1_kripto_4x20_4bit_rng.py --source veri.txt --reps 399 --out v94_output/V94_4TE1_KRIPTO_20_80_4BIT_MODELI.zip
+      - name: Upload full V94 one ZIP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V94_4TE1_KRIPTO_20_80_4BIT_RNG_KONTROL
+          path: v94_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
