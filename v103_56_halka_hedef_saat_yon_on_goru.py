@@ -182,20 +182,51 @@ def process(src,dest):
                 group_ids={DIR[di]:[int(k+1) for k in np.flatnonzero(dirs==di)]
                            for di in GROUPS})
         if i%180==0:print("V103 analyzed hour",i,"/",len(hourset),flush=True)
-    # Freeze a genuinely as-yet-UNOBSERVED next-hour reference from the
-    # current last available draw. No next target result/ID is invented.
-    t=len(rows)
+    # If a NEW clock hour is currently underway, freeze features as-of
+    # its FIRST draw (not from the later partial target outcomes).
+    # A complete 12-draw hour is not pending; the next hour is unknown.
+    latest_row=rows[-1];current_day=latest_row["day"]
+    current_hour=int(latest_row["time"].split(":")[0])
+    suffix=[]
+    for pos in range(len(rows)-1,-1,-1):
+        r=rows[pos]
+        if r["day"]!=current_day or int(r["time"].split(":")[0])!=current_hour:
+            break
+        suffix.append(pos)
+    suffix.reverse()
+    minutes=[int(rows[pos]["time"].split(":")[1]) for pos in suffix]
+    ids_suffix=[int(rows[pos]["id"]) for pos in suffix]
+    valid_suffix=(len(suffix)>0 and len(suffix)<=12
+       and minutes==list(range(2,2+5*len(suffix),5))
+       and ids_suffix==list(range(ids_suffix[0],ids_suffix[0]+len(suffix))))
+    observed_partial=(len(suffix) if valid_suffix and len(suffix)<12 else 0)
+    # If partial data has a gap, forbid pretending the whole hour is known.
+    if suffix and len(suffix)<12 and not valid_suffix:
+        raise ValueError("Newest partial hour contains a gap or bad timestamp")
+    t=len(rows)-observed_partial
     dirs,pools,trend,full,rings,S,D=features(prefix,cache,t)
     forecast=P1[dirs,pools]
+    if observed_partial>=6:
+        first6=X[t:t+6].sum(axis=0).astype(np.int16)
+        forecast_after=P2[dirs,pools,np.minimum(first6,3)]
+    else:
+        first6=None
+        forecast_after=None
+    frozen_id=int(rows[t-1]["id"])
     future={
        "version":VERSION,
-       "frozen_known_up_to_id":int(rows[-1]["id"]),
-       "frozen_known_date":rows[-1]["day"],
-       "frozen_known_clock":rows[-1]["time"],
-       "next_hour_unobserved":True,
+       "source_last_recorded_id":int(rows[-1]["id"]),
+       "frozen_known_up_to_id":frozen_id,
+       "frozen_known_date":rows[t-1]["day"],
+       "frozen_known_clock":rows[t-1]["time"],
+       "target_hour_partially_observed":observed_partial>0,
+       "target_hour_observed_hand_count":observed_partial,
+       "first6_realized":observed_partial>=6,
+       "remaining_hour_hands":(list(range(observed_partial+1,13))
+                               if observed_partial else list(range(1,13))),
        "next_target_id":None,
        "reference_672_from_id":int(rows[t-672]["id"]),
-       "reference_672_to_id":int(rows[-1]["id"]),
+       "reference_672_to_id":frozen_id,
        "actual_12_draw_outcomes":None,
        "dir_group_targets":{
            DIR[d]:dict(numbers=[int(k+1) for k in np.flatnonzero(dirs==d)],
@@ -204,18 +235,26 @@ def process(src,dest):
                          12*float(forecast[dirs==d].sum()),4),
                        baseline_expected=round(3*float(np.sum(dirs==d)),4),
                        expected_drawn_positions_H1_H6=round(
-                         6*float(forecast[dirs==d].sum()),4))
+                         6*float(forecast[dirs==d].sum()),4),
+                       expected_H7_H12_after_H6=(
+                         round(6*float(forecast_after[dirs==d].sum()),4)
+                         if forecast_after is not None else None))
            for d in GROUPS},
        "number_probabilities_per_draw":{
            str(n+1):dict(direction=DIR[int(dirs[n])],
                    latest_72_pool=POOL[int(pools[n])],
                    net_last6=int(trend[n]),
-                   prob_model=round(float(forecast[n]),8),
+                   pre_hour_probability=round(float(forecast[n]),8),
+                   after_H6_probability=(
+                      round(float(forecast_after[n]),8)
+                      if forecast_after is not None else None),
+                   first6_observed_hits=(
+                      int(first6[n]) if first6 is not None else None),
                    baseline=0.25,
                    latest_56_ring_path="".join("CSNIH"[int(v)] for v in S[n]))
            for n in range(80)},
-       "status":"Frozen before next unknown target; not proof of prospective accuracy.",
-       "warning":"Date is latest repository record, NOT current real-time data."
+       "status":"Frozen reference before the target hour, uses only actual first6 to update H7-H12.",
+       "warning":"Source may be historical, not real-time. No future target result invented."
     }
     aggregate=summarise(summaries)
     pregroup=[]
