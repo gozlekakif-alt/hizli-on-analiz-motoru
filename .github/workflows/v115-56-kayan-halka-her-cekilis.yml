@@ -1,0 +1,39 @@
+name: V115 - 56 Kayan Halka Her Cekilis
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v115_56_halka_kayan_12lik_her_cekilis_giris_cikis.py'
+      - '.github/workflows/v115-56-kayan-halka-her-cekilis.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare numpy
+        run: python -m pip install numpy
+      - name: Validate source syntax
+        run: python -m py_compile v115_56_halka_kayan_12lik_her_cekilis_giris_cikis.py
+      - name: Walk every actual drawing with 56 groups of 12
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v115_56_halka_kayan_12lik_her_cekilis_giris_cikis.py --source veri.txt --out v115_output/V115B_56_HAREKETLI_KAYAN_672_TAM_CEKILIS.zip
+      - name: Save verified result ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V115B_56_HAREKETLI_KAYAN_HALKA
+          path: v115_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
