@@ -105,7 +105,11 @@ def source_event_latest(rows):
             f,src=min(choices,key=lambda pair:(
               -pair[0].bit_count(),pair[1]["lag"],pair[0]))
             counts=[0]*81
-            for m in masks[max(0,t-71):t+1]:
+            start=t
+            # Do not bridge missing published IDs in the last72 baseline.
+            while start>0 and t-start<71 and rows[start]["id"]==rows[start-1]["id"]+1:
+                start-=1
+            for m in masks[start:t+1]:
                 for n in members(m):counts[n]+=1
             chosen=ticket(f,counts)
             counter=freq10(counts)
