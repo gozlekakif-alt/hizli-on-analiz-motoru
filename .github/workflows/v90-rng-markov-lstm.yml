@@ -1,0 +1,40 @@
+name: V90 RNG Markov Zinciri ve Gercek LSTM 48den12
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "v90_markov_lstm_48_gecmis_12_hedef.py"
+      - ".github/workflows/v90-rng-markov-lstm.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compare-markov-lstm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU PyTorch and numpy separately from Streamlit app
+        run: |
+          python -m pip install numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Check program syntax and real LSTM model tensor shape
+        run: |
+          python -m py_compile v90_markov_lstm_48_gecmis_12_hedef.py
+          python -u v90_markov_lstm_48_gecmis_12_hedef.py --selftest
+      - name: Test chronological 48 previous vs next12 4plus 5plus 6plus
+        run: |
+          OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 python -u v90_markov_lstm_48_gecmis_12_hedef.py --source veri.txt --out v90_output/V90_MARKOV_LSTM_48_12_KAYAN_SAYI_KARSILASTIRMASI.zip
+      - name: Publish one complete V90 audit zip
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V90_MARKOV_GERCEK_LSTM_48_12_KAYAN_4_5_6
+          path: v90_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
