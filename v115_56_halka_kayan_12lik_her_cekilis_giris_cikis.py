@@ -74,7 +74,7 @@ def run(src,dest):
             ring56_total_ones=240,
             per_ring_up_frequency_56='|'.join(map(str,((newC>C).sum(axis=1)).tolist())),
             per_ring_down_frequency_56='|'.join(map(str,((newC<C).sum(axis=1)).tolist())),
-            )))
+            ))
         if incoming_idx>=total-10:
             for ring in range(RINGS):
                 old20=removed[ring]
