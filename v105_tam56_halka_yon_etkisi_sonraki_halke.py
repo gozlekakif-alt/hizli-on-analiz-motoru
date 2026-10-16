@@ -345,7 +345,7 @@ def run(src,dest):
         "KEY FINDING: each ring group DOES NOT move as one; older layers",
         "can be described separately from recent layers. Future-leading",
         "value requires stable relationships across chronological periods.",
-        "No coupon generation, no RNG solution or high-certainty forecast."]
+        "No coupon generation, no RNG solution or high-certainty forecast."])
     meta=dict(version=VER,source_days=72,draws=n,
         first_672_first_id=rows[0]["id"],
         first_672_last_id=rows[671]["id"],
