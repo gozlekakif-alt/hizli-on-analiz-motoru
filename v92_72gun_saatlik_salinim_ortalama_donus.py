@@ -295,13 +295,13 @@ def run(source,outname):
                 previous_class=BAND_BINS[cat(x,BAND_BINS)][0],
                 next_class=BAND_BINS[cat(y,BAND_BINS)][0]))
     splitcomparison=[]
-    for label,data,avg,lo,hi,names in [
+    for label,arrdata,avg,lo,hi,names in [
         ("SINGLE_NUMBER",NUM,3,1,5,[str(n+1) for n in range(80)]),
         ("TEN_BAND",BND,30,25,35,BANDS)]:
         for phase,ps in (("TRAIN36",[(i,j) for i,j in pairs if hours[j]["day"]<=trday]),
                          ("HOLDOUT36",[(i,j) for i,j in pairs if hours[j]["day"]>trday])):
-            x=data[[i for i,j in ps]]
-            y=data[[j for i,j in ps]]
+            x=arrdata[[i for i,j in ps]]
+            y=arrdata[[j for i,j in ps]]
             s=one_stat(x,y,avg,hi,lo)
             splitcomparison.append(dict(phase=phase,scope=label,pairs=len(ps),
                 slope=round(s["regression_slope"],8),
@@ -311,10 +311,10 @@ def run(source,outname):
                 old_low_next_mean=round(s["old_cold_avg"],7),
                 high_minus_low=round(s["old_hot_minus_cold"],7)))
         for k,name in enumerate(names):
-            x=data[[i for i,j in pairs],k];y=data[[j for i,j in pairs],k]
+            x=arrdata[[i for i,j in pairs],k];y=arrdata[[j for i,j in pairs],k]
             z=dict(scope=label,name=name,n_pairs=len(x),
-                   observed_overall_mean=round(float(data[:,k].mean()),7),
-                   observed_total=round(float(data[:,k].sum()),7),
+                   observed_overall_mean=round(float(arrdata[:,k].mean()),7),
+                   observed_total=round(float(arrdata[:,k].sum()),7),
                    prior_hour_mean=round(float(x.mean()),7),
                    subsequent_mean=round(float(y.mean()),7),
                    lag1_pearson=round(float(np.corrcoef(x,y)[0,1]),7)
