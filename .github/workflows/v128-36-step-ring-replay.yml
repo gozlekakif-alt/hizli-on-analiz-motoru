@@ -1,0 +1,45 @@
+name: V128 36 Sequential Draws 224 Rings Interactive Replay
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v128_son_36_cekilis_224_halka_her_adim_oynat.py'
+      - '.github/workflows/v128-36-step-ring-replay.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Syntax check
+        run: python -m py_compile v128_son_36_cekilis_224_halka_her_adim_oynat.py
+      - name: Replay 36 archived real draws one by one through all 224 circles
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v128_son_36_cekilis_224_halka_her_adim_oynat.py --source veri.txt --steps 36 --out v128_output/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip
+      - name: Validate full movement files and interactive HTML
+        if: success()
+        run: |
+          ls -lh v128_output
+          python -c "import zipfile,json,os; z=zipfile.ZipFile('v128_output/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip'); assert z.testzip() is None; names=z.namelist(); assert len(names)==9; meta=json.loads(z.read('07_METOD_VE_KONTROL.json')); assert meta['steps']==36; assert meta['all_transition_rows']==36*224*80; assert any(x.endswith('.html') for x in names); print('V128 verified',meta['all_transition_rows'],'full movement rows and offline HTML')"
+      - name: Upload full replay and standalone player
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V128_36_DRAW_224_RING_MOVEMENT_INTERACTIVE_PLAYER
+          path: v128_output/*
+          retention-days: 90
+          if-no-files-found: warn
