@@ -146,7 +146,7 @@ def build(days,rows,x):
             cooling_in_last6_rings=int(feat["falling"].sum()),
             mean_distinct_pools=float(np.mean(feat["number_pools"]))))
         current=0 if ph=="TRAIN" else (1 if ph=="VALIDATE" else 2)
-        changes=np.sign(np.diff(S,axis=1))+1
+        changes=np.sign(np.diff(S,axis=1)).T+1
         ids=(np.arange(55)[:,None]*3+changes)
         ring_activity[current]+=np.bincount(ids.ravel(),minlength=165).reshape(55,3)
         ring_next[current]+=np.bincount(ids.ravel(),weights=np.broadcast_to(
@@ -310,6 +310,9 @@ def selftest():
     assert np.array_equal(counts[:,-1],x[660:672].sum(axis=0))
     for j in range(56):assert sorted(np.bincount(S[:,j],minlength=5))==[16]*5
     scores,feat=calculate_scores(counts,S)
+    changes=np.sign(np.diff(S,axis=1)).T+1
+    assert changes.shape==(55,80)
+    assert (np.arange(55)[:,None]*3+changes).shape==(55,80)
     assert set(scores)==set(METHODS)
     assert all(len(set(pick(q)))==20 for q in scores.values())
     print("V100B SELFTEST OK",flush=True)
