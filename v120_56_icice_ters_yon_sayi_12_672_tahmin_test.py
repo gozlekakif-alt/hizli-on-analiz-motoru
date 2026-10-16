@@ -146,9 +146,9 @@ def main(src,dest):
             for b in np.flatnonzero(gs[typ]):
                 extreme_events.append(dict(date=day,target_id=rows[t]["id"],
                     number=int(b+1),pretarget_group=typ,
-                    12_draw_ones=int(cnt[0,b]),
-                    72_draw_ones=int(cnt[5,b]),
-                    672_draw_ones=int(cnt[-1,b]),
+                    ones_12_draw=int(cnt[0,b]),
+                    ones_72_draw=int(cnt[5,b]),
+                    ones_672_draw=int(cnt[-1,b]),
                     pretarget_56_pools="".join("CSNIH"[int(x)] for x in st[:,b]),
                     pretarget_56_counts="|".join(map(str,cnt[:,b])),
                     target_drawn_1_or_0=int(actual[b])))
