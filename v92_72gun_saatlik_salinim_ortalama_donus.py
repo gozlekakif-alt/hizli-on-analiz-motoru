@@ -323,7 +323,6 @@ def run(source,outname):
                        if (x>=hi).sum() else None,
                    next_given_prior_low=round(float(y[x<=lo].mean()),6)
                        if (x<=lo).sum() else None)
-            (pernumber if label=="SINGLE_NUMBER" else perband_summary).append(z) if False else None
             if label=="SINGLE_NUMBER":pernumber.append(z)
             else:
                 # Append 8 summaries separately from all per-pair rows
@@ -365,10 +364,10 @@ def run(source,outname):
                next_hour_mean=round(v[1]/v[0],7),
                next_hour_above_high_rate=round(v[2]/v[0],7)))
     simulation=bperm+nperm
-    pformat=lambda p:f" {p['scope']} {p['signal']}: observed={p['observed']:+.7f}, "+
+    pformat=lambda p:(f" {p['scope']} {p['signal']}: observed={p['observed']:+.7f}, "+
                        f"matched-clock shuffle mean={p['null_mean']:+.7f}, "+
                        f"95% null range [{p['null_q025']:+.7f};{p['null_q975']:+.7f}], "+
-                       f"two-sided p={p['null_two_sided_p']:.5f}"
+                       f"two-sided p={p['null_two_sided_p']:.5f}")
     bsd=math.sqrt(12*20*(10/80)*(70/80)*(60/79))
     report=[
         "V92 — 72 GUN HER SAAT 80 SAYI / SEKIZ 10LUK BANT ORTALAMAYA SALINIM TESTI",
