@@ -296,7 +296,7 @@ def run(src,out):
                             "." if prevpool is None else
                             STEP_CHAR[int(np.sign(temp-prevpool))]),
                         target_hour_hands=bits[j],
-                        target_hour_appearances=int(hits[j]))))
+                        target_hour_appearances=int(hits[j])))
             for k in range(12):
                 draw=rows[t+k]
                 lasttarget.append(dict(hour=hname,hand=k+1,draw_id=draw["id"],
