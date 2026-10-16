@@ -1,0 +1,39 @@
+name: V106 Hedef Saat Isinan 5 6 7 8
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v106_hedef_saat_isinan_sayilar_5_6_7_8_56_halka.py'
+      - '.github/workflows/v106-hedef-saat-isinan-5-6-7-8.yml'
+permissions:
+  contents: read
+jobs:
+  track-warming-5-8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Compile and selftest
+        run: |
+          python -m py_compile v106_hedef_saat_isinan_sayilar_5_6_7_8_56_halka.py
+          python -u v106_hedef_saat_isinan_sayilar_5_6_7_8_56_halka.py --selftest
+      - name: Analyze every warming path and 5-8 appearances in target hour
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v106_hedef_saat_isinan_sayilar_5_6_7_8_56_halka.py --source veri.txt --out v106_output/V106_ISINAN_SAYILAR_HEDEF_SAAT_5_6_7_8.zip
+      - name: Upload full 56-ring paths and each 5-8 event
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V106_ISINAN_5_6_7_8_TAM56_HALKA
+          path: v106_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
