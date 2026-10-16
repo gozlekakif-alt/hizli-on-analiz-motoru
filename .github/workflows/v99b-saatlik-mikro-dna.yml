@@ -1,0 +1,42 @@
+name: V99B Saatlik Mikro DNA H4 H5 H6
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v99b_saatlik_mikro_dna_h4_h6_72gun.py"
+      - ".github/workflows/v99b-saatlik-mikro-dna.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v99b-real-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Self test
+        run: |
+          python -m py_compile v99b_saatlik_mikro_dna_h4_h6_72gun.py
+          python -u v99b_saatlik_mikro_dna_h4_h6_72gun.py --selftest
+      - name: Run 72-day 80-number exact bit trajectories
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v99b_saatlik_mikro_dna_h4_h6_72gun.py --source veri.txt --out v99b_output/V99B_SAATLIK_MIKRO_DNA_4_5_6_GECIS.zip
+      - name: Upload full CSV and research report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V99B_SAATLIK_MIKRO_DNA_H4_H5_H6
+          path: v99b_output/*.zip
+          if-no-files-found: warn
+          retention-days: 90
