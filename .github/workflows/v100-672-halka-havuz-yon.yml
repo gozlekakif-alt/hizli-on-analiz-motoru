@@ -1,0 +1,39 @@
+name: V100 672 Cekilis 56 Halka Havuz Yonu
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v100_672_56_halka_havuz_yon_kor_test.py'
+      - '.github/workflows/v100-672-halka-havuz-yon.yml'
+permissions:
+  contents: read
+jobs:
+  v100-halkalar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile and selftest
+        run: |
+          python -m py_compile v100_672_56_halka_havuz_yon_kor_test.py
+          python -u v100_672_56_halka_havuz_yon_kor_test.py --selftest
+      - name: Run 56 moving rings and historical matched controls
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v100_672_56_halka_havuz_yon_kor_test.py --source veri.txt --out v100_output/V100_672_CEKILIS_56_HALKALI_HAVUZ_YON.zip
+      - name: Upload all V100 tables and latest ring film
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V100_672_56_HALKA_HAVUZ_YON_TAM_RAPOR
+          path: v100_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
