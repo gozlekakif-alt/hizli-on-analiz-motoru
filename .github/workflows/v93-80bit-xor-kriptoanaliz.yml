@@ -1,0 +1,42 @@
+name: V93 80Bit XOR Kriptoanaliz HiziOn Sabit20 RNG
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v93_80bit_xor_kriptoanaliz_rng_deney.py"
+      - ".github/workflows/v93-80bit-xor-kriptoanaliz.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v93_crypto_audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile selftest 20of80 fixed-weight and XOR hypergeometric
+        run: |
+          python -m py_compile v93_80bit_xor_kriptoanaliz_rng_deney.py
+          python -u v93_80bit_xor_kriptoanaliz_rng_deney.py --selftest
+      - name: Audit 11 cryptanalysis-style RNG metrics and XOR3 heldout scores
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v93_80bit_xor_kriptoanaliz_rng_deney.py --source veri.txt --reps 499 --out v93_output/V93_72GUN_80BIT_XOR_KRIPTO_RNG_VE_KOR_TEST.zip
+      - name: Upload one full V93 audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V93_80BIT_XOR_SIFRELEME_STILI_RNG_AUDIT
+          path: v93_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
