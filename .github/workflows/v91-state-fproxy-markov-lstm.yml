@@ -1,0 +1,44 @@
+name: V91 Sekiz Durum Yasi Gap Yon FProxy Markov LSTM
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v91_8durum_yas_gap_yon_fproxy_markov_lstm.py"
+      - ".github/workflows/v91-state-fproxy-markov-lstm.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v91:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU PyTorch and numpy
+        run: |
+          python -m pip install numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Compile and verify true extended PyTorch LSTM
+        run: |
+          python -m py_compile v91_8durum_yas_gap_yon_fproxy_markov_lstm.py
+          python -u v91_8durum_yas_gap_yon_fproxy_markov_lstm.py --selftest
+      - name: Run train-only states and F proxies against future 48 to 12 targets
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v91_8durum_yas_gap_yon_fproxy_markov_lstm.py --source veri.txt --out v91_output/V91_8DURUM_YAS_GAP_YON_FPROXY_MARKOV_LSTM_48_12.zip
+      - name: Upload one V91 test ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V91_8DURUM_YAS_GAP_YON_FPROXY_MARKOV_LSTM
+          path: v91_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
