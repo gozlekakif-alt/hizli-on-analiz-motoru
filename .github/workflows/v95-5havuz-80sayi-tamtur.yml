@@ -1,0 +1,42 @@
+name: V95 Bes Havuz 80 Sayi Tam Tur 72 Gun
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v95_72gun_80_sayi_bes_havuz_tam_dolus_zamani.py"
+      - ".github/workflows/v95-5havuz-80sayi-tamtur.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v95-full-pool-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile and selftest V54 exact five 16-member pool ranking
+        run: |
+          python -m py_compile v95_72gun_80_sayi_bes_havuz_tam_dolus_zamani.py
+          python -u v95_72gun_80_sayi_bes_havuz_tam_dolus_zamani.py --selftest
+      - name: Walk 80 numbers from first72 through all five classes and 99 fair corpora
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v95_72gun_80_sayi_bes_havuz_tam_dolus_zamani.py --source veri.txt --null 99 --out v95_output/V95_72GUN_80_SAYI_5_HAVUZ_TAM_TUR_ZAMANI.zip
+      - name: Publish V95 all number journeys ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V95_72_GUN_80_SAYI_BES_HAVUZ_TAM_TUR_ZAMANI
+          path: v95_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
