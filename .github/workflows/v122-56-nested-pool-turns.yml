@@ -1,0 +1,40 @@
+name: V122 56 Nested Pool Turns and 12 Block Reversal
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v122_56_halqa_12_24_36_72_yon_kirilmasi_hedef_sayi.py'
+      - '.github/workflows/v122-56-nested-pool-turns.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Validate source syntax
+        run: python -m py_compile v122_56_halqa_12_24_36_72_yon_kirilmasi_hedef_sayi.py
+      - name: Historical replay and locked validation testing
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v122_56_halqa_12_24_36_72_yon_kirilmasi_hedef_sayi.py --source veri.txt --out v122_output/V122_56_HALKA_12_24_36_72_YON_KIRILMASI_TEST.zip
+      - name: Publish full ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V122_56_NESTED_POOL_TURNS_REAL_BLOCK_REBOUND
+          path: v122_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
