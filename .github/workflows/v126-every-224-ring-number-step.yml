@@ -1,0 +1,48 @@
+name: V126 All 224 Rings 80 Numbers Every Draw
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v126_224_halka_tum_sayilar_adim_adim_eksiksiz_kayit.py'
+      - 'v126_detay_oku.py'
+      - '.github/workflows/v126-every-224-ring-number-step.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lossless-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile code and decoder
+        run: |
+          python -m py_compile v126_224_halka_tum_sayilar_adim_adim_eksiksiz_kayit.py
+          python -m py_compile v126_detay_oku.py
+      - name: Build complete 224-ring 80-number per-draw states
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v126_224_halka_tum_sayilar_adim_adim_eksiksiz_kayit.py --source veri.txt --out v126_output/V126_224_HALKA_80_SAYI_HER_ADIM_FULL_LOSSLESS.zip
+      - name: Archive file size and ZIP integrity
+        if: success()
+        run: |
+          ls -lh v126_output/
+          python -c "import zipfile; z=zipfile.ZipFile('v126_output/V126_224_HALKA_80_SAYI_HER_ADIM_FULL_LOSSLESS.zip'); print('V126 ZIP entries',len(z.namelist())); assert z.testzip() is None; assert len([x for x in z.namelist() if x.startswith('FULL_EACH_STEP_BY_DAY/')])>=50"
+      - name: Upload V126 complete step data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V126_224_RING_80_BALL_EVERY_REAL_DRAW_ALL_STATES
+          path: v126_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
