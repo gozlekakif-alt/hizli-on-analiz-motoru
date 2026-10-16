@@ -1,0 +1,40 @@
+name: V120 56 Ic Ice Ters Yon Sayi Hedef
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v120_56_icice_ters_yon_sayi_12_672_tahmin_test.py'
+      - '.github/workflows/v120-56-icice-ters-yon-sayi.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: NumPy
+        run: python -m pip install numpy
+      - name: Compile V120
+        run: python -m py_compile v120_56_icice_ters_yon_sayi_12_672_tahmin_test.py
+      - name: Historical draw replay; target not in pool features
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v120_56_icice_ters_yon_sayi_12_672_tahmin_test.py --source veri.txt --out v120_output/V120_56_ICICE_TERSE_YON_HEDEF_SAYILAR.zip
+      - name: Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V120_56_NESTED_OPPOSITE_NUMBER_DIRECTION
+          path: v120_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
