@@ -1,0 +1,42 @@
+name: V100C Yuruyen FIFO 672 Cekilis 12 Halka
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v100c_yuruyen_672_fifo_sabit_12_halka.py"
+      - ".github/workflows/v100c-yuruyen-fifo-halka.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v100c-stable-rings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependencies
+        run: python -m pip install numpy
+      - name: Verify FIFO ring mechanics
+        run: |
+          python -m py_compile v100c_yuruyen_672_fifo_sabit_12_halka.py
+          python -u v100c_yuruyen_672_fifo_sabit_12_halka.py --selftest
+      - name: Full historical FIFO ring audit
+        env:
+          OPENBLAS_NUM_THREADS: "2"
+          OMP_NUM_THREADS: "2"
+        run: |
+          python -u v100c_yuruyen_672_fifo_sabit_12_halka.py --source veri.txt --out v100c_output/V100C_YURUYEN_672_FIFO_12_HALKA.zip
+      - name: Publish full V100C data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V100C_YURUYEN_672_CEKILIS_12_HALKALI_ZINCIR
+          path: v100c_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
