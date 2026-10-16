@@ -1,0 +1,42 @@
+name: V103 56 Halka Hedef Saat Onceden Yon Tahmini
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v103_56_halka_hedef_saat_yon_on_goru.py"
+      - ".github/workflows/v103-56-halka-hedef-saat-ongoru.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  directions-before-hour:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Self-test of pre-hour model
+        run: |
+          python -m py_compile v103_56_halka_hedef_saat_yon_on_goru.py
+          python -u v103_56_halka_hedef_saat_yon_on_goru.py --selftest
+      - name: Train first 36 full days and compare later exact hours
+        env:
+          OPENBLAS_NUM_THREADS: "2"
+          OMP_NUM_THREADS: "2"
+        run: |
+          python -u v103_56_halka_hedef_saat_yon_on_goru.py --source veri.txt --out v103_output/V103_56_HALKA_HEDEF_SAAT_ONGORU_KILITLI.zip
+      - name: Keep timed future-direction forecast and all full hour ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V103_ONCEDEN_HEDEF_SAAT_56_HALKA_YON_KADRO
+          path: v103_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
