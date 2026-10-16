@@ -1,0 +1,42 @@
+name: V92 72Gun Saatlik Ortalamaya Donus ve 80 Sayi 8 Bant
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "veri.txt"
+      - "v92_72gun_saatlik_salinim_ortalama_donus.py"
+      - ".github/workflows/v92-hourly-mean-reversion.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v92-hour-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Syntax plus regression-to-mean numerical selftest
+        run: |
+          python -m py_compile v92_72gun_saatlik_salinim_ortalama_donus.py
+          python -u v92_72gun_saatlik_salinim_ortalama_donus.py --selftest
+      - name: Analyze 80 numbers and all 10-ball bands every completed hour
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v92_72gun_saatlik_salinim_ortalama_donus.py --source veri.txt --out v92_output/V92_72GUN_80_SAYI_8BANT_HER_SAAT_ORTALAMA_DONUS.zip
+      - name: Publish one full downloadable V92 ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V92_72_GUN_80_SAYI_8_BANT_SAATLIK_SALINIM
+          path: v92_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
