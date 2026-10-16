@@ -41,7 +41,7 @@ def ranks(count):
     rank[np.arange(R)[:,None],order]=np.arange(B,dtype=np.int16)
     return rank
 
-def full_metrics(sign):
+def full_metrics(sign,with_flips=False):
     up=(sign>0).sum(axis=0).astype(np.int16)
     down=(sign<0).sum(axis=0).astype(np.int16)
     stable=(sign==0).sum(axis=0).astype(np.int16)
@@ -51,13 +51,14 @@ def full_metrics(sign):
     # An explicit tiny loop 80 numbers × small length per one target.
     flips=np.zeros(B,dtype=np.int16)
     segments=np.zeros(B,dtype=np.int16)
-    for i in range(B):
-        s=sign[:,i]
-        ss=s[s!=0]
-        if len(ss):
-            changes=np.count_nonzero(ss[1:]!=ss[:-1])
-            flips[i]=changes
-            segments[i]=changes+1
+    if with_flips:
+        for i in range(B):
+            s=sign[:,i]
+            ss=s[s!=0]
+            if len(ss):
+                changes=np.count_nonzero(ss[1:]!=ss[:-1])
+                flips[i]=changes
+                segments[i]=changes+1
     return up,down,stable,cat,flips,segments
 
 def csv_put(z,path,records):
@@ -130,7 +131,7 @@ def main(source,out):
         assert (dsign.sum(axis=0)[enter==1]>=0).all()
         assert (dsign.sum(axis=0)[enter==0]<=0).all()
         for kind,sign in enumerate((dsign,rsign,psign)):
-            up,down,stable,cat,flips,segments=full_metrics(sign)
+            up,down,stable,cat,flips,segments=full_metrics(sign,with_flips=(kind==2))
             cat_totals[kind]+=np.bincount(cat,minlength=4)
             by_drawn[0,kind]+=np.bincount(cat[enter==0],minlength=4)
             by_drawn[1,kind]+=np.bincount(cat[enter==1],minlength=4)
@@ -199,7 +200,7 @@ def main(source,out):
                                 temp_nochange=int(stable[ball]),
                                 temp_category=STATES[int(cat[ball])],
                                 temp_flip_count_ignoring_stable=int(flips[ball]),
-                                per_224_ring_temp_signs="".join("DU-"[int(y)+1] for y in sign[:,ball]),
+                                per_224_ring_temp_signs="".join("C0W"[int(y)+1] for y in sign[:,ball]),
                                 per_224_ring_pool_before="".join(str(int(y)) for y in prev_p[:,ball]),
                                 per_224_ring_pool_after="".join(str(int(y)) for y in newp[:,ball])))
                         sample_records.append(dict(draw_id=draw,date=day,
@@ -208,7 +209,7 @@ def main(source,out):
                           still_rings=int(stable[ball]),
                           class_=STATES[int(cat[ball])],
                           sign_changes_ignoring_stable=int(flips[ball]),
-                          ring_224_pool_motion="".join("DU-"[int(y)+1] for y in sign[:,ball])))
+                          ring_224_pool_motion="".join("C0W"[int(y)+1] for y in sign[:,ball])))
         cnt=newc
         prev_r=newr
         prev_p=newp
