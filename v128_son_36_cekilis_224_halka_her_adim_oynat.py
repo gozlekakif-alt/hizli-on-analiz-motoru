@@ -296,7 +296,7 @@ def main(source,out,steps):
                 minlength=25).reshape(5,5)
             assert transition.sum()==80 and np.all(transition.sum(axis=0)==16)
             assert np.all(transition.sum(axis=1)==16)
-            class_flow[r]+=transition
+            class_flow[r]+=transition.astype(np.uint64)
             byring.append(dict(step=j,draw_id=rows[t]["id"],
               ring=r+1,window_draws=int(LENS[r]),count_up=int((diff[r]>0).sum()),
               count_down=int((diff[r]<0).sum()),count_stable=int((diff[r]==0).sum()),
