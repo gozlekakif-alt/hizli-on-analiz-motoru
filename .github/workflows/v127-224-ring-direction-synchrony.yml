@@ -1,0 +1,44 @@
+name: V127 Do All 224 Rings Move in Same Direction?
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v127_224_halka_sayi_dalga_ayni_yon_mu_analiz.py'
+      - '.github/workflows/v127-224-ring-direction-synchrony.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: NumPy
+        run: python -m pip install numpy
+      - name: Compile
+        run: python -m py_compile v127_224_halka_sayi_dalga_ayni_yon_mu_analiz.py
+      - name: Replay each step and analyze ring direction synchronization
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v127_224_halka_sayi_dalga_ayni_yon_mu_analiz.py --source veri.txt --out v127_output/V127_224_HALKA_SAYILAR_AYNI_YON_DALGA_TEST.zip
+      - name: ZIP integrity
+        if: success()
+        run: |
+          python -c "import zipfile; p='v127_output/V127_224_HALKA_SAYILAR_AYNI_YON_DALGA_TEST.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; print('V127 ZIP entries',len(z.namelist()))"
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V127_224_RING_WAVE_SYNCHRONIZATION_TRUE_DATA
+          path: v127_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
