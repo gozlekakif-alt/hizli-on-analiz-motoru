@@ -1,0 +1,39 @@
+name: V100B 672 660 648 12 Icice Halka
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v100b_hedef_merkezli_672_660_648_12_halka.py'
+      - '.github/workflows/v100b-icice-672-660-halka.yml'
+permissions:
+  contents: read
+jobs:
+  nested:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Compile and selftest
+        run: |
+          python -m py_compile v100b_hedef_merkezli_672_660_648_12_halka.py
+          python -u v100b_hedef_merkezli_672_660_648_12_halka.py --selftest
+      - name: Calculate nested 672 to 12 sliding history circles
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '2'
+        run: |
+          python -u v100b_hedef_merkezli_672_660_648_12_halka.py --source veri.txt --out v100b_output/V100B_672_660_648_12_ICICE_HALKA_KOR_TEST.zip
+      - name: Publish nested target-ring data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V100B_672_660_648_ICICE_56_HALKA
+          path: v100b_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
