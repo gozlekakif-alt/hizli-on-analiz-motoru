@@ -1,0 +1,39 @@
+name: V105 Tam 56 Halka Yon Etki Atlasi
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'veri.txt'
+      - 'v105_tam56_halka_yon_etkisi_sonraki_halke.py'
+      - '.github/workflows/v105-56-halka-yon-etkisi.yml'
+permissions:
+  contents: read
+jobs:
+  full56:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencies
+        run: python -m pip install numpy
+      - name: Compile and selftest full history features
+        run: |
+          python -m py_compile v105_tam56_halka_yon_etkisi_sonraki_halke.py
+          python -u v105_tam56_halka_yon_etkisi_sonraki_halke.py --selftest
+      - name: Walk full 72 days, 80 balls x 56 ring paths and next directions
+        env:
+          OPENBLAS_NUM_THREADS: '2'
+          OMP_NUM_THREADS: '2'
+        run: |
+          python -u v105_tam56_halka_yon_etkisi_sonraki_halke.py --source veri.txt --out v105_output/V105_56_HALKANIN_TAM_YON_ETKISI.zip
+      - name: Save complete 56 ring directions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V105_TAM56_HALKANIN_YON_ETKISI
+          path: v105_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
