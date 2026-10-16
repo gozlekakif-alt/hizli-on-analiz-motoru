@@ -113,7 +113,7 @@ def cycles(X,rows=None,detail=False):
             initial=state.copy()
         else:
             changes=(state!=last_pool)
-            np.add.at(transitions,(last_pool,state),1)
+            if detail: np.add.at(transitions,(last_pool,state),1)
             changed_total+=int(changes.sum())
             newlyleft=(state!=initial)&(~leaving)
             leaving|=(state!=initial)
@@ -192,9 +192,9 @@ def cycles(X,rows=None,detail=False):
       initial_vs_final_same_count=int(np.sum(initial==final_state)),
       total_pool_switches=changed_total,
       switch_rate_per_number_per_snapshot=float(changed_total/(80*(length-W))),
-      same_state_probability_lag12=float(same[12][0]/same[12][1]),
-      same_state_probability_lag72=float(same[72][0]/same[72][1]),
-      same_state_probability_lag217=float(same[217][0]/same[217][1]),
+      same_state_probability_lag12=(float(same[12][0]/same[12][1]) if same[12][1] else None),
+      same_state_probability_lag72=(float(same[72][0]/same[72][1]) if same[72][1] else None),
+      same_state_probability_lag217=(float(same[217][0]/same[217][1]) if same[217][1] else None),
       first5_median_draw=float(np.median(first_5[complete]+1)) if len(complete) else None,
       first5_earliest_draw=int(first_5[complete].min()+1) if len(complete) else None,
       first5_latest_draw=int(first_5[complete].max()+1) if len(complete) else None,
