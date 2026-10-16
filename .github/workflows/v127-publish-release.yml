@@ -1,0 +1,44 @@
+name: V127 Publish Permanent Synchrony Report
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v127-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore fully verified V127 archive
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38976502493
+          name: V127_224_RING_WAVE_SYNCHRONIZATION_TRUE_DATA
+          github-token: ${{ github.token }}
+          path: v127-release
+      - name: Verify 11 CSV/JSON files
+        run: |
+          python -c "import zipfile; p='v127-release/V127_224_HALKA_SAYILAR_AYNI_YON_DALGA_TEST.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert len(z.namelist())==11; print('V127 synchronized direction archive',len(z.namelist()),'files verified')"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v127-2026-10-13-224-rings-synchrony
+        run: |
+          FILE=v127-release/V127_224_HALKA_SAYILAR_AYNI_YON_DALGA_TEST.zip
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V127 — 224 nested rings, 80 numbers, same-direction movement audit" \
+              --notes "Historical full 13,102-step audit. An individual number can only move up/still in count if drawn, down/still if not drawn. Among 1,048,160 number-by-draw cases, 794,234 (75.7741%) had BOTH warmer and colder temperature-pool movements across 224 nested rings. 83.4093% of adjacent ring pairs when both changed moved in the same pool direction, explained by shared overlapping lookbacks. Detailed summary, per-number, per-ring, daily movement files and last draw 224-ring wave signatures. Findings are descriptive, not advance lottery prediction. Source repo has the reproducible V127 Python and complete V126 510 MB base archive." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
