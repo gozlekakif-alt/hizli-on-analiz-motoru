@@ -1,0 +1,40 @@
+name: V121 56 Nested Multi-Method Number Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v121_56_icice_45_model_80_sayi_kor_test.py'
+      - '.github/workflows/v121-56-nested-multimethod.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy
+        run: python -m pip install numpy
+      - name: Check source syntax
+        run: python -m py_compile v121_56_icice_45_model_80_sayi_kor_test.py
+      - name: Walk-forward number-only research with locked validation winner
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v121_56_icice_45_model_80_sayi_kor_test.py --source veri.txt --out v121_output/V121_56_HALKA_45_MODEL_SAYI_HEDEF_KOR_TEST.zip
+      - name: Upload complete report and test rows
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V121_56_NESTED_MULTI_MODEL_NUMBERS
+          path: v121_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
