@@ -1,0 +1,45 @@
+name: V126 Publish Complete Archive as Permanent GitHub Release
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v126-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  upload-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover complete V126 archive from completed run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38975652486
+          name: V126_224_RING_80_BALL_EVERY_REAL_DRAW_ALL_STATES
+          github-token: ${{ github.token }}
+          path: v126-release
+      - name: Validate 510MB source archive
+        run: |
+          ls -lh v126-release
+          python -c "import zipfile; p='v126-release/V126_224_HALKA_80_SAYI_HER_ADIM_FULL_LOSSLESS.zip'; z=zipfile.ZipFile(p); a=z.namelist(); assert len([x for x in a if x.startswith('FULL_EACH_STEP_BY_DAY/')])==61; assert '07_METOD_VE_GUN_BLOK_LISTESI.json' in a; print('Confirmed V126 full 61-day archive with',len(a),'entries')"
+      - name: Create long-lived GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v126-2026-10-13-224-rings-lossless
+        run: |
+          FILE=v126-release/V126_224_HALKA_80_SAYI_HER_ADIM_FULL_LOSSLESS.zip
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V126 — 224 Ring × 80 Numbers, All 13,102 Actual Draw Transitions" \
+              --notes "Complete lossless archive of 234,787,840 224-ring × 80-ball × draw snapshots over 13,102 real historical transitions, including full count, rank, temperature pool before/after, entrance/exit bits, 5x5 class flows, number-ring movement atlas, daily readable summaries, and the final 12 fully readable draw-step details. Reproducible from v126_224_halka_tum_sayilar_adim_adim_eksiksiz_kayit.py and veri.txt. Draw data ends at #62014 on 2026-10-13. Descriptive historical movement, not a guaranteed predictive model." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
