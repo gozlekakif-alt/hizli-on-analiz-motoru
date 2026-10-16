@@ -1,0 +1,21 @@
+{
+  "version": "V88.1",
+  "lock_name": "V87_VALIDATION_WINNER",
+  "class_name": "SWAP_TWO",
+  "horizon_draws": 3,
+  "min_family_k": 5,
+  "max_family_k": 10,
+  "candidate_definition": "same drawing exact intersection with each of previous up to twelve consecutive draws; size 5..10, >10 capped to first ten members",
+  "history_family_relation": "exact parent root discovered in prior twelve draw frames, SWAP_TWO 2 retained missing and 2 new members",
+  "family_winner_order": "largest k, shortest provenance lag, ascending family bitmask",
+  "coupon_completion": "selected family exact members plus descending count last72 ACTUAL observed previous draws including source draw, ties ascending number",
+  "control_random": "v87 deterministic seed 871016 + source draw id + horizon + family signature",
+  "control_frequency": "10 most often seen in previous72 actual draws including source",
+  "frozen_rule_validation_period": "2026-09-13 through 2026-09-27",
+  "prefreeze_historical_holdout": "2026-09-28 through 2026-10-12",
+  "historical_holdout_score": "10-ball mean 2.493157 versus matched random10 2.513685; not predictive success",
+  "notebook": "Do not alter lock or selection on later results. A signal can be absent. Max one 10-ball ticket per source. This does not claim a profit expectation.",
+  "lock_date": "2026-10-16",
+  "draw_age_ceiling_minutes": 7,
+  "activated_only_if_new_data_arrives": true
+}
