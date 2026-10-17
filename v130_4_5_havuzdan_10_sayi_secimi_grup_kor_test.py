@@ -385,7 +385,7 @@ def main(source,out):
             last_real_draw=rows[-1]["id"],
             first_target=rows[2689]["id"],
             five_equal_pools_each_of_16=True,
-            224_nested_lengths=LENS.tolist(),
+            nested_224_lengths=LENS.tolist(),
             group_definitions=ANCHORS,
             group_methods=POLICIES,
             methods=MODELS,
