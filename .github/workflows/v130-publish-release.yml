@@ -1,0 +1,54 @@
+name: V130 Publish Four and Five Pool Report
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v130-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified V130 group-selection report
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39012401526
+          name: V130_FOUR_VS_FIVE_POOLS_41_MODELS_REAL_TEST
+          github-token: ${{ github.token }}
+          path: v130-report
+      - name: Verify complete V130 archive
+        run: |
+          python - <<'PY'
+          import zipfile,json,pathlib
+          p=pathlib.Path('v130-report/V130_4_VE_5_HAVUZ_GRUP_SECIM_41_MODEL_KOR.zip')
+          with zipfile.ZipFile(p) as z:
+            assert z.testzip() is None
+            data=json.loads(z.read('08_KUTUK_DENETIM.json'))
+            assert data['targets']==13101
+            assert len(data['methods'])==41
+            assert data['target_used_in_scoring'] is False
+            print('Verified V130:',data['targets'],'targets, 41 strategies')
+          PY
+      - name: Publish durable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v130-2026-10-13-four-vs-five-pool-selection
+        run: |
+          FILE=v130-report/V130_4_VE_5_HAVUZ_GRUP_SECIM_41_MODEL_KOR.zip
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V130 — 4 or 5 Group Pool Number Selection, 41 Model Evaluation" \
+              --notes "13,101 genuine chronological historical next-draw evaluations of 36 four/five 16-number-pool selection strategies and 5 matched fixed/random controls. 72-draw and 672-draw pools, plus 224-ring consensus pools; four groups 3+3+2+2 or five groups 2+2+2+2+2 for one 10-number ticket; next-target 20 membership and four-pool coverage measured. Last18 (3906 previously studied historical targets), consensus 5-balanced avg10=2.48413, consensus 4-drop-recent-low avg10=2.5000, best validation-locked 4-pool avg10=2.50999 vs RANDOM avg10=2.51280. Day-bootstrap selected−random CI includes zero. No proven advantage over random. Includes per-target outputs and audit details. Fully reproducible script and permanent markdown report in repo." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
