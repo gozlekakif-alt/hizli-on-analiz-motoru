@@ -1,0 +1,55 @@
+name: V132 Publish New vs Established Hot Report
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v132-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified full V132 next-target report
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39018290177
+          name: V132_NEW_HOT_VS_ESTABLISHED_NEXT20_224_RINGS
+          github-token: ${{ github.token }}
+          path: v132-results
+      - name: Verify eleven result tables
+        run: |
+          python - <<'PY'
+          import zipfile,json
+          p="v132-results/V132_YENI_SICAK_YERLESIK_SICAK_HEDEF20_KARSILASTIRMA.zip"
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              d=json.loads(z.read("10_METOD_DENETIM.json"))
+              assert d["targets"]==13101
+              assert d["future_data_used_to_choose"] is False
+              assert len(d["all_224_nested_rings"])==224
+              assert len(z.namelist())==11
+              print("Verified V132 224 rings, 13101 next targets and 11 result tables")
+          PY
+      - name: Publish permanent GitHub release ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v132-2026-10-13-new-vs-established-hot-next20
+        run: |
+          FILE=v132-results/V132_YENI_SICAK_YERLESIK_SICAK_HEDEF20_KARSILASTIRMA.zip
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V132 — Newly Entered HOT vs Established HOT in Next 20 Target" \
+              --notes "Exhaustive 13,101 historical next-draw comparisons across 224 12..2688 nested windows × 80 numbers. A number marked new-hot or established-hot only using the known last draw. Conditional next20 rates close to 25%. Last 3,906 draws: newhot vs established: ring12 25.83% vs24.88%; ring72 25.09% vs25.10%; ring672 25.41% vs25.06%; ring2688 24.59% vs24.90%. Locked best historical validation 12-ring NEW_FIRST 10-number selection later averaged2.5343 hits; 10/80 random averaged2.5179, daily bootstrap95 interval of diff [-0.0323, +0.0576], not persuasive. Archive has 11 full tables covering 224 ring statuses, all six anchors, matched ticket control, day bootstrap, rank-boundary depth, all last18 ticket checks. Pre-target backtesting, not previously unseen future draw verification." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
