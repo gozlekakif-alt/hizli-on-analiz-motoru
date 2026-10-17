@@ -1,0 +1,56 @@
+name: V128 Publish 36 Step Offline Player Permanent Release
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v128-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified 36-step replay and HTML
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 38977196831
+          name: V128_36_DRAW_224_RING_MOVEMENT_INTERACTIVE_PLAYER
+          github-token: ${{ github.token }}
+          path: v128-replay
+      - name: Validate ZIP and player presence
+        run: |
+          python - <<'PY'
+          import zipfile,json,pathlib
+          p=pathlib.Path("v128-replay/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip")
+          h=pathlib.Path("v128-replay/V128_36_ADIM_224_HALKA_GORSEL_OYNATICI.html")
+          assert p.exists() and h.exists()
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              m=json.loads(z.read("07_METOD_VE_KONTROL.json"))
+              assert m["steps"]==36 and m["all_transition_rows"]==645120
+          assert "224 halka" in h.read_text(encoding="utf-8").lower()
+          print("Verified 36-step replay, complete 645120 transition rows, HTML standalone viewer")
+          PY
+      - name: Publish two permanent assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v128-2026-10-13-36-step-224-rings
+        run: |
+          FILE1=v128-replay/V128_36_ADIM_224_HALKA_TAM_OYNATIM.zip
+          FILE2=v128-replay/V128_36_ADIM_224_HALKA_GORSEL_OYNATICI.html
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE1" "$FILE2" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE1" "$FILE2" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V128 — 36 Actual Draw Steps × 224 Rings · Visual Replay" \
+              --notes "36 real archived draws (#61978–#62014, with one draw id absent in the historical input) replayed one by one from a 2688-draw initial memory. Each new draw shifts all 224 nested 12..2688 draw windows for all 80 numbers. Full exact 645120 before/after number/ring/step transitions recorded, 39863 pool class movements, and a standalone HTML heatmap viewer with Back/Forward/slider, selected number and pool motion display. Source and reproducible workflow are in the GitHub repository. This is retrospective sequential replay, not prediction of new unknown draws." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
