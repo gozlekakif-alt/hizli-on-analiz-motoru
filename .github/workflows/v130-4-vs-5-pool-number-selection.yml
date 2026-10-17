@@ -1,0 +1,52 @@
+name: V130 Four vs Five 16-Number Pools
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v130_4_5_havuzdan_10_sayi_secimi_grup_kor_test.py'
+      - '.github/workflows/v130-4-vs-5-pool-number-selection.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile script
+        run: python -m py_compile v130_4_5_havuzdan_10_sayi_secimi_grup_kor_test.py
+      - name: Pre-target 4-pool vs 5-pool equal-budget draw hit test
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          python -u v130_4_5_havuzdan_10_sayi_secimi_grup_kor_test.py --source veri.txt --out v130_output/V130_4_VE_5_HAVUZ_GRUP_SECIM_41_MODEL_KOR.zip
+      - name: Validate ZIP score and real targets
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,zipfile
+          z=zipfile.ZipFile("v130_output/V130_4_VE_5_HAVUZ_GRUP_SECIM_41_MODEL_KOR.zip")
+          assert z.testzip() is None
+          d=json.loads(z.read("08_KUTUK_DENETIM.json"))
+          assert d["targets"]==13101 and len(d["methods"])==41
+          assert d["target_used_in_scoring"] is False
+          print("V130 verified",d["targets"],"real next targets and",len(d["methods"]),"models")
+          PY
+      - name: Upload complete V130
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V130_FOUR_VS_FIVE_POOLS_41_MODELS_REAL_TEST
+          path: v130_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
