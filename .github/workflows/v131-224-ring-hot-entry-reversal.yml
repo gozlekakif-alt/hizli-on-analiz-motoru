@@ -1,0 +1,58 @@
+name: V131 Hot Pool Entry Reversal across 224 Rings
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'v131_sicaga_yonelen_sayilar_geri_soguyor_mu_224_halka.py'
+      - '.github/workflows/v131-224-ring-hot-entry-reversal.yml'
+      - 'veri.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: NumPy
+        run: python -m pip install numpy
+      - name: Compile
+        run: python -m py_compile v131_sicaga_yonelen_sayilar_geri_soguyor_mu_224_halka.py
+      - name: Reconstruct all 224 ring class states and real hot-entry reversals
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          PYTHONUNBUFFERED: '1'
+        run: |
+          python -u v131_sicaga_yonelen_sayilar_geri_soguyor_mu_224_halka.py --source veri.txt --out v131_output/V131_SICAGA_GIRIS_TERS_YON_224_HALKA_36_TAKIP.zip
+      - name: Verify data
+        if: success()
+        run: |
+          python - <<'PY'
+          import zipfile,json
+          p="v131_output/V131_SICAGA_GIRIS_TERS_YON_224_HALKA_36_TAKIP.zip"
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              m=json.loads(z.read("04_V131_KAYNAK_KONTROL.json"))
+              assert m["nested_ring_count"]==224
+              assert m["source_rows"]==15790
+              assert m["censor_last36"] and m["complete_36_future_horizon"]
+              assert m["event_count_hot_entries"]>1000
+              assert m["event_count_approach_ilik"]>1000
+              print("V131 verified all real observed events",m["event_count_hot_entries"],
+                    "hot entries,",m["event_count_approach_ilik"],"pre-hot approaches")
+          PY
+      - name: Upload V131 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V131_HOT_POOL_PRE_ENTRY_REVERSAL_FAST_BOUNCE_224_RINGS
+          path: v131_output/*.zip
+          retention-days: 90
+          if-no-files-found: warn
