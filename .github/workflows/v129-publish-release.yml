@@ -1,0 +1,67 @@
+name: V129 Publish Real Predraw Direction Findings
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/v129-publish-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover completed V129 actual outputs
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39011511126
+          name: V129_PREDRAW_224_RING_DIRECTION_NEXT20_BLIND_AUDIT
+          github-token: ${{ github.token }}
+          path: v129-report
+      - name: Print validation and last18 conditional hit rates with bootstrap intervals
+        run: |
+          python - <<'PY'
+          import csv,io,zipfile,json,pathlib
+          p=pathlib.Path("v129-report/V129_HEDEF_ONCESI_224_HALKA_YON_ETKI_KOR_TEST.zip")
+          with zipfile.ZipFile(p) as z:
+              def get(name):
+                  return list(csv.DictReader(io.StringIO(z.read(name).decode("utf-8-sig"))))
+              cond=get("01_ILERIYE_HEDEF20_ONCESI_SINYAL_KOSULLU_OLASILIK.csv")
+              conf=get("02_SON18_29_ONCU_SINYAL_GUN_GUVEN_ARALIK.csv")
+              print("V129 KEY PRE-DRAW HIT RATE VALIDATE18 VS LAST18:")
+              for sig in ("ONLY_WARM","ONLY_COOL","MIXED_WARM_AND_COOL","WARM_DOMINANT","COOL_DOMINANT","FIRST_WARM_LAST_COOL","LAST56_COOL_NET","WARM_40_PLUS_RINGS"):
+                  for period in ("VALIDATE18","LAST18"):
+                      c=next(r for r in cond if r["phase"]==period and r["signal"]==sig)
+                      print(sig,period,"eligible",c["eligible_ball_target_pairs"],
+                        "hit%",c["eligible_next_target_rate_pct"],"other%",
+                        c["other_next_rate_pct"],"delta_pp",c["eligible_minus_other_pp"])
+                  x=next(r for r in conf if r["signal"]==sig)
+                  print("  LAST18 daily bootstrap eligible−other delta percentage points",
+                     x["difference_pp"],"95%CI [",
+                     x["bootstrap95_low_pp"],",",x["bootstrap95_high_pp"],"]")
+              meta=json.loads(z.read("08_V129_DENETIM.json"))
+              assert meta["targets"]==13101
+              print("V129 verified",len(z.namelist()),"files",
+                    "locked validation model",meta["validation_winner"])
+          PY
+      - name: Publish durable V129 zipped outputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v129-2026-10-13-pretarget-ring-direction-vs-next20
+        run: |
+          FILE=v129-report/V129_HEDEF_ONCESI_224_HALKA_YON_ETKI_KOR_TEST.zip
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "V129 — 224 rings PRE-DRAW movement vs NEXT 20 of 80 membership" \
+              --notes "13,101 historical next-target tests: 29 predetermined number-direction conditions, 25 equal-budget pick models, true 224 overlapping nested ring state built ONLY from completed prior draws. Last18 days: ONLY_WARM next-draw P24.40789%, ONLY_COOL P24.73746%, MIXED warming/cooling P25.14647%; random independent baseline 25%. Locked validation winner WARM_PERSIST_6 on historical later last18 had 10-ball avg2.47952, RANDOM avg2.50666; all day-bootstrap ticket differences CI contain zero. 8 files of per-day 29 conditions, exact target outcome checks, model results. The dates had already been studied in prior versions: not a virgin prospective holdout. Do not infer causal draw prediction or guaranteed edge." \
+              --latest=false
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, assets: [.assets[]|{name,size}]}'
