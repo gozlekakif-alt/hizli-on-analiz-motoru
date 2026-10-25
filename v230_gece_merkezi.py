@@ -241,12 +241,17 @@ def ticket_set(groups, quotas, arrows, seed, used):
 
 ENGINE_SCREENS = {
     "V18 · Gelen 20 / kalan 60": ("v18_cift_havuz_app","render_v18"),
+    "V35 · 11 çekiliş karakteri": ("v35_11_karakter_app","render_v35"),
+    "V39 · Çekiliş öncesi uzmanlar": ("v39_ileriye_donuk_app","render_v39"),
     "V40 · Isı, yön ve bantlar": ("v40_isi_havuzlari_app","render_v40"),
+    "V41 · Derin yön ve ters dönüş": ("v41_derin_yon_app","render_v41"),
     "V42 · Değişken beş havuz": ("v42_bes_havuz_kota_app","render_v42"),
     "V44 · Ana beyin / uzman eleme": ("v44_ana_beyin_app","render_v44"),
     "V45 · Sinyal merkezi": ("v45_sinyal_merkezi_app","render_v45"),
     "V50 · Sekizli aile": ("v50_8li_yakinlik_app","render_v50"),
     "V52 · İkili arkadaşlık": ("v52_ayni_cekilis_eslikci_app","render_v52"),
+    "V54 · RNG karakter laboratuvarı": ("v54_rng_karakter_app","render_v54"),
+    "V55 · Önce karakter sonra sayı": ("v55_karakter_once_app","render_v55"),
 }
 
 for key,default in (("v230_source",""),("v230_manual",[]),("v230_tickets",{})):
@@ -462,7 +467,12 @@ elif menu == "🧠 Eski analiz motorları":
     module, function = ENGINE_SCREENS[chosen_engine]
     try:
         handler = getattr(importlib.import_module(module),function)
-        handler(legacy)
+        if function == "render_v18":
+            selected = [r for r in allrows if r["day"] == chosen_day]
+            handler(selected, chosen_day, False,
+                    lambda: datetime.now(TR_TZ).replace(tzinfo=None))
+        else:
+            handler(legacy)
     except Exception as exc:
         st.error(f"{chosen_engine} yüklenemedi: {exc}")
         st.info("Eski motor dosyalarının ve bağımlılıkların aynı GitHub deposunda bulunması gerekir.")
