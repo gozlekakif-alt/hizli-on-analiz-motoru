@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """V230 regression tests. Executes production pure functions and Streamlit smoke tests."""
+# Independent CI smoke verification run.
 import ast
 import collections
 import datetime
