@@ -345,18 +345,23 @@ if menu == "🌙 Canlı gece paneli":
                 "Çekiliş saati",missing,
                 format_func=lambda p:(datetime.combine(date.fromisoformat(chosen_day),time(23,2))+
                                        timedelta(minutes=5*p)).strftime("%d.%m %H:%M"))
+            draw_id = st.text_input("Resmî çekiliş numarası (zorunlu)",
+                        placeholder="Örn. 63329")
             newnums = st.text_area("20 gerçek sayı (boşluk, virgül veya tire ile)",height=92,
                     placeholder="07 11 12 15 19 22 24 26 29 38 42 44 49 54 67 69 73 75 76 77")
             save = st.form_submit_button("✅ Bu gerçek 20'liyi kaydet",type="primary")
         if save:
             try:
+                if not draw_id.strip().isdigit() or int(draw_id) <= 0:
+                    raise ValueError("Resmî çekiliş numarasını pozitif tam sayı olarak gir.")
                 vals = numbers(newnums)
                 stamp = datetime.combine(date.fromisoformat(chosen_day),time(23,2)) + timedelta(minutes=5*selected_pos)
-                ident = max((r["no"] for r in allrows),default=0)+1
+                ident = int(draw_id)
                 new = record(ident,stamp,vals)
-                # Strict time/ID conflict check: existing other days could have next ID.
                 if any(r["dt"]==new["dt"] for r in allrows):
                     raise ValueError("Bu saatte zaten bir çekiliş kayıtlı.")
+                if any(r["no"]==ident for r in allrows):
+                    raise ValueError("Bu çekiliş numarası zaten kayıtlı.")
                 st.session_state["v230_manual"].append(new)
                 st.rerun()
             except Exception as exc:
