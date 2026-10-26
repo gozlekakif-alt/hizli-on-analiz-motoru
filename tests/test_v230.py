@@ -32,7 +32,7 @@ def load_core():
     env={"__builtins__":__builtins__,
          "re":re,"datetime":datetime.datetime,"date":date,"time":time,
          "timedelta":timedelta,"Counter":Counter,"random":random,
-         "st":None}
+         "st":None,"NAMES":("Çok soğuk","Serin","Nötr","Ilık","Çok sıcak")}
     exec(compile(module,str(SRC),"exec"),env)
     return env
 
