@@ -5,6 +5,11 @@ on:
       - v230_gece_merkezi.py
       - tests/test_v230.py
       - .github/workflows/v230-tests.yml
+  pull_request:
+    paths:
+      - v230_gece_merkezi.py
+      - tests/test_v230.py
+      - .github/workflows/v230-tests.yml
   workflow_dispatch:
 jobs:
   verify:
