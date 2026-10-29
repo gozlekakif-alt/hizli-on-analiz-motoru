@@ -103,7 +103,8 @@ class BridgeTests(unittest.TestCase):
         self.assertFalse(at.exception,at.exception)
         self.assertTrue(any("V231" in x.value for x in at.subheader))
         # Confirm native Streamlit can execute real Z3 solve via its actual UI button.
-        at.selectbox[-1].set_value("Z3 · Havuz/yön kısıtlı 10'lu kolon").run()
+        chooser=next(x for x in at.selectbox if x.label=="Çalıştırılacak araç")
+        chooser.set_value("Z3 · Havuz/yön kısıtlı 10'lu kolon").run()
         self.assertFalse(at.exception,at.exception)
         self.assertTrue(any("Z3" in x.label for x in at.button))
         for btn in at.button:
