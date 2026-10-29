@@ -390,7 +390,7 @@ if menu == "🌙 Canlı gece paneli":
                 matches = [len(set(x["numbers"]) & set(r["nums"])) for x in tickets]
                 st.caption("Kaydedilmiş kolonların isabeti (bu 20'lide): " +
                            ", ".join(f"Kolon {i+1}: {m}/10" for i,m in enumerate(matches)))
-            freeze_key=chosen_day+"|"+r["dt"]
+            freeze_key=chosen_day+"|"+datetime.fromisoformat(r["dt"]).isoformat(timespec="minutes")
             forecast=st.session_state.get("v232_locked",{}).get(freeze_key)
             if forecast:
                 st.markdown("**🔒 V232 — Bu çekilişten ÖNCE dondurulan karakter kolonları**")
