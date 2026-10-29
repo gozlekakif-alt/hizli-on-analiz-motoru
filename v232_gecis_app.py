@@ -14,8 +14,8 @@ from v232_gecis_motorlari import (
 
 
 @st.cache_data(show_spinner=False, max_entries=2)
-def _historical_backtest(source_hash, cleaned_rows):
-    return backtest_nights(list(cleaned_rows),max_nights=70)
+def _historical_backtest(source_hash, _cleaned_rows):
+    return backtest_nights(list(_cleaned_rows),max_nights=70)
 
 
 def _plain(rows):
