@@ -88,7 +88,7 @@ def render_v232(day, dayrows, allrows, frozen, arrows, night):
                        "Eski günler için 70 gece backtest yöntemini kullan.")
         for key,v in sorted(saved.items()):
             stamp=v["hedef"]
-            record=next((r for r in rows if r["dt"]==stamp),None)
+            record=next((r for r in rows if as_time(r).isoformat(timespec="minutes")==stamp),None)
             with st.container(border=True):
                 st.markdown(f"**{stamp[11:16]} — Hedef öncesi dondurulmuş kolonlar**")
                 st.caption("Son bilinen veri "+v["son_bilinen_cekilis"]+
