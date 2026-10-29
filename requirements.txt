@@ -2,3 +2,7 @@ streamlit>=1.39,<2
 pandas>=2.0,<3
 requests>=2.31,<3
 scipy>=1.11,<2
+numpy>=1.26,<3
+numba>=0.62,<1
+z3-solver>=4.13,<5
+xgboost>=2.1,<4
