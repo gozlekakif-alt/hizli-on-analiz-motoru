@@ -92,9 +92,11 @@ class BridgeTests(unittest.TestCase):
         from streamlit.testing.v1 import AppTest
         app=Path(__file__).resolve().parent.parent/"v230_gece_merkezi.py"
         at=AppTest.from_file(str(app),default_timeout=75)
+        # A complete 192-draw daytime is required before the lab menu is usable.
+        full_day=make_draws(1,192)
         at.session_state["v230_source"]="".join(
             f'{r["no"]};{datetime.strptime(r["dt"],"%Y-%m-%d %H:%M"):%d.%m.%Y %H:%M};'
-            +",".join(map(str,r["nums"]))+"\n" for r in self.rows)
+            +",".join(map(str,r["nums"]))+"\n" for r in full_day)
         at.run()
         self.assertFalse(at.exception,at.exception)
         at.sidebar.radio[0].set_value("🧪 Ortak yazılım laboratuvarı").run()
