@@ -1,28 +1,32 @@
-name: V230 night hub tests
+name: V230 + V231 integrated Streamlit tests
 on:
   push:
     paths:
       - v230_gece_merkezi.py
+      - v231_analiz_koprusu.py
       - tests/test_v230.py
+      - tests/test_v231.py
+      - requirements.txt
       - .github/workflows/v230-tests.yml
   pull_request:
     paths:
       - v230_gece_merkezi.py
+      - v231_analiz_koprusu.py
       - tests/test_v230.py
+      - tests/test_v231.py
+      - requirements.txt
       - .github/workflows/v230-tests.yml
   workflow_dispatch:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - name: Install dashboard dependencies
-        run: |
-          python -m pip install -r requirements.txt
-          python -m pip install "numpy>=1.24,<3"
-      - name: Check dashboard syntax and behavior
-        run: python -m unittest discover -s tests -p 'test_v230.py' -v
+      - name: Install production dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Verify original night hub and full integration
+        run: python -m unittest discover -s tests -p 'test_v23*.py' -v
