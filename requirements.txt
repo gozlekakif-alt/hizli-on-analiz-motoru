@@ -6,3 +6,4 @@ numpy>=1.26,<3
 numba>=0.62,<1
 z3-solver>=4.13,<5
 xgboost>=2.1,<4
+scikit-learn>=1.5,<2
