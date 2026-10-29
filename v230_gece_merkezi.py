@@ -307,7 +307,8 @@ for d in sorted({r["day"] for r in allrows},reverse=True):
         available.append(d)
 
 menu = st.sidebar.radio("Bölüm",["🌙 Canlı gece paneli","🎟️ Kupon üretici",
-                                  "🧠 Eski analiz motorları","📊 Veri kontrolü"])
+                                  "🧠 Eski analiz motorları","🧪 Ortak yazılım laboratuvarı",
+                                  "📊 Veri kontrolü"])
 if not available:
     st.info("Başlamak için 192 gündüz çekilişi bulunan veri.txt dosyanı yükle. "
             "07:02–22:57'nin tamamı olmadan 22:57 havuzu oluşturulmaz.")
@@ -322,7 +323,7 @@ seen = [night[p] for p in sorted(night)]
 
 # Legacy engines take calendar day/position, not shifted operational date.
 legacy = [{"no":r["no"], "day":r["day"],"pos":r["pos"],
-           "nums":tuple(r["nums"])} for r in allrows]
+           "dt":r["dt"],"nums":tuple(r["nums"])} for r in allrows]
 
 if menu == "🌙 Canlı gece paneli":
     st.subheader(f"📌 {chosen_day} · 22:57'de dondurulmuş 80 sayı")
@@ -481,8 +482,132 @@ elif menu == "🧠 Eski analiz motorları":
     except Exception as exc:
         st.error(f"{chosen_engine} yüklenemedi: {exc}")
         st.info("Eski motor dosyalarının ve bağımlılıkların aynı GitHub deposunda bulunması gerekir.")
-    st.markdown(f"Diğer V10 sürümlerinin kaynakları: "
+    st.markdown(f"Eski V10'un bütün diğer sekmeleri: "
                 f"https://github.com/{REPO}/blob/main/v10_app.py")
+    st.caption("Eski motorun hesaplama sonucunu incelemek için ilgili motoru seçip "
+               "kendi çalıştır düğmesine bas. Ana 22:57 tablosu değişmez.")
+
+elif menu == "🧪 Ortak yazılım laboratuvarı":
+    from v231_analiz_koprusu import (versions, pairs_numpy, pairs_numba,
+        scipy_pool_null, z3_constraint_tickets, xgb_walkforward, checksum)
+    st.subheader("🧪 V231 · Python, Z3, XGBoost, NumPy, SciPy, Numba")
+    st.caption("Tek veri kaynağı: V230'da yüklediğin GERÇEK sonuçlar. "
+               "Bu motorlar otomatik kazanç tahmini değil, araştırma ve karşılaştırma araçlarıdır.")
+    installed=versions()
+    st.dataframe([{"Bileşen":name,"Sürüm":value or "YÜKLÜ DEĞİL",
+                   "Durum":"Hazır" if value else "Kurulum gerekli"}
+                  for name,value in installed.items()],
+                 hide_index=True,use_container_width=True)
+    st.caption("Termux yalnız Android cihazda çalışır, bulut Streamlit'in içinde koşmaz. "
+               "Z3 / XGBoost / Numba gibi motorlar burada bulut Python ortamında çalıştırılır.")
+    tool=st.selectbox("Çalıştırılacak araç",[
+        "Python · Gece ve sabit havuz doğrulaması",
+        "Z3 · Havuz/yön kısıtlı 10'lu kolon",
+        "XGBoost · Eğitim ve sonradan gelen günlerde kör test",
+        "NumPy + Numba · Gerçek ikili eşlikçiler",
+        "SciPy · Sabit beş havuzun rastgelelik karşılaştırması"])
+    if tool.startswith("Python"):
+        st.metric("Kaynak çekilişleri",len(allrows))
+        st.metric("Sabit havuz sayısı",len(frozen))
+        st.metric("Kayıtlı gerçek gece sonucu",len(seen))
+        st.code(checksum(allrows)[:28],language="text")
+        st.caption("Kaynak parmak izi; geçmişi değiştirip aynı test gibi göstermeyi önler.")
+        st.dataframe([{"Havuz":NAMES[k],"Mevcut sayı":sum(v==k for v in frozen.values()),
+                       "Gündüz toplam":sum(daycounts[n] for n in frozen if frozen[n]==k),
+                       "→":sum(arrows[n]=="→" for n in frozen if frozen[n]==k),
+                       "←":sum(arrows[n]=="←" for n in frozen if frozen[n]==k),
+                       "=":sum(arrows[n]=="=" for n in frozen if frozen[n]==k)}
+                     for k in range(5)],hide_index=True,use_container_width=True)
+    elif tool.startswith("Z3"):
+        st.write("**Beş havuzdan 2'şer sayı, toplam 10 benzersiz sayı.** "
+                 "En az bir yükselen ve bir düşen sayı koşulu, varsa etkin.")
+        seed=st.number_input("Z3 kısıt çözümü tohumu",min_value=0,value=20261029)
+        cols=st.slider("Çözülecek kolon",1,3,2)
+        if not installed["z3-solver"]:
+            st.error("Z3 kurulu değil: requirements.txt içinde z3-solver gerekli.")
+        elif st.button("Z3 kısıt sistemini çöz",type="primary"):
+            try:
+                output=z3_constraint_tickets(frozen,arrows,cols,int(seed))
+                for idx,nums in enumerate(output,1):
+                    st.code(f"{idx}. " + " ".join(f"{n:02d}" for n in nums))
+                st.info("Bu çözüm yalnız belirtilen kısıtları sağlar; "
+                        "gelecek gerçek 20'liyi bildiği veya kazanma ihtimalini "
+                        "artırdığı anlamına gelmez.")
+            except Exception as exc:
+                st.error("Z3 hesaplama sorunu: "+str(exc))
+    elif tool.startswith("XGBoost"):
+        st.warning("Model yalnız önceki çekilişlerden özellik çıkarır. "
+                   "Eğitim ve sınav tarihleri ayrılır; aynı sonraki hedefte "
+                   "10'lu XGBoost ve rastgele 10'lu karşılaştırılır.")
+        max_targets=st.slider("Farklı günlere yayılan hedef örneği",100,600,240,20)
+        if not installed["xgboost"]:
+            st.error("XGBoost kurulu değil: requirements.txt içine eklenmeli.")
+        elif st.button("XGBoost ile kronolojik kör test çalıştır",type="primary"):
+            try:
+                with st.spinner("Eğitim ve sonraki gün testleri hesaplanıyor"):
+                    report=xgb_walkforward(allrows,max_targets=max_targets)
+                st.session_state["v231_xgb_saved"]={
+                    "hash":checksum(allrows),"limit":max_targets,"report":report}
+            except Exception as exc:
+                st.error("XGBoost analiz sorunu: "+str(exc))
+        saved=st.session_state.get("v231_xgb_saved")
+        if saved:
+            if saved["hash"]!=checksum(allrows) or saved["limit"]!=max_targets:
+                st.warning("Veri veya hedef sayısı değişti. Rapor güncel değil.")
+            else:
+                x=saved["report"]
+                c1,c2,c3=st.columns(3)
+                c1.metric("XGBoost 10'lu ortalaması",f'{x["model_mean"]}/10')
+                c2.metric("Aynı hedef rastgele ortalaması",f'{x["random_mean"]}/10')
+                c3.metric("Adil teorik ortalama","2,50/10")
+                st.caption(f'Gerçek eğitim {x["trained_days"]} gün / {x["train_draws"]} çekiliş; '
+                           f'test {x["tested_days"]} gün / {x["test_draws"]} çekiliş. '
+                           f'Bölme tarihi: {x["split_through_day"]}.')
+                st.dataframe(x["details"][:100],use_container_width=True,
+                             hide_index=True)
+                import csv as _csv
+                import io as _io
+                stream=_io.StringIO()
+                w=_csv.DictWriter(stream,fieldnames=list(x["details"][0]),delimiter=";")
+                w.writeheader()
+                w.writerows(x["details"])
+                st.download_button("Testin tamamını CSV indir",stream.getvalue(),
+                    file_name=f"V231_XGB_{chosen_day}.csv",mime="text/csv")
+                st.caption("Bu araştırma sonucu seçim kriterini sonradan değiştirmek "
+                           "için kullanılırsa yeni bağımsız günlerle tekrar sınanmalı.")
+    elif tool.startswith("NumPy"):
+        if not installed["numpy"]:
+            st.error("NumPy yüklü değil.")
+        elif st.button("Son 217 gerçek çekilişte ikili sayımını hesapla"):
+            try:
+                a=pairs_numpy(allrows)
+                a.sort(key=lambda v:(-v["birlikte"],v["sayı_a"],v["sayı_b"]))
+                st.session_state["v231_pairs"]={"hash":checksum(allrows),"table":a}
+                if installed["numba"]:
+                    b=pairs_numba(allrows)
+                    t={(r["sayı_a"],r["sayı_b"]):r["birlikte"] for r in b}
+                    assert all(r["birlikte"]==t[r["sayı_a"],r["sayı_b"]] for r in a)
+                    st.success("NumPy ve Numba aynı 3.160 ikili için TAM eşleşti.")
+                else:
+                    st.info("Numba bulunamadı; eşlikçiler NumPy ile hesaplandı.")
+            except Exception as exc:
+                st.error("İkili analizi hesaplanamadı: "+str(exc))
+        saved=st.session_state.get("v231_pairs")
+        if saved and saved["hash"]==checksum(allrows):
+            st.dataframe(saved["table"][:60],hide_index=True,use_container_width=True)
+            st.caption("İkili buluşma geçmişin betimlenmesidir; ileriye dönük kanıt değildir.")
+    else:
+        if not installed["scipy"]:
+            st.error("SciPy kurulu değil.")
+        elif not seen:
+            st.info("Bu geceye ait en az bir gerçek 20'li yüklenince karşılaştırma çalışır.")
+        else:
+            table=scipy_pool_null(seen,frozen)
+            st.dataframe(table,hide_index=True,use_container_width=True)
+            st.caption("Her havuzda 16 sayı var, adil beklenti sayı başına %25. "
+                       "Ham ve beş karşılaştırmaya göre düzeltilmiş p-değerleri "
+                       "yalnız açıklayıcıdır. Bir çekilişteki seçimler birbiriyle "
+                       "bağımlı olduğundan basit binom testi yaklaşık bir denetimdir.")
 
 else:
     st.subheader("📊 Kayıt bütünlüğü ve dışa aktarma")
