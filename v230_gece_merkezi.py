@@ -306,9 +306,9 @@ for d in sorted({r["day"] for r in allrows},reverse=True):
     if count == 192:
         available.append(d)
 
-menu = st.sidebar.radio("Bölüm",["🌙 Canlı gece paneli","🎟️ Kupon üretici",
-                                  "🧠 Eski analiz motorları","🧪 Ortak yazılım laboratuvarı",
-                                  "📊 Veri kontrolü"])
+menu = st.sidebar.radio("Bölüm",["🌙 Canlı gece paneli","🧬 Karakter geçiş motorları",
+                                  "🎟️ Kupon üretici","🧠 Eski analiz motorları",
+                                  "🧪 Ortak yazılım laboratuvarı","📊 Veri kontrolü"])
 if not available:
     st.info("Başlamak için 192 gündüz çekilişi bulunan veri.txt dosyanı yükle. "
             "07:02–22:57'nin tamamı olmadan 22:57 havuzu oluşturulmaz.")
@@ -390,6 +390,16 @@ if menu == "🌙 Canlı gece paneli":
                 matches = [len(set(x["numbers"]) & set(r["nums"])) for x in tickets]
                 st.caption("Kaydedilmiş kolonların isabeti (bu 20'lide): " +
                            ", ".join(f"Kolon {i+1}: {m}/10" for i,m in enumerate(matches)))
+            freeze_key=chosen_day+"|"+r["dt"]
+            forecast=st.session_state.get("v232_locked",{}).get(freeze_key)
+            if forecast:
+                st.markdown("**🔒 V232 — Bu çekilişten ÖNCE dondurulan karakter kolonları**")
+                st.dataframe([{
+                    "Motor":name,
+                    "10'lu kolon":" ".join(f"{n:02d}" for n in chosen),
+                    "İsabet":f"{len(set(chosen)&set(r['nums']))}/10",
+                } for name,chosen in forecast["kolonlar"].items()],
+                hide_index=True,use_container_width=True)
     st.divider()
     st.subheader("🔄 Gece sonrası HAREKETLİ havuz (ayrı)")
     history = sorted(dayrows + seen,key=lambda r:r["dt"])
@@ -411,6 +421,10 @@ if menu == "🌙 Canlı gece paneli":
                          "Düşen ←":sum(arrows[n]=="←" for n in r["nums"]),
                          "Yatay =":sum(arrows[n]=="=" for n in r["nums"])})
         st.dataframe(stat,hide_index=True,use_container_width=True)
+
+elif menu == "🧬 Karakter geçiş motorları":
+    from v232_gecis_app import render_v232
+    render_v232(chosen_day,dayrows,allrows,frozen,arrows,night)
 
 elif menu == "🎟️ Kupon üretici":
     st.subheader("🎟️ Az kolon · kontrollü karma kupon")
