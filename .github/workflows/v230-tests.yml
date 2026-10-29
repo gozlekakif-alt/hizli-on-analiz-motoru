@@ -4,16 +4,22 @@ on:
     paths:
       - v230_gece_merkezi.py
       - v231_analiz_koprusu.py
+      - v232_gecis_motorlari.py
+      - v232_gecis_app.py
       - tests/test_v230.py
       - tests/test_v231.py
+      - tests/test_v232.py
       - requirements.txt
       - .github/workflows/v230-tests.yml
   pull_request:
     paths:
       - v230_gece_merkezi.py
       - v231_analiz_koprusu.py
+      - v232_gecis_motorlari.py
+      - v232_gecis_app.py
       - tests/test_v230.py
       - tests/test_v231.py
+      - tests/test_v232.py
       - requirements.txt
       - .github/workflows/v230-tests.yml
   workflow_dispatch:
